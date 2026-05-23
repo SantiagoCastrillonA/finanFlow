@@ -1,0 +1,30 @@
+{
+  "name": "finanflow",
+  "version": "1.0.0",
+  "description": "Una aplicación móvil premium de control de gastos optimizada para Android PWA y Capacitor.",
+  "main": "www/index.html",
+  "scripts": {
+    "dev": "npx http-server www -p 5173 -o",
+    "cap-init": "npx cap init",
+    "build-native": "npx cap sync",
+    "open-android": "npx cap open android"
+  },
+  "keywords": [
+    "pwa",
+    "expense-tracker",
+    "android",
+    "mobile",
+    "finance",
+    "capacitor"
+  ],
+  "author": "Antigravity",
+  "license": "MIT",
+  "dependencies": {
+    "@capacitor/android": "^5.7.0",
+    "@capacitor/cli": "^5.7.0",
+    "@capacitor/core": "^5.7.0"
+  },
+  "devDependencies": {
+    "http-server": "^14.1.1"
+  }
+}

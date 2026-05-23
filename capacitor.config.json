@@ -1,0 +1,6 @@
+{
+  "appId": "com.finanflow.app",
+  "appName": "FinanFlow",
+  "webDir": "www",
+  "bundledWebRuntime": false
+}

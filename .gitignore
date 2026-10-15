@@ -1,1 +1,16 @@
 AGENT.md
+
+# Dependencias (se reinstalan con npm install)
+node_modules/
+
+# Configuración de Firebase para Android (el repo es público)
+android/app/google-services.json
+
+# Preferencias personales de herramientas
+.claude/
+.idea/
+android/.idea/
+
+# Sistema
+.DS_Store
+Thumbs.db

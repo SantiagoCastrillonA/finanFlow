@@ -1,4 +1,4 @@
-const CACHE_NAME = "finanflow-v0.2.1";
+const CACHE_NAME = "finanflow-v0.3.0";
 const ASSETS = [
   "./",
   "./index.html",
@@ -7,7 +7,8 @@ const ASSETS = [
   "./vendor/chart.umd.min.js",
   "./manifest.json",
   "./icons/icon-192.png",
-  "./icons/icon-512.png"
+  "./icons/icon-512.png",
+  "./icons/apple-touch-icon.png"
 ];
 
 self.addEventListener("install", (event) => {

@@ -14,7 +14,8 @@
 
   <link rel="manifest" href="manifest.json">
   <link rel="icon" href="icons/icon-192.png" type="image/png">
-  <link rel="apple-touch-icon" href="icons/icon-192.png">
+  <link rel="apple-touch-icon" href="icons/apple-touch-icon.png">
+  <meta name="apple-mobile-web-app-title" content="FinanFlow">
 
   <!-- Tema antes del primer pintado (evita el destello claro/oscuro) -->
   <script>
@@ -37,9 +38,26 @@
 
     <header class="app-header">
       <h1 id="page-title" class="large-title">Inicio</h1>
-      <button type="button" class="icon-btn" onclick="app.openAI()" aria-label="Abrir FinanBot, asistente financiero">
-        <span class="ms">auto_awesome</span>
-      </button>
+      <div class="header-actions">
+        <!-- Solo aparece cuando la nube tiene un problema -->
+        <button type="button" id="sync-pill" class="sync-pill hidden" onclick="app.openSyncSheet()"
+          aria-label="Estado de sincronización">
+          <span class="ms">sync_problem</span><span class="sync-pill-label">Sin sincronizar</span>
+        </button>
+        <!-- Solo con Hogar: actividad de tu pareja -->
+        <button type="button" id="activity-bell" class="icon-btn hidden" onclick="app.openActivity()"
+          aria-label="Actividad del Hogar">
+          <span class="ms">notifications</span><span class="bell-badge hidden"></span>
+        </button>
+        <button type="button" class="icon-btn" onclick="app.openAI()" aria-label="Abrir FinanBot, asistente financiero">
+          <span class="ms">auto_awesome</span>
+        </button>
+      </div>
+      <!-- Solo aparece si perteneces a un Hogar compartido -->
+      <div id="space-switch" class="segmented space-switch hidden" aria-label="Espacio">
+        <button data-value="personal">Personal</button>
+        <button data-value="household">Hogar</button>
+      </div>
     </header>
 
     <main id="app-content" class="app-content">
@@ -80,6 +98,16 @@
           <p id="daily-allowance" class="allowance hidden"></p>
         </div>
 
+        <!-- Hogar: saldo entre la pareja -->
+        <div id="household-balance" class="card between-card hidden">
+          <span class="between-icon"><span class="ms">handshake</span></span>
+          <div class="between-text">
+            <span id="balance-between-label" class="caption">Entre ustedes</span>
+            <span id="balance-between-value" class="between-value">Están a mano</span>
+          </div>
+          <button type="button" id="settle-btn" class="btn-tinted small">Saldar</button>
+        </div>
+
         <div id="budget-alerts" class="alerts hidden"></div>
         </div>
 
@@ -104,7 +132,7 @@
 
         <div class="card chart-card">
           <div class="card-header">
-            <h2 class="card-title">Saldo · últimos 7 días</h2>
+            <h2 id="trend-title" class="card-title">Saldo · últimos 7 días</h2>
           </div>
           <div class="chart-wrapper trend">
             <canvas id="trendChart" aria-label="Evolución del saldo"></canvas>
@@ -255,10 +283,14 @@
               <span id="firebase-status-title" class="setting-label">Modo local</span>
               <span id="firebase-status-subtitle" class="setting-sub"></span>
             </span>
-            <button type="button" id="firebase-action-btn" class="btn-plain"
-              onclick="app.handleFirebaseSettingsAction()">Conectar</button>
+            <button type="button" id="firebase-action-btn" class="btn-plain">Conectar</button>
           </div>
         </div>
+
+        <h2 class="group-title">Hogar compartido</h2>
+        <div id="household-settings" class="list-group"></div>
+        <p class="footnote">Un espacio común con tu pareja: ambos registran gastos, ven quién pagó y cuánto se deben. Tus
+          gastos personales siguen siendo privados.</p>
 
         <h2 class="group-title">Datos</h2>
         <div class="list-group">
@@ -287,7 +319,7 @@
           </button>
         </div>
 
-        <p class="app-version">FinanFlow 0.2.1 · Tus datos son tuyos</p>
+        <p class="app-version">FinanFlow 0.3.0 · Tus datos son tuyos</p>
       </section>
     </main>
 
@@ -354,6 +386,31 @@
               </select>
               <span class="ms">unfold_more</span>
             </span>
+          </label>
+          <!-- Solo en el Hogar: quién pagó y cómo se divide -->
+          <label id="tx-paidby-row" class="form-row hidden">
+            <span id="tx-paidby-label">Pagó</span>
+            <span class="select-inline">
+              <select id="tx-paidby"></select>
+              <span class="ms">unfold_more</span>
+            </span>
+          </label>
+          <label id="tx-split-row" class="form-row hidden">
+            <span>División</span>
+            <span class="select-inline">
+              <select id="tx-split">
+                <option value="50">50 / 50</option>
+                <option value="100">Solo de quien pagó</option>
+                <option value="0">Todo del otro</option>
+                <option value="custom">Personalizada</option>
+              </select>
+              <span class="ms">unfold_more</span>
+            </span>
+          </label>
+          <label id="tx-share-row" class="form-row hidden">
+            <span>Parte de quien pagó</span>
+            <span class="share-input"><input type="number" id="tx-share" min="0" max="100" step="5" inputmode="numeric"
+                value="50"> %</span>
           </label>
           <label class="form-row">
             <span>Nota</span>
@@ -423,6 +480,89 @@
         <button type="button" id="ai-send-btn" class="send-btn" onclick="app.sendAIMessage()" aria-label="Enviar">
           <span class="ms">arrow_upward</span>
         </button>
+      </div>
+    </div>
+  </div>
+
+  <!-- ================= HOJA: ACTIVIDAD DEL HOGAR ================= -->
+  <div id="activity-modal" class="modal" aria-hidden="true">
+    <div class="backdrop" data-close></div>
+    <div class="sheet" role="dialog" aria-modal="true" aria-labelledby="activity-title">
+      <div class="sheet-handle" aria-hidden="true"></div>
+      <div class="sheet-header">
+        <span></span>
+        <h2 id="activity-title">Actividad del Hogar</h2>
+        <button type="button" class="btn-plain" data-close>Listo</button>
+      </div>
+      <div id="activity-list" class="activity-list"></div>
+    </div>
+  </div>
+
+  <!-- ================= DIÁLOGOS: HOGAR COMPARTIDO ================= -->
+  <div id="household-modal" class="modal dialog-modal" aria-hidden="true">
+    <div class="backdrop" data-close></div>
+    <form id="household-form" class="dialog" role="dialog" aria-modal="true" aria-labelledby="household-title" novalidate>
+      <div class="dialog-body">
+        <span class="dialog-icon"><span class="ms">add_home</span></span>
+        <h3 id="household-title">Crear un Hogar</h3>
+        <p>Ponle un nombre al espacio que compartirás con tu pareja.</p>
+        <input type="text" id="household-name" class="dialog-input" placeholder="Hogar" maxlength="24"
+          autocomplete="off" enterkeyhint="done">
+      </div>
+      <div class="dialog-actions">
+        <button type="button" class="dialog-btn" data-close>Cancelar</button>
+        <button type="submit" class="dialog-btn strong">Crear</button>
+      </div>
+    </form>
+  </div>
+
+  <div id="invite-modal" class="modal dialog-modal" aria-hidden="true">
+    <div class="backdrop" data-close></div>
+    <div class="dialog" role="dialog" aria-modal="true" aria-labelledby="invite-title">
+      <div class="dialog-body">
+        <span class="dialog-icon"><span class="ms">person_add</span></span>
+        <h3 id="invite-title">Invita a tu pareja</h3>
+        <p>En su teléfono: Ajustes → Hogar compartido → Unirme con un código.</p>
+        <div id="invite-code" class="invite-code" aria-live="polite">······</div>
+        <p class="dialog-note">Vale por 48 horas y para una sola persona.</p>
+      </div>
+      <div class="dialog-actions vertical">
+        <button type="button" class="dialog-btn strong" onclick="app.shareInvite()">Compartir invitación</button>
+        <button type="button" class="dialog-btn" data-close>Listo</button>
+      </div>
+    </div>
+  </div>
+
+  <div id="join-modal" class="modal dialog-modal" aria-hidden="true">
+    <div class="backdrop" data-close></div>
+    <form id="join-form" class="dialog" role="dialog" aria-modal="true" aria-labelledby="join-title" novalidate>
+      <div class="dialog-body">
+        <span class="dialog-icon"><span class="ms">group_add</span></span>
+        <h3 id="join-title">Unirme a un Hogar</h3>
+        <p>Escribe el código de 6 caracteres que te compartió tu pareja.</p>
+        <input type="text" id="join-code" class="dialog-input code" placeholder="ABC123" maxlength="6"
+          autocomplete="off" autocapitalize="characters" spellcheck="false" enterkeyhint="go">
+      </div>
+      <div class="dialog-actions">
+        <button type="button" class="dialog-btn" data-close>Cancelar</button>
+        <button type="submit" id="join-submit" class="dialog-btn strong">Unirme</button>
+      </div>
+    </form>
+  </div>
+
+  <!-- ================= DIÁLOGO: ESTADO DE SINCRONIZACIÓN ================= -->
+  <div id="sync-modal" class="modal dialog-modal" aria-hidden="true">
+    <div class="backdrop" data-close></div>
+    <div class="dialog" role="dialog" aria-modal="true" aria-labelledby="sync-title">
+      <div class="dialog-body">
+        <span class="dialog-icon warn"><span class="ms">sync_problem</span></span>
+        <h3 id="sync-title">No se pudo sincronizar</h3>
+        <p id="sync-text"></p>
+        <p id="sync-count" class="dialog-note"></p>
+      </div>
+      <div class="dialog-actions vertical">
+        <button type="button" id="sync-retry-btn" class="dialog-btn strong" onclick="app.retrySync()">Reintentar</button>
+        <button type="button" class="dialog-btn" data-close>Entendido</button>
       </div>
     </div>
   </div>

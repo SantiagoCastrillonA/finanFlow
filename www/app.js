@@ -11,7 +11,9 @@
 
 const FIREBASE_CONFIG = {
   apiKey: "AIzaSyB1TR7ta9YJBRzVxohdJ0KoINTLOLEPhUI",
-  authDomain: "finanflow-32cae.firebaseapp.com",
+  // Servida desde Firebase Hosting, el login usa el mismo dominio de la app: Safari (iPhone)
+  // bloquea el almacenamiento de terceros y el redirect fallaría con otro dominio.
+  authDomain: /\.(web\.app|firebaseapp\.com)$/.test(location.hostname) ? location.host : "finanflow-32cae.firebaseapp.com",
   projectId: "finanflow-32cae",
   storageBucket: "finanflow-32cae.firebasestorage.app",
   messagingSenderId: "119524136972",
@@ -110,18 +112,35 @@ const state = {
   notified: saved.notified || {},
   viewMonth: monthKey(new Date()),
   filters: { type: "all", category: "all", date: "month", search: "" },
+  // Espacios: "personal" (privado) u "household" (compartido). state.transactions/budgets
+  // siempre son los del espacio activo; el otro espera en spaceCache.
+  space: "personal",
+  preferredSpace: saved.space === "household" ? "household" : "personal",
+  household: null,
   user: null,
   firebaseEnabled: false
 };
 
+const spaceCache = {
+  personal: { transactions: state.transactions, budgets: state.budgets },
+  household: { transactions: [], budgets: {} }
+};
+
+/** Datos del espacio personal, esté activo o no (lo único que se guarda en el teléfono). */
+function personalData() {
+  return state.space === "personal" ? { transactions: state.transactions, budgets: state.budgets } : spaceCache.personal;
+}
+
 function saveState() {
+  const personal = personalData();
   try {
     localStorage.setItem(
       STORAGE_KEY,
       JSON.stringify({
         currency: state.currency,
-        transactions: state.transactions,
-        budgets: state.budgets,
+        transactions: personal.transactions,
+        budgets: personal.budgets,
+        space: state.preferredSpace,
         activeTab: state.activeTab,
         chartType: state.chartType,
         lastUsed: state.lastUsed,
@@ -303,12 +322,15 @@ function cssVar(name) {
    Cálculos (una pasada por render)
    ========================================================================== */
 
-function monthStats(ym, untilDay = 31) {
+// Las liquidaciones entre la pareja ("Saldar cuentas") no son ingresos ni gastos.
+const countsAsMoney = (t) => t.kind !== "settlement";
+
+function monthStats(ym, untilDay = 31, list = state.transactions) {
   let income = 0;
   let expense = 0;
   const byCat = { expense: {}, income: {} };
-  for (const t of state.transactions) {
-    if (!isInMonth(t.date, ym) || Number(t.date.slice(8, 10)) > untilDay) continue;
+  for (const t of list) {
+    if (!countsAsMoney(t) || !isInMonth(t.date, ym) || Number(t.date.slice(8, 10)) > untilDay) continue;
     const a = Number(t.amount) || 0;
     if (t.type === "income") income += a;
     else expense += a;
@@ -318,10 +340,10 @@ function monthStats(ym, untilDay = 31) {
 }
 
 /** Saldo acumulado de todas las transacciones con fecha <= dateStr. */
-function balanceUntil(dateStr) {
+function balanceUntil(dateStr, list = state.transactions) {
   let total = 0;
-  for (const t of state.transactions) {
-    if (t.date <= dateStr) total += t.type === "income" ? Number(t.amount) || 0 : -(Number(t.amount) || 0);
+  for (const t of list) {
+    if (countsAsMoney(t) && t.date <= dateStr) total += t.type === "income" ? Number(t.amount) || 0 : -(Number(t.amount) || 0);
   }
   return roundMoney(total);
 }
@@ -740,6 +762,7 @@ function renderCategoryChart(stats) {
 }
 
 function renderTrendChart() {
+  $("trend-title").textContent = inHousehold() ? "Gastado en el mes · 7 días" : "Saldo · últimos 7 días";
   if (!state.transactions.length) {
     toggleChartEmpty("trendChart", "no-trend-data", true);
     return;
@@ -754,7 +777,8 @@ function renderTrendChart() {
     const d = new Date(end);
     d.setDate(end.getDate() - i);
     labels.push(d.toLocaleDateString("es-CO", { day: "numeric", month: "short" }).replace(" de ", " ").replace(".", ""));
-    data.push(balanceUntil(toISODate(d)));
+    // Personal: saldo acumulado. Hogar: lo gastado en común desde el inicio del mes.
+    data.push(inHousehold() ? monthStats(monthKey(d), d.getDate()).expense : balanceUntil(toISODate(d)));
   }
 
   const accent = cssVar("--accent");
@@ -799,7 +823,7 @@ function renderTrendChart() {
         },
         plugins: {
           legend: { display: false },
-          tooltip: { callbacks: { label: (ctx) => ` Saldo: ${formatMoney(ctx.raw)}` } }
+          tooltip: { callbacks: { label: (ctx) => ` ${inHousehold() ? "Gastado" : "Saldo"}: ${formatMoney(ctx.raw)}` } }
         }
       }
     });
@@ -853,14 +877,21 @@ function renderDashboard(stats) {
   $("month-next").disabled = isCurrent;
 
   const endOfView = isCurrent ? todayISO() : `${state.viewMonth}-31`;
-  setAnimatedText($("total-balance"), formatMoney(balanceUntil(endOfView)));
-  $("balance-label").textContent = isCurrent ? "Saldo" : `Saldo al cierre de ${monthLabel(state.viewMonth, false).toLowerCase()}`;
+  if (inHousehold()) {
+    // El Hogar no es una cuenta con saldo: lo útil es cuánto se ha gastado en común este mes.
+    setAnimatedText($("total-balance"), formatMoney(stats.expense));
+    $("balance-label").textContent = `Gastos del Hogar · ${monthLabel(state.viewMonth, false).toLowerCase()}`;
+  } else {
+    setAnimatedText($("total-balance"), formatMoney(balanceUntil(endOfView)));
+    $("balance-label").textContent = isCurrent ? "Saldo" : `Saldo al cierre de ${monthLabel(state.viewMonth, false).toLowerCase()}`;
+  }
   setAnimatedText($("total-incomes"), formatMoney(stats.income));
   setAnimatedText($("total-expenses"), formatMoney(stats.expense));
 
   renderComparison(stats, isCurrent);
   renderAllowance(stats, isCurrent);
   renderBudgetAlerts(stats);
+  renderHouseholdBalance();
   renderRecentTransactions();
   // Chart.js mide el canvas al crearse: solo dibujar con la pestaña visible.
   if ($("tab-dashboard").classList.contains("active")) renderCharts(stats);
@@ -1001,10 +1032,35 @@ function txRow(t, showDate) {
   el.className = "list-row tx-row";
   el.dataset.id = t.id;
   if (t.id === lastChangedId) el.classList.add("is-new");
-  const sub = [cat.label, t.method, showDate ? formatDateFriendly(t.date) : null].filter(Boolean).map(escapeHtml).join(" · ");
   const repeat = t.recurring || t.recurringOf ? '<span class="ms row-badge" aria-label="Recurrente">repeat</span>' : "";
+  const date = showDate ? formatDateFriendly(t.date) : null;
+
+  if (t.kind === "settlement") {
+    // Pago entre la pareja: no es gasto; tocarlo solo permite borrarlo.
+    const who = memberName(t.paidBy);
+    el.innerHTML = `
+      <span class="row-icon" style="color:var(--accent);background:var(--accent-tint)"><span class="ms">swap_horiz</span></span>
+      <span class="row-main">
+        <span class="row-title">Cuentas saldadas</span>
+        <span class="row-sub">${escapeHtml([t.paidBy === (state.user && state.user.uid) ? "Pagaste" : `Pagó ${who}`, date].filter(Boolean).join(" · "))}</span>
+      </span>
+      <span class="row-amount settlement">${formatMoney(t.amount)}</span>`;
+    el.onclick = () => showConfirmDialog("¿Eliminar este pago?", "El saldo entre ustedes volverá a calcularse sin él.", () => deleteTransaction(t.id), "Eliminar");
+    return el;
+  }
+
+  // En el Hogar, el subtítulo dice quién pagó y cómo se dividió.
+  const split =
+    inHousehold() && t.paidBy
+      ? [paidByLabel(t), t.type === "expense" ? splitLabel(t.payerShare ?? 50) : null]
+      : [cat.label, t.method];
+  const sub = [...split, date].filter(Boolean).map(escapeHtml).join(" · ");
+  const authorInfo = inHousehold() && t.createdBy ? (state.household.memberInfo || {})[t.createdBy] : null;
+  const author = authorInfo
+    ? `<span class="row-author" title="Registró ${escapeHtml(memberName(t.createdBy))}">${escapeHtml((authorInfo.name || "?").charAt(0).toUpperCase())}</span>`
+    : "";
   el.innerHTML = `
-    <span class="row-icon" style="color:${cat.color};background:${cat.color}24"><span class="ms">${cat.icon}</span></span>
+    <span class="row-icon" style="color:${cat.color};background:${cat.color}24"><span class="ms">${cat.icon}</span>${author}</span>
     <span class="row-main">
       <span class="row-title">${escapeHtml(t.note || cat.label)}</span>
       <span class="row-sub">${sub}</span>
@@ -1012,6 +1068,19 @@ function txRow(t, showDate) {
     <span class="row-amount ${t.type}">${repeat}${t.type === "income" ? "+" : ""}${formatMoney(t.amount)}</span>`;
   el.onclick = () => openTransactionModal(t.id);
   return el;
+}
+
+function paidByLabel(t) {
+  const mine = state.user && t.paidBy === state.user.uid;
+  if (t.type === "income") return mine ? "Recibiste" : `Recibió ${memberName(t.paidBy)}`;
+  return mine ? "Pagaste" : `Pagó ${memberName(t.paidBy)}`;
+}
+
+function splitLabel(share) {
+  if (share === 50) return "50/50";
+  if (share === 100) return "sin dividir";
+  if (share === 0) return "para el otro";
+  return `${share}/${100 - share}`;
 }
 
 function matchesDateFilter(dateStr, filter) {
@@ -1180,6 +1249,7 @@ function switchTab(tabId) {
     else b.removeAttribute("aria-current");
   });
   $("page-title").textContent = TAB_TITLES[tabId];
+  renderSpaceSwitch();
   $("app-content").scrollTop = 0;
 
   if (tabId === "dashboard") renderCharts(monthStats(state.viewMonth));
@@ -1243,6 +1313,7 @@ function setTxType(type, keepCategory = false) {
     if (!txSheet.editing && last.method) $("tx-method").value = last.method;
   }
   renderCategoryGrid();
+  updateSplitLabels();
 }
 
 function openTransactionModal(editId = null, presetType = "expense") {
@@ -1265,7 +1336,102 @@ function openTransactionModal(editId = null, presetType = "expense") {
 
   txSheet.category = tx ? tx.category : null;
   setTxType(tx ? tx.type : presetType, !!tx);
+  setupSplitFields(tx);
   openModal("transaction-modal", tx ? null : "tx-amount");
+}
+
+/* --- Hogar: quién pagó y cómo se divide (parte de quien pagó, 0–100 %) --- */
+
+function setupSplitFields(tx) {
+  const shared = inHousehold() && !!partnerUid();
+  ["tx-paidby-row", "tx-split-row"].forEach((id) => $(id).classList.toggle("hidden", !shared));
+  $("tx-share-row").classList.add("hidden");
+  if (!shared) return;
+  const select = $("tx-paidby");
+  select.innerHTML = "";
+  [state.user.uid, partnerUid()].forEach((uid) => select.appendChild(new Option(memberName(uid), uid)));
+  select.value = (tx && tx.paidBy) || state.user.uid;
+  const share = tx && typeof tx.payerShare === "number" ? tx.payerShare : 50;
+  const preset = ["50", "100", "0"].includes(String(share)) ? String(share) : "custom";
+  $("tx-split").value = preset;
+  $("tx-share").value = share;
+  $("tx-share-row").classList.toggle("hidden", preset !== "custom");
+  updateSplitLabels();
+}
+
+function updateSplitLabels() {
+  // En ingresos se habla de quién recibió; la división solo aplica a gastos.
+  const income = txSheet.type === "income";
+  $("tx-paidby-label").textContent = income ? "Recibió" : "Pagó";
+  if (!inHousehold() || !partnerUid()) return;
+  $("tx-split-row").classList.toggle("hidden", income);
+  $("tx-share-row").classList.toggle("hidden", income || $("tx-split").value !== "custom");
+}
+
+function readSplitFields() {
+  if (!inHousehold() || !partnerUid()) return {};
+  const paidBy = $("tx-paidby").value;
+  if (txSheet.type === "income") return { paidBy, payerShare: 100 };
+  const v = $("tx-split").value;
+  const share = v === "custom" ? Math.min(100, Math.max(0, Number($("tx-share").value) || 0)) : Number(v);
+  return { paidBy, payerShare: share };
+}
+
+/** Cuánto le debe tu pareja a ti (negativo: cuánto le debes tú). */
+function householdBalance() {
+  const me = state.user && state.user.uid;
+  if (!me || !inHousehold()) return 0;
+  let net = 0;
+  for (const t of state.transactions) {
+    if (!t.paidBy) continue;
+    const sign = t.paidBy === me ? 1 : -1;
+    if (t.kind === "settlement") net += sign * Number(t.amount);
+    else if (t.type === "expense") net += sign * Number(t.amount) * (1 - (t.payerShare ?? 50) / 100);
+  }
+  return roundMoney(net);
+}
+
+function renderHouseholdBalance() {
+  const card = $("household-balance");
+  const partner = partnerUid();
+  const show = inHousehold() && !!partner;
+  card.classList.toggle("hidden", !show);
+  if (!show) return;
+  const net = householdBalance();
+  const name = memberName(partner);
+  const settled = Math.abs(net) < 1;
+  card.classList.toggle("owed", net > 0 && !settled);
+  card.classList.toggle("owe", net < 0 && !settled);
+  setAnimatedText($("balance-between-value"), settled ? "Están a mano" : formatMoney(Math.abs(net)));
+  $("balance-between-label").textContent = settled ? `Entre tú y ${name}` : net > 0 ? `${name} te debe` : `Le debes a ${name}`;
+  $("settle-btn").classList.toggle("hidden", settled);
+}
+
+function settleUp() {
+  const net = householdBalance();
+  if (Math.abs(net) < 1) return;
+  const partner = partnerUid();
+  const debtor = net > 0 ? partner : state.user.uid;
+  const text = net > 0 ? `${memberName(partner)} te pagó ${formatMoney(net)}` : `Le pagaste ${formatMoney(-net)} a ${memberName(partner)}`;
+  showConfirmDialog("¿Saldar cuentas?", `Se registrará que ${text.charAt(0).toLowerCase() + text.slice(1)} y el saldo entre ustedes quedará en cero.`, () => {
+    const tx = {
+      id: generateId("settle"),
+      kind: "settlement",
+      type: "expense",
+      amount: Math.abs(net),
+      category: "Otros",
+      date: todayISO(),
+      method: "Otro",
+      note: "Saldar cuentas",
+      paidBy: debtor,
+      payerShare: 100,
+      createdAt: Date.now()
+    };
+    lastChangedId = tx.id;
+    upsertTransaction(tx);
+    haptic("success");
+    showToast("Cuentas saldadas", "success");
+  }, "Saldar");
 }
 
 function saveTransaction(event) {
@@ -1291,7 +1457,8 @@ function saveTransaction(event) {
     date,
     method: $("tx-method").value,
     note: $("tx-note").value.trim(),
-    createdAt: prev && prev.createdAt ? prev.createdAt : Date.now()
+    createdAt: prev && prev.createdAt ? prev.createdAt : Date.now(),
+    ...readSplitFields()
   };
   if (!tx.recurringOf) {
     if ($("tx-recurring").checked) tx.recurring = "monthly";
@@ -1379,7 +1546,7 @@ function materializeRecurring() {
   });
   if (!created.length) return;
   if (isCloud()) {
-    created.forEach((t) => cloudDoc("transactions", t.id).set(t).catch(cloudError));
+    created.forEach((t) => cloudWrite(cloudDoc("transactions", t.id).set(t)));
   } else {
     state.transactions.push(...created);
     commit();
@@ -1446,15 +1613,91 @@ let auth = null;
 let firestoreListeners = [];
 
 const isCloud = () => !!(state.firebaseEnabled && state.user && db);
-const cloudDoc = (col, id) => db.collection("users").doc(state.user.uid).collection(col).doc(id);
-const cloudError = (err) => {
-  console.error("Firestore:", err);
-  showToast("No se pudo sincronizar con la nube", "error");
+const userRef = () => db.collection("users").doc(state.user.uid);
+const householdRef = (id = state.household && state.household.id) => db.collection("households").doc(id);
+const inHousehold = () => state.space === "household" && !!state.household;
+const spaceRef = () => (inHousehold() ? householdRef() : userRef());
+const cloudDoc = (col, id) => spaceRef().collection(col).doc(id);
+/* --- Estado de sincronización: un problema es un estado, no un aviso por cada fallo --- */
+
+const SYNC_ISSUES = {
+  "permission-denied": {
+    title: "La nube rechazó el acceso",
+    text: "Las reglas de seguridad de Firestore no permiten guardar. Revisa la configuración del proyecto en Firebase."
+  },
+  unauthenticated: { title: "Tu sesión venció", text: "Cierra sesión y vuelve a entrar con Google para seguir sincronizando." },
+  "resource-exhausted": { title: "Límite diario de la nube", text: "El plan gratuito de Firebase llegó a su cuota de hoy. Tus datos siguen en el teléfono y se subirán mañana." },
+  offline: { title: "Sin conexión", text: "Tus cambios están guardados en este teléfono y se subirán solos cuando vuelva la conexión." },
+  unknown: { title: "No se pudo sincronizar", text: "Ocurrió un error inesperado con la nube. Prueba de nuevo en un momento." }
 };
 
+function cloudError(err) {
+  console.error("Firestore:", err);
+  const code = SYNC_ISSUES[err && err.code] ? err.code : err && err.code === "unavailable" ? "offline" : "unknown";
+  const isNew = !state.syncIssue || state.syncIssue.code !== code;
+  state.syncIssue = { code, count: isNew ? 1 : state.syncIssue.count + 1, detail: (err && err.message) || "" };
+  // Un solo aviso por tipo de problema; el resto se acumula en la pastilla de estado.
+  if (isNew && code !== "offline") {
+    showToast(SYNC_ISSUES[code].title, "error", 5000, { label: "Ver", onClick: openSyncSheet });
+  }
+  renderSyncStatus();
+}
+function clearSyncIssue() {
+  if (!state.syncIssue || state.syncIssue.code === "offline") return;
+  state.syncIssue = null;
+  renderSyncStatus();
+}
+/** Escritura en la nube con seguimiento: limpia el estado si funciona, lo registra si falla. */
+function cloudWrite(promise) {
+  promise.then(clearSyncIssue, cloudError);
+}
+
+function renderSyncStatus() {
+  const pill = $("sync-pill");
+  const offline = !navigator.onLine && isCloud();
+  const issue = offline ? { code: "offline", count: 0 } : state.syncIssue;
+  pill.classList.toggle("hidden", !issue);
+  if (issue) {
+    pill.classList.toggle("error", issue.code !== "offline");
+    pill.querySelector(".ms").textContent = issue.code === "offline" ? "cloud_off" : "sync_problem";
+    pill.querySelector(".sync-pill-label").textContent = issue.code === "offline" ? "Sin conexión" : "Sin sincronizar";
+  }
+  updateFirebaseStatusUI();
+}
+
+function openSyncSheet() {
+  const offline = !navigator.onLine;
+  const issue = offline ? { code: "offline", count: 0 } : state.syncIssue || { code: "unknown", count: 0 };
+  const info = SYNC_ISSUES[issue.code];
+  $("sync-title").textContent = info.title;
+  $("sync-text").textContent = info.text;
+  $("sync-count").textContent = issue.count > 1 ? `Se intentó ${issue.count} veces.` : "";
+  $("sync-retry-btn").classList.toggle("hidden", offline);
+  openModal("sync-modal");
+}
+
+function retrySync() {
+  closeModal("sync-modal");
+  state.syncIssue = null;
+  renderSyncStatus();
+  if (!db) return;
+  db.enableNetwork().catch(() => {});
+  syncWithFirestore();
+  showToast("Reintentando sincronizar…", "info", 2000);
+}
+
 function upsertTransaction(tx, doCommit = true) {
+  if (inHousehold()) {
+    // En el Hogar cada movimiento recuerda quién lo creó y quién lo cambió por última vez.
+    tx = { ...tx, createdBy: tx.createdBy || state.user.uid, updatedBy: state.user.uid };
+    // Los cambios internos (p. ej. marcar un mes saltado en una plantilla) no se anuncian.
+    if (doCommit) {
+      const exists = state.transactions.some((t) => t.id === tx.id);
+      logActivity(tx.kind === "settlement" ? "settle" : exists ? "edit" : "add", tx);
+    }
+  }
   if (isCloud()) {
-    cloudDoc("transactions", tx.id).set(tx).catch(cloudError);
+    cloudWrite(cloudDoc("transactions", tx.id).set(tx));
     if (doCommit) {
       saveState();
       refreshScheduledNotifications();
@@ -1467,8 +1710,12 @@ function upsertTransaction(tx, doCommit = true) {
   if (doCommit) commit();
 }
 function removeTransaction(id) {
+  if (inHousehold()) {
+    const tx = state.transactions.find((t) => t.id === id);
+    if (tx) logActivity("delete", tx);
+  }
   if (isCloud()) {
-    cloudDoc("transactions", id).delete().catch(cloudError);
+    cloudWrite(cloudDoc("transactions", id).delete());
     return;
   }
   state.transactions = state.transactions.filter((t) => t.id !== id);
@@ -1476,7 +1723,7 @@ function removeTransaction(id) {
 }
 function upsertBudget(category, limit) {
   if (isCloud()) {
-    cloudDoc("budgets", category).set({ limit }).catch(cloudError);
+    cloudWrite(cloudDoc("budgets", category).set({ limit }));
     return;
   }
   state.budgets[category] = limit;
@@ -1484,7 +1731,7 @@ function upsertBudget(category, limit) {
 }
 function removeBudget(category) {
   if (isCloud()) {
-    cloudDoc("budgets", category).delete().catch(cloudError);
+    cloudWrite(cloudDoc("budgets", category).delete());
     return;
   }
   delete state.budgets[category];
@@ -1507,6 +1754,8 @@ function initFirebase() {
     state.firebaseEnabled = true;
     db.enablePersistence({ synchronizeTabs: true }).catch(() => {});
     auth.onAuthStateChanged(handleAuthStateChange);
+    // Al volver de un login por redirect (app web instalada) se informan los errores.
+    auth.getRedirectResult().catch((error) => showToast("No se pudo iniciar sesión: " + error.message, "error", 5000));
   } catch (error) {
     console.error("Error inicializando Firebase:", error);
     state.firebaseEnabled = false;
@@ -1521,41 +1770,417 @@ function handleAuthStateChange(user) {
     syncWithFirestore();
   } else {
     unsubscribeFirestore();
+    setHousehold(null);
     const local = loadState() || {};
-    state.transactions = local.transactions || [];
-    state.budgets = local.budgets || {};
+    spaceCache.personal = { transactions: local.transactions || [], budgets: local.budgets || {} };
+    state.transactions = spaceCache.personal.transactions;
+    state.budgets = spaceCache.personal.budgets;
   }
   render();
+  renderHouseholdSettings();
 }
+
+/* Cada espacio escribe en su caché; si es el activo, también en state y se re-pinta. */
+function receiveSpaceData(key, patch) {
+  Object.assign(spaceCache[key], patch);
+  if ((key === "household") === (state.space === "household")) {
+    if (patch.transactions) state.transactions = patch.transactions;
+    if (patch.budgets) state.budgets = patch.budgets;
+    commit();
+  } else if (key === "personal") {
+    saveState(); // el personal siempre queda guardado en el teléfono
+  }
+}
+
+function listenSpace(key, ref, onFirstTransactions) {
+  let first = true;
+  const unsubs = [
+    ref.collection("transactions").onSnapshot((snap) => {
+      if (!snap.metadata.fromCache) clearSyncIssue();
+      receiveSpaceData(key, { transactions: snap.docs.map((d) => ({ id: d.id, ...d.data() })) });
+      if (first) {
+        first = false;
+        onFirstTransactions && onFirstTransactions();
+      }
+    }, cloudError),
+    ref.collection("budgets").onSnapshot((snap) => {
+      const budgets = {};
+      snap.forEach((d) => (budgets[d.id] = d.data().limit));
+      receiveSpaceData(key, { budgets });
+    }, cloudError)
+  ];
+  return () => unsubs.forEach((fn) => fn());
+}
+
+let householdListeners = [];
 
 function syncWithFirestore() {
   unsubscribeFirestore();
-  if (!isCloud()) return;
-  const userRef = db.collection("users").doc(state.user.uid);
-  let materialized = false;
-  const onData = commit;
+  if (!state.user || !db) return;
   firestoreListeners.push(
-    userRef.collection("transactions").onSnapshot((snap) => {
-      state.transactions = snap.docs.map((d) => ({ id: d.id, ...d.data() }));
+    listenSpace("personal", userRef(), () => {
       state.cloudStatus = null; // primera sincronización terminada
-      onData();
-      if (!materialized) {
-        materialized = true;
-        materializeRecurring();
-      }
-    }, cloudError),
-    userRef.collection("budgets").onSnapshot((snap) => {
-      const budgets = {};
-      snap.forEach((d) => (budgets[d.id] = d.data().limit));
-      state.budgets = budgets;
-      onData();
-    }, cloudError)
+      updateFirebaseStatusUI();
+      if (state.space === "personal") materializeRecurring();
+    }),
+    // ¿Pertenezco a un Hogar? (como máximo uno)
+    db
+      .collection("households")
+      .where("members", "array-contains", state.user.uid)
+      .limit(1)
+      .onSnapshot((snap) => setHousehold(snap.empty ? null : { id: snap.docs[0].id, ...snap.docs[0].data() }), cloudError)
   );
+}
+
+function setHousehold(household) {
+  const prevId = state.household && state.household.id;
+  state.household = household;
+  if (!household || household.id !== prevId) {
+    householdListeners.forEach((fn) => fn());
+    householdListeners = [];
+    spaceCache.household = { transactions: [], budgets: {} };
+    state.activity = [];
+    if (household) {
+      householdListeners.push(
+        listenSpace("household", householdRef(household.id), () => inHousehold() && materializeRecurring()),
+        householdRef(household.id)
+          .collection("activity")
+          .orderBy("clientAt", "desc")
+          .limit(40)
+          .onSnapshot((snap) => {
+            state.activity = snap.docs.map((d) => ({ id: d.id, ...d.data() }));
+            renderActivityBell();
+            if ($("activity-modal").classList.contains("open")) renderActivityList();
+          }, cloudError)
+      );
+    }
+    renderActivityBell();
+  }
+  if (!household && state.space === "household") switchSpace("personal", false);
+  else if (household && !prevId && state.preferredSpace === "household") switchSpace("household", false);
+  renderSpaceSwitch();
+  renderHouseholdSettings();
 }
 
 function unsubscribeFirestore() {
   firestoreListeners.forEach((fn) => fn());
   firestoreListeners = [];
+  householdListeners.forEach((fn) => fn());
+  householdListeners = [];
+}
+
+/* --- Cambiar de espacio --- */
+
+function switchSpace(space, remember = true) {
+  if (space === "household" && !state.household) return;
+  if (space === state.space) return;
+  spaceCache[state.space] = { transactions: state.transactions, budgets: state.budgets };
+  state.space = space;
+  if (remember) state.preferredSpace = space;
+  state.transactions = spaceCache[space].transactions;
+  state.budgets = spaceCache[space].budgets;
+  state.viewMonth = monthKey(new Date());
+  state.filters.category = "all";
+  budgetsAnimated = false;
+  saveState();
+  resetCharts();
+  render();
+  renderSpaceSwitch();
+  if (state.activeTab === "transactions") renderTransactionsList();
+  if (!reduceMotion.matches) {
+    $("app-content").animate([{ opacity: 0.4 }, { opacity: 1 }], { duration: 200, easing: EASE_OUT });
+  }
+  materializeRecurring();
+}
+
+function renderSpaceSwitch() {
+  const el = $("space-switch");
+  const show = !!state.household && state.activeTab !== "settings";
+  el.classList.toggle("hidden", !show);
+  if (state.household) el.querySelector('[data-value="household"]').textContent = state.household.name || "Hogar";
+  setSegmented(el, state.space);
+}
+
+/* --- Crear, invitar, unirse y salir del Hogar --- */
+
+const INVITE_ALPHABET = "ABCDEFGHJKLMNPQRSTUVWXYZ23456789"; // sin 0/O ni 1/I
+const memberProfile = () => ({
+  name: (state.user.displayName || state.user.email || "Yo").split(" ")[0],
+  email: state.user.email || "",
+  photo: state.user.photoURL || ""
+});
+
+function memberName(uid) {
+  if (!uid) return "";
+  if (state.user && uid === state.user.uid) return "Tú";
+  const info = state.household && state.household.memberInfo && state.household.memberInfo[uid];
+  return (info && info.name) || "Tu pareja";
+}
+
+function partnerUid() {
+  return state.household && state.user ? state.household.members.find((m) => m !== state.user.uid) : null;
+}
+
+async function createHousehold(event) {
+  event.preventDefault();
+  if (!state.user) return;
+  const name = $("household-name").value.trim() || "Hogar";
+  const ref = db.collection("households").doc();
+  closeModal("household-modal");
+  try {
+    await ref.set({
+      name,
+      members: [state.user.uid],
+      memberInfo: { [state.user.uid]: memberProfile() },
+      createdBy: state.user.uid,
+      createdAt: firebase.firestore.FieldValue.serverTimestamp()
+    });
+    clearSyncIssue();
+    haptic("success");
+    state.preferredSpace = "household";
+    showInvite(ref.id);
+  } catch (err) {
+    cloudError(err);
+  }
+}
+
+async function showInvite(householdId = state.household && state.household.id) {
+  if (!householdId) return;
+  let code = "";
+  for (let i = 0; i < 6; i++) code += INVITE_ALPHABET[Math.floor(Math.random() * INVITE_ALPHABET.length)];
+  $("invite-code").textContent = "······";
+  openModal("invite-modal");
+  try {
+    await db.collection("invites").doc(code).set({
+      hid: householdId,
+      createdBy: state.user.uid,
+      expiresAt: firebase.firestore.Timestamp.fromMillis(Date.now() + 48 * 3600 * 1000)
+    });
+    $("invite-code").textContent = code;
+    $("invite-code").dataset.code = code;
+  } catch (err) {
+    closeModal("invite-modal");
+    cloudError(err);
+  }
+}
+
+async function shareInvite() {
+  const code = $("invite-code").dataset.code;
+  if (!code) return;
+  const text = `Únete a nuestro Hogar en FinanFlow con el código ${code}. Ábrelo en https://finanflow-32cae.web.app`;
+  const Share = plugin("Share");
+  try {
+    if (Share) await Share.share({ title: "Invitación a FinanFlow", text });
+    else if (navigator.share) await navigator.share({ title: "Invitación a FinanFlow", text });
+    else {
+      await navigator.clipboard.writeText(text);
+      showToast("Invitación copiada", "success");
+    }
+  } catch (e) {
+    /* compartir cancelado */
+  }
+}
+
+async function joinHousehold(event) {
+  event.preventDefault();
+  if (!state.user) return;
+  const code = $("join-code").value.trim().toUpperCase();
+  if (code.length !== 6) {
+    showToast("El código tiene 6 caracteres", "warning");
+    return;
+  }
+  const btn = $("join-submit");
+  btn.disabled = true;
+  btn.innerHTML = '<span class="spinner" aria-hidden="true"></span>Uniendo…';
+  try {
+    const invite = await db.collection("invites").doc(code).get();
+    if (!invite.exists || invite.data().expiresAt.toMillis() < Date.now()) throw new Error("invalid-code");
+    const hid = invite.data().hid;
+    await householdRef(hid).update({
+      members: firebase.firestore.FieldValue.arrayUnion(state.user.uid),
+      [`memberInfo.${state.user.uid}`]: memberProfile(),
+      joinCode: code
+    });
+    db.collection("invites").doc(code).delete().catch(() => {}); // de un solo uso
+    closeModal("join-modal");
+    state.preferredSpace = "household";
+    haptic("success");
+    showToast("Te uniste al Hogar", "success");
+  } catch (err) {
+    if (err.message === "invalid-code" || err.code === "permission-denied" || err.code === "not-found") {
+      showToast("Código inválido o vencido. Pide uno nuevo.", "error", 4000);
+    } else {
+      cloudError(err);
+    }
+  } finally {
+    btn.disabled = false;
+    btn.textContent = "Unirme";
+  }
+}
+
+function leaveHousehold() {
+  if (!state.household) return;
+  showConfirmDialog(
+    "¿Salir del Hogar?",
+    "Dejarás de ver los movimientos compartidos. Tus datos personales no cambian.",
+    () => {
+      const uid = state.user.uid;
+      cloudWrite(
+        householdRef().update({
+          members: firebase.firestore.FieldValue.arrayRemove(uid),
+          [`memberInfo.${uid}`]: firebase.firestore.FieldValue.delete()
+        })
+      );
+      state.preferredSpace = "personal";
+      switchSpace("personal");
+    },
+    "Salir"
+  );
+}
+
+/* --- Actividad del Hogar (campanita): qué registró, cambió o borró tu pareja --- */
+
+const ACTIVITY_VERBS = { add: "agregó", edit: "editó", delete: "borró", settle: "registró un pago de" };
+const activitySeenKey = () => `finanflow_activity_seen_${state.household && state.household.id}`;
+
+function logActivity(action, tx) {
+  if (!state.household || !state.user) return;
+  cloudWrite(
+    householdRef()
+      .collection("activity")
+      .add({
+        by: state.user.uid,
+        action,
+        note: tx.note || getCategoryInfo(tx.category, tx.type).label,
+        amount: Number(tx.amount) || 0,
+        type: tx.type,
+        category: tx.category,
+        txId: tx.id,
+        clientAt: Date.now()
+      })
+  );
+}
+
+function unseenActivity() {
+  if (!state.household || !state.user) return [];
+  const seen = Number(localStorage.getItem(activitySeenKey())) || 0;
+  return (state.activity || []).filter((a) => a.by !== state.user.uid && a.clientAt > seen);
+}
+
+function renderActivityBell() {
+  const bell = $("activity-bell");
+  bell.classList.toggle("hidden", !state.household);
+  const badge = bell.querySelector(".bell-badge");
+  const count = unseenActivity().length;
+  const prev = Number(badge.dataset.count || 0);
+  badge.dataset.count = count;
+  badge.textContent = count > 9 ? "9+" : String(count);
+  badge.classList.toggle("hidden", !count);
+  // El punto "salta" solo cuando llega algo nuevo, no en cada re-render.
+  if (count > prev && !reduceMotion.matches) {
+    badge.animate([{ transform: "scale(0.6)", opacity: 0 }, { transform: "scale(1.15)", opacity: 1, offset: 0.6 }, { transform: "scale(1)" }], {
+      duration: 300,
+      easing: EASE_OUT
+    });
+  }
+  bell.setAttribute("aria-label", count ? `Actividad del Hogar: ${count} nuevas` : "Actividad del Hogar");
+}
+
+function timeAgo(ms) {
+  const min = Math.round((Date.now() - ms) / 60000);
+  if (min < 1) return "ahora";
+  if (min < 60) return `hace ${min} min`;
+  const h = Math.round(min / 60);
+  if (h < 24) return `hace ${h} h`;
+  const d = Math.round(h / 24);
+  return d === 1 ? "ayer" : `hace ${d} días`;
+}
+
+function renderActivityList() {
+  const list = $("activity-list");
+  const items = state.activity || [];
+  const seen = Number(localStorage.getItem(activitySeenKey())) || 0;
+  if (!items.length) {
+    list.innerHTML = emptyStateHTML("notifications", "Sin actividad todavía", "Aquí verás lo que registren en el Hogar.");
+    return;
+  }
+  list.innerHTML = "";
+  const group = document.createElement("div");
+  group.className = "list-group";
+  items.forEach((a) => {
+    const mine = state.user && a.by === state.user.uid;
+    const info = (state.household.memberInfo || {})[a.by] || {};
+    const row = document.createElement("div");
+    row.className = "list-row activity-row";
+    if (!mine && a.clientAt > seen) row.classList.add("unseen");
+    const who = mine ? "Tú" : info.name || "Tu pareja";
+    const verb = mine ? { add: "agregaste", edit: "editaste", delete: "borraste", settle: "registraste un pago de" }[a.action] : ACTIVITY_VERBS[a.action];
+    row.innerHTML = `
+      <span class="avatar">${escapeHtml((info.name || "?").charAt(0).toUpperCase())}</span>
+      <span class="row-main">
+        <span class="activity-text"><strong>${escapeHtml(who)}</strong> ${verb} ${escapeHtml(a.action === "settle" ? "" : a.note)} · ${formatMoney(a.amount)}</span>
+        <span class="row-sub">${timeAgo(a.clientAt)}</span>
+      </span>`;
+    group.appendChild(row);
+  });
+  list.appendChild(group);
+}
+
+function openActivity() {
+  renderActivityList();
+  openModal("activity-modal");
+  // Al abrir se marca todo como visto (el punto desaparece al cerrar, sin saltos mientras se lee).
+  localStorage.setItem(activitySeenKey(), String(Date.now()));
+  setTimeout(renderActivityBell, 400);
+}
+
+function renderHouseholdSettings() {
+  const box = $("household-settings");
+  if (!box) return;
+  if (!state.user) {
+    box.innerHTML = `
+      <div class="setting-row"><span class="setting-icon" style="background:#FF9F0A"><span class="ms">group</span></span>
+        <span class="setting-text"><span class="setting-label">Hogar compartido</span>
+        <span class="setting-sub">Conecta tu cuenta de Google para compartir gastos.</span></span></div>`;
+    return;
+  }
+  if (!state.household) {
+    box.innerHTML = `
+      <button type="button" class="setting-row" data-action="create"><span class="setting-icon" style="background:#FF9F0A"><span class="ms">add_home</span></span>
+        <span class="setting-label">Crear un Hogar</span><span class="ms chevron">chevron_right</span></button>
+      <button type="button" class="setting-row" data-action="join"><span class="setting-icon" style="background:#30D158"><span class="ms">group_add</span></span>
+        <span class="setting-label">Unirme con un código</span><span class="ms chevron">chevron_right</span></button>`;
+  } else {
+    const members = state.household.members
+      .map((uid) => {
+        const info = (state.household.memberInfo || {})[uid] || {};
+        const initial = escapeHtml((info.name || "?").charAt(0).toUpperCase());
+        return `<div class="setting-row"><span class="avatar">${initial}</span>
+          <span class="setting-text"><span class="setting-label">${escapeHtml(memberName(uid))}</span>
+          <span class="setting-sub">${escapeHtml(info.email || "")}</span></span></div>`;
+      })
+      .join("");
+    box.innerHTML = `
+      <div class="setting-row"><span class="setting-icon" style="background:#FF9F0A"><span class="ms">home</span></span>
+        <span class="setting-label">${escapeHtml(state.household.name || "Hogar")}</span></div>
+      ${members}
+      ${state.household.members.length < 2 ? `<button type="button" class="setting-row" data-action="invite"><span class="setting-icon" style="background:#5E5CE6"><span class="ms">person_add</span></span>
+        <span class="setting-label">Invitar a tu pareja</span><span class="ms chevron">chevron_right</span></button>` : ""}
+      <button type="button" class="setting-row destructive" data-action="leave"><span class="setting-label">Salir del Hogar</span></button>`;
+  }
+  const actions = {
+    create: () => {
+      $("household-form").reset();
+      openModal("household-modal", "household-name");
+    },
+    join: () => {
+      $("join-form").reset();
+      openModal("join-modal", "join-code");
+    },
+    invite: () => showInvite(),
+    leave: leaveHousehold
+  };
+  box.querySelectorAll("[data-action]").forEach((b) => (b.onclick = actions[b.dataset.action]));
 }
 
 function migrateLocalDataToCloud() {
@@ -1588,7 +2213,10 @@ function loginWithGoogle() {
   closeModal("login-modal");
   state.cloudStatus = "connecting";
   updateFirebaseStatusUI();
-  const signIn = isNative ? signInWithGoogleNative() : auth.signInWithPopup(new firebase.auth.GoogleAuthProvider());
+  const provider = new firebase.auth.GoogleAuthProvider();
+  // App web instalada (p. ej. en el iPhone): las ventanas emergentes no funcionan, se usa redirect.
+  const installedWeb = !isNative && (window.navigator.standalone || window.matchMedia("(display-mode: standalone)").matches);
+  const signIn = isNative ? signInWithGoogleNative() : installedWeb ? auth.signInWithRedirect(provider) : auth.signInWithPopup(provider);
   signIn
     .then((result) => result && showToast("Sesión iniciada", "success"))
     .catch((error) => showToast("No se pudo iniciar sesión: " + error.message, "error", 5000))
@@ -1646,6 +2274,7 @@ function updateFirebaseStatusUI() {
   const btn = $("firebase-action-btn");
   const spinner = '<span class="spinner" aria-hidden="true"></span>';
   btn.disabled = state.cloudStatus === "connecting";
+  btn.onclick = handleFirebaseSettingsAction; // conectar / salir (el estado de error lo reemplaza abajo)
   if (state.cloudStatus === "connecting") {
     icon.textContent = "cloud";
     icon.style.color = "";
@@ -1662,6 +2291,16 @@ function updateFirebaseStatusUI() {
     subtitle.innerHTML = `${spinner}Descargando tus movimientos`;
     btn.textContent = "Salir";
     btn.className = "btn-plain destructive";
+    return;
+  }
+  if (state.user && state.syncIssue && state.syncIssue.code !== "offline") {
+    icon.textContent = "sync_problem";
+    icon.style.color = "var(--expense)";
+    title.textContent = "Error de sincronización";
+    subtitle.textContent = SYNC_ISSUES[state.syncIssue.code].title;
+    btn.textContent = "Ver";
+    btn.className = "btn-plain";
+    btn.onclick = openSyncSheet;
     return;
   }
   if (state.user) {
@@ -1791,8 +2430,8 @@ function checkBudgetAlerts() {
   const fresh = [];
   usage.forEach((u) => {
     const level = u.pct >= 100 ? 100 : u.pct >= 80 ? 80 : 0;
-    if (level > (seen[u.cat] || 0)) {
-      seen[u.cat] = level;
+    if (level > (seen[`${state.space}:${u.cat}`] || 0)) {
+      seen[`${state.space}:${u.cat}`] = level;
       fresh.push({ ...u, threshold: level });
     }
   });
@@ -1842,11 +2481,12 @@ function syncWidget() {
   clearTimeout(widgetTimer);
   widgetTimer = setTimeout(() => {
     const ym = monthKey(new Date());
-    const s = monthStats(ym);
+    const personal = personalData().transactions;
+    const s = monthStats(ym, 31, personal);
     bridge
       .update({
         json: JSON.stringify({
-          balance: formatMoney(balanceUntil(todayISO())),
+          balance: formatMoney(balanceUntil(todayISO(), personal)),
           income: formatMoney(s.income),
           expense: formatMoney(s.expense),
           monthKey: ym,
@@ -2111,8 +2751,8 @@ function importDataJSON(event) {
       () => {
         if (CURRENCY_CONFIG[data.currency]) state.currency = data.currency;
         if (isCloud()) {
-          data.transactions.forEach((t) => cloudDoc("transactions", t.id).set(t).catch(cloudError));
-          Object.entries(data.budgets || {}).forEach(([c, l]) => cloudDoc("budgets", c).set({ limit: Number(l) }).catch(cloudError));
+          data.transactions.forEach((t) => cloudWrite(cloudDoc("transactions", t.id).set(t)));
+          Object.entries(data.budgets || {}).forEach(([c, l]) => cloudWrite(cloudDoc("budgets", c).set({ limit: Number(l) })));
         } else {
           state.transactions = data.transactions;
           state.budgets = data.budgets || {};
@@ -2190,6 +2830,20 @@ function bindUI() {
     renderTransactionsList();
   });
   setSegmented($("chart-type-toggle"), state.chartType);
+  setupSegmented($("space-switch"), (space) => {
+    haptic();
+    switchSpace(space);
+  });
+
+  // Hogar compartido
+  $("tx-split").onchange = updateSplitLabels;
+  $("settle-btn").onclick = settleUp;
+  $("household-form").addEventListener("submit", createHousehold);
+  $("join-form").addEventListener("submit", joinHousehold);
+  $("join-code").addEventListener("input", (e) => {
+    e.target.value = e.target.value.toUpperCase().replace(/[^A-Z0-9]/g, "").slice(0, 6);
+  });
+  renderHouseholdSettings();
 
   // Filtros del Historial
   document.querySelectorAll("#date-filter-chips .chip").forEach((chip) => {
@@ -2228,6 +2882,10 @@ function bindUI() {
   });
 
   // Al volver a la app: nuevas copias recurrentes, "hoy" correcto y avisos al día
+  // Conexión: la pastilla muestra "Sin conexión" mientras dure (Firestore encola los cambios)
+  window.addEventListener("online", renderSyncStatus);
+  window.addEventListener("offline", renderSyncStatus);
+
   document.addEventListener("visibilitychange", () => {
     if (document.visibilityState !== "visible") return;
     const current = monthKey(new Date());
@@ -2272,7 +2930,11 @@ const app = {
   importDataJSON,
   confirmResetAll,
   handleFirebaseSettingsAction,
-  loginWithGoogle
+  loginWithGoogle,
+  openSyncSheet,
+  retrySync,
+  shareInvite,
+  openActivity
 };
 window.app = app;
 document.addEventListener("DOMContentLoaded", init);

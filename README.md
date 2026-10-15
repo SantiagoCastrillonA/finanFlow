@@ -1,6 +1,6 @@
 # FinanFlow - Control de Gastos Personales
 
-> **Version:** 0.2.1  
+> **Version:** 0.3.0  
 > **Privacidad 100% garantizada** | **Funciona sin conexión** | **Sincronización opcional con Google Cloud**
 
 FinanFlow es una aplicación móvil de control de gastos e ingresos personales, con un diseño sobrio inspirado en iOS. Funciona como **PWA** (Progressive Web App) y como **aplicación nativa Android** mediante [Capacitor](https://capacitorjs.com/).
@@ -40,6 +40,13 @@ FinanFlow te permite llevar un registro de tus finanzas de forma **rápida, priv
 - **Widget de pantalla de inicio:** saldo, ingresos y gastos del mes, y un botón **+** para agregar un gasto.
 - **App Shortcuts:** mantén presionado el ícono para Agregar gasto, Ver balance o Ver historial.
 
+### Hogar compartido (en pareja)
+- **Personal + Hogar:** tus gastos personales siguen siendo privados; el Hogar es un espacio común que ambos editan. Cambias de espacio con el selector bajo el título.
+- **Quién pagó y división:** cada gasto del Hogar indica quién pagó y cómo se divide (50/50, sin dividir, todo del otro o un porcentaje). El Inicio muestra quién le debe a quién y permite **Saldar cuentas**.
+- **Actividad:** la campanita muestra lo que registró, editó o borró tu pareja.
+- **Invitación:** Ajustes → Hogar compartido → Crear un Hogar → compartir el código de 6 caracteres (vale 48 h, un solo uso).
+- Requiere iniciar sesión con Google en ambos teléfonos.
+
 ### Personalización
 - **Tema Automático / Claro / Oscuro.**
 - **Monedas:** COP, USD, EUR, MXN, ARS, CLP y PEN.
@@ -69,6 +76,17 @@ npx cap sync
 npx cap open android
 ```
 En Android Studio, conecta tu celular con **Depuración USB** activada y presiona **Run app** (▶).
+
+---
+
+### 3. Publicar la web (para iPhone) y las reglas de seguridad
+```bash
+npm run firebase-login
+npm run deploy
+```
+La app queda en `https://finanflow-32cae.web.app`. En el iPhone: abrir el enlace en **Safari** → botón **Compartir** → **Agregar a inicio** → abrir FinanFlow desde el ícono → Ajustes → Nube → Conectar.
+
+En la web instalada del iPhone no hay widget, recordatorios locales ni vibración (son funciones de la app de Android).
 
 ---
 

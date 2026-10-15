@@ -162,6 +162,263 @@ a {
   flex-shrink: 0;
 }
 
+.app-header {
+  flex-wrap: wrap;
+}
+
+.header-actions {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+/* Selector Personal / Hogar bajo el título */
+.space-switch {
+  flex-basis: 100%;
+  margin: 10px 0 0;
+}
+
+.space-switch button {
+  min-height: 34px;
+  font-size: 14px;
+}
+
+@starting-style {
+  .space-switch {
+    opacity: 0;
+  }
+}
+
+.space-switch {
+  transition: opacity var(--dur-ui) var(--ease-out);
+}
+
+/* Hogar: tarjeta "quién le debe a quién" */
+.between-card {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 14px 16px;
+}
+
+.between-icon {
+  width: 36px;
+  height: 36px;
+  border-radius: 50%;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+  background: var(--fill);
+  color: var(--text-secondary);
+  transition: background-color var(--dur-ui) ease, color var(--dur-ui) ease;
+}
+
+.between-card.owed .between-icon {
+  background: color-mix(in srgb, var(--income) 18%, transparent);
+  color: var(--income);
+}
+
+.between-card.owe .between-icon {
+  background: color-mix(in srgb, var(--warning) 20%, transparent);
+  color: var(--warning);
+}
+
+.between-text {
+  flex: 1;
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+}
+
+.between-value {
+  font-size: 20px;
+  font-weight: 700;
+  font-variant-numeric: tabular-nums;
+}
+
+.btn-tinted.small {
+  min-height: 34px;
+  padding: 0 14px;
+  font-size: 15px;
+  border-radius: 17px;
+}
+
+.row-icon {
+  position: relative;
+}
+
+/* Inicial de quien registró el movimiento en el Hogar */
+.row-author {
+  position: absolute;
+  right: -4px;
+  bottom: -4px;
+  width: 16px;
+  height: 16px;
+  border-radius: 50%;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  background: var(--accent);
+  color: #fff;
+  font-size: 9px;
+  font-weight: 700;
+  box-shadow: 0 0 0 2px var(--card);
+}
+
+.row-amount.settlement {
+  color: var(--accent);
+}
+
+.share-input {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  color: var(--text-secondary);
+}
+
+.share-input input {
+  width: 56px;
+  border: none;
+  background: var(--fill);
+  border-radius: 8px;
+  padding: 4px 8px;
+  text-align: right;
+  font-size: 17px;
+  outline: none;
+}
+
+/* Campanita de actividad del Hogar */
+#activity-bell {
+  position: relative;
+}
+
+.bell-badge {
+  position: absolute;
+  top: 2px;
+  right: 2px;
+  min-width: 18px;
+  height: 18px;
+  padding: 0 5px;
+  border-radius: 9px;
+  background: var(--expense);
+  color: #fff;
+  font-size: 11px;
+  font-weight: 700;
+  line-height: 18px;
+  text-align: center;
+  box-shadow: 0 0 0 2px var(--bg);
+}
+
+.activity-list {
+  min-height: 160px;
+  padding-bottom: 8px;
+}
+
+.activity-row {
+  align-items: center;
+  min-height: 56px;
+}
+
+.activity-text {
+  font-size: 15px;
+  line-height: 1.3;
+}
+
+.activity-row.unseen {
+  background: color-mix(in srgb, var(--accent) 8%, var(--card));
+}
+
+[data-theme="dark"] .sheet .activity-row {
+  background: var(--elevated);
+}
+
+[data-theme="dark"] .sheet .activity-row.unseen {
+  background: color-mix(in srgb, var(--accent) 14%, var(--elevated));
+}
+
+/* Inicial de un miembro del Hogar */
+.avatar {
+  width: 30px;
+  height: 30px;
+  border-radius: 50%;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+  background: var(--accent-tint);
+  color: var(--accent);
+  font-size: 14px;
+  font-weight: 700;
+}
+
+.dialog-input {
+  width: 100%;
+  height: 40px;
+  margin-top: 14px;
+  padding: 0 12px;
+  border-radius: 10px;
+  border: 0.5px solid var(--separator);
+  background: var(--bg);
+  outline: none;
+  font-size: 17px;
+  text-align: center;
+}
+
+.dialog-input:focus {
+  border-color: var(--accent);
+}
+
+.dialog-input.code,
+.invite-code {
+  font-family: ui-monospace, "SF Mono", Menlo, Consolas, monospace;
+  letter-spacing: 6px;
+  text-transform: uppercase;
+}
+
+.invite-code {
+  margin: 16px 0 4px;
+  font-size: 30px;
+  font-weight: 700;
+  color: var(--accent);
+}
+
+/* Pastilla de estado: solo existe mientras la nube tiene un problema */
+.sync-pill {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  height: 32px;
+  padding: 0 12px 0 10px;
+  border-radius: 16px;
+  background: var(--fill);
+  color: var(--text-secondary);
+  font-size: 13px;
+  font-weight: 600;
+  transition: opacity var(--dur-ui) var(--ease-out), transform var(--dur-ui) var(--ease-out);
+}
+
+.sync-pill .ms {
+  font-size: 18px;
+}
+
+.sync-pill.error {
+  background: color-mix(in srgb, var(--expense) 16%, transparent);
+  color: var(--expense);
+}
+
+.sync-pill:active {
+  transform: scale(0.95);
+  transition-duration: var(--dur-press);
+}
+
+@starting-style {
+  .sync-pill {
+    opacity: 0;
+    transform: scale(0.9);
+  }
+}
+
 .large-title {
   font-size: 34px;
   font-weight: 700;
@@ -843,7 +1100,7 @@ a {
   border-radius: 10px;
   border: none;
   background: var(--card);
-  font-size: 15px;
+  font-size: 16px; /* < 16 px hace que Safari en iPhone haga zoom al tocar */
   appearance: none;
   outline: none;
 }
@@ -1487,6 +1744,20 @@ a {
   margin-bottom: 10px;
   color: var(--accent);
   background: var(--accent-tint);
+}
+
+.dialog-icon.warn {
+  color: var(--expense);
+  background: color-mix(in srgb, var(--expense) 16%, transparent);
+}
+
+.dialog-note {
+  margin-top: 6px;
+  color: var(--text-tertiary) !important;
+}
+
+.dialog-note:empty {
+  display: none;
 }
 
 .dialog-actions {

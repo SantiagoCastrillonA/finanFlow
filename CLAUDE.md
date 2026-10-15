@@ -17,6 +17,7 @@ npm install            # dependencias (Capacitor + plugins, Chart.js, http-serve
 npm run dev            # sirve www/ en http://localhost:5173
 npm run build-native   # npx cap sync: copia www/ y registra plugins en android/
 npm run open-android   # abre android/ en Android Studio
+npm run deploy         # publica www/ en Firebase Hosting y firestore.rules (tras npm run firebase-login)
 cd android && ./gradlew assembleDebug   # compila el APK (JDK 17 + Android SDK)
 ```
 
@@ -33,6 +34,10 @@ Flujo de datos:
 - `monthStats(ym)` calcula los agregados del mes una vez por render; `state.viewMonth` es el mes que se ve en Inicio y Límites.
 - Recurrentes: una transacción con `recurring: "monthly"` es plantilla; `materializeRecurring()` crea copias con id determinista `${id}-${YYYY-MM}` y `recurringOf`. Borrar una copia agrega el mes a `skipMonths` de la plantilla para que no se regenere.
 - Los ids de `CATEGORIES` se guardan en cada transacción: no renombrarlos (sí se puede cambiar `label`, `icon`, `color`).
+- **Espacios:** `state.space` es `"personal"` o `"household"`; `state.transactions/budgets` son siempre los del espacio activo y el otro vive en `spaceCache`. `switchSpace()` los intercambia. Solo el espacio personal se guarda en `localStorage` (`personalData()`). La nube escucha ambos espacios (`listenSpace`) más la membresía del Hogar (`households` con `members array-contains uid`) y la actividad.
+- **Firestore:** `users/{uid}/{transactions,budgets}` (personal), `households/{id}` (`members`, `memberInfo`) con `transactions`, `budgets` y `activity`, e `invites/{código}` (un solo uso, 48 h). Las reglas viven en `firestore.rules` y se publican con `npm run deploy` (requiere `npm run firebase-login` una vez). Cualquier colección nueva necesita su regla.
+- **Hogar:** cada movimiento tiene `createdBy`/`updatedBy`, `paidBy` y `payerShare` (parte de quien pagó, 0–100). `householdBalance()` calcula cuánto le debe la pareja; "Saldar" crea un movimiento con `kind: "settlement"`, que `countsAsMoney()` excluye de totales y gráficos.
+- **Errores de nube:** las escrituras pasan por `cloudWrite()`; `cloudError()` agrupa por código (un solo aviso por tipo) y la pastilla `#sync-pill` muestra el estado hasta que se resuelve.
 
 UI:
 - Modales con `openModal(id)` / `closeModal(id)` y una pila (`modalStack`) que usan Escape y el botón Atrás de Android. Hojas inferiores `.sheet` con gesto de arrastrar para cerrar (`setupSheetGesture`).

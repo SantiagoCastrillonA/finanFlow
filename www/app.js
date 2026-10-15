@@ -83,6 +83,7 @@ function haptic(kind = "light") {
 }
 
 const reduceMotion = window.matchMedia("(prefers-reduced-motion: reduce)");
+const centeredSheets = window.matchMedia("(min-width: 700px)");
 
 /* ==========================================================================
    Estado y persistencia
@@ -136,7 +137,9 @@ function saveState() {
 /** Punto único tras cualquier cambio de datos: persistir, pintar y avisar a lo nativo. */
 function commit() {
   saveState();
+  const before = captureRowPositions();
   render();
+  playRowFlip(before);
   checkBudgetAlerts();
   refreshScheduledNotifications();
   syncWidget();
@@ -378,13 +381,57 @@ function showToast(message, type = "info", duration = 3000, action = null) {
   toast.querySelector(".toast-message").textContent = message;
 
   let timer;
+  let remaining = duration;
+  let shownAt = Date.now();
   const dismiss = () => {
     clearTimeout(timer);
     if (toast.classList.contains("leaving")) return;
+    toast.classList.remove("dragging");
+    toast.style.transform = "";
+    toast.style.opacity = "";
     toast.classList.add("leaving");
     toast.classList.remove("show");
     setTimeout(() => toast.remove(), 300);
   };
+
+  // Deslizar hacia abajo para cerrar (sale por donde entró).
+  let startY = null;
+  let lastY = 0;
+  let lastT = 0;
+  let velocity = 0;
+  toast.addEventListener("pointerdown", (e) => {
+    if (e.target.closest(".toast-action")) return;
+    startY = lastY = e.clientY;
+    lastT = e.timeStamp;
+    velocity = 0;
+    clearTimeout(timer);
+    remaining -= Date.now() - shownAt;
+    toast.setPointerCapture(e.pointerId);
+  });
+  toast.addEventListener("pointermove", (e) => {
+    if (startY === null) return;
+    const dy = e.clientY - startY;
+    velocity = 0.8 * ((e.clientY - lastY) / Math.max(1, e.timeStamp - lastT)) + 0.2 * velocity;
+    lastY = e.clientY;
+    lastT = e.timeStamp;
+    if (Math.abs(dy) < 6 && !toast.classList.contains("dragging")) return;
+    toast.classList.add("dragging");
+    toast.style.transform = `translateY(${dy > 0 ? dy : dy * 0.2}px)`;
+    toast.style.opacity = String(Math.max(0, 1 - Math.max(dy, 0) / 120));
+  });
+  const release = () => {
+    if (startY === null) return;
+    const dy = lastY - startY;
+    startY = null;
+    if (dy > 40 || (velocity > 0.11 && dy > 10)) return dismiss();
+    toast.classList.remove("dragging");
+    toast.style.transform = "";
+    toast.style.opacity = "";
+    shownAt = Date.now();
+    timer = setTimeout(dismiss, Math.max(remaining, 1500));
+  };
+  toast.addEventListener("pointerup", release);
+  toast.addEventListener("pointercancel", release);
   if (action) {
     const btn = document.createElement("button");
     btn.type = "button";
@@ -401,6 +448,7 @@ function showToast(message, type = "info", duration = 3000, action = null) {
   while (container.children.length > 3) container.firstElementChild.remove();
   void toast.offsetWidth; // fija el estado inicial para que la transición corra
   toast.classList.add("show");
+  shownAt = Date.now();
   timer = setTimeout(dismiss, duration);
 }
 
@@ -467,7 +515,8 @@ function setupSheetGesture(sheet) {
       for (let el = e.target; el && el !== sheet.parentElement; el = el.parentElement) {
         if (el.scrollTop > 0) scrolled = true;
       }
-      tracking = !scrolled && !e.target.closest("input, select, textarea");
+      // En tablet las hojas son ventanas centradas: no se arrastran.
+      tracking = !centeredSheets.matches && !scrolled && !e.target.closest("input, select, textarea");
       dragging = false;
       startY = lastY = e.touches[0].clientY;
       lastT = e.timeStamp;
@@ -495,10 +544,13 @@ function setupSheetGesture(sheet) {
       }
       e.preventDefault();
       const dt = Math.max(1, e.timeStamp - lastT);
-      velocity = (y - lastY) / dt;
+      // Velocidad suavizada: un solo evento ruidoso no decide el gesto.
+      velocity = 0.8 * ((y - lastY) / dt) + 0.2 * velocity;
       lastY = y;
       lastT = e.timeStamp;
-      sheet.style.transform = `translateY(${dy > 0 ? dy : dy * 0.3}px)`;
+      // Hacia arriba: fricción creciente que nunca pasa de ~60 px.
+      const offset = dy > 0 ? dy : -(1 - 1 / (1 + Math.abs(dy) / 120)) * 60;
+      sheet.style.transform = `translateY(${offset}px)`;
     },
     { passive: false }
   );
@@ -512,7 +564,12 @@ function setupSheetGesture(sheet) {
     dragging = false;
     sheet.classList.remove("dragging");
     const dy = lastY - startY;
-    if (dy > sheet.offsetHeight * 0.25 || velocity > 0.5) {
+    const height = sheet.offsetHeight;
+    if (dy > height * 0.25 || (velocity > 0.11 && dy > 10)) {
+      // La salida conserva el impulso del dedo: más rápido el gesto, más corta la animación.
+      const ms = Math.min(300, Math.max(150, (height - dy) / Math.max(velocity, 0.5)));
+      sheet.style.transitionDuration = `${Math.round(ms)}ms`;
+      setTimeout(() => (sheet.style.transitionDuration = ""), ms + 50);
       closeModal(sheet.closest(".modal").id);
     } else {
       sheet.style.transform = "";
@@ -796,10 +853,10 @@ function renderDashboard(stats) {
   $("month-next").disabled = isCurrent;
 
   const endOfView = isCurrent ? todayISO() : `${state.viewMonth}-31`;
-  $("total-balance").textContent = formatMoney(balanceUntil(endOfView));
+  setAnimatedText($("total-balance"), formatMoney(balanceUntil(endOfView)));
   $("balance-label").textContent = isCurrent ? "Saldo" : `Saldo al cierre de ${monthLabel(state.viewMonth, false).toLowerCase()}`;
-  $("total-incomes").textContent = formatMoney(stats.income);
-  $("total-expenses").textContent = formatMoney(stats.expense);
+  setAnimatedText($("total-incomes"), formatMoney(stats.income));
+  setAnimatedText($("total-expenses"), formatMoney(stats.expense));
 
   renderComparison(stats, isCurrent);
   renderAllowance(stats, isCurrent);
@@ -841,13 +898,56 @@ function renderAllowance(stats, isCurrent) {
   const spent = cats.reduce((s, c) => s + (stats.byCat.expense[c] || 0), 0);
   const remaining = limit - spent;
   const daysLeft = daysInMonth(state.viewMonth) - new Date().getDate() + 1;
-  el.classList.remove("hidden", "bad");
+  el.classList.remove("hidden");
+  el.classList.toggle("bad", remaining <= 0);
+  if (!el.firstElementChild) el.innerHTML = '<span class="allowance-value"></span><span class="allowance-label"></span>';
+  const [value, label] = el.children;
   if (remaining > 0) {
-    el.innerHTML = `<span class="allowance-value">${formatMoney(roundMoney(remaining / daysLeft))}</span><span class="allowance-label">disponible por día · ${daysLeft} ${daysLeft === 1 ? "día" : "días"} restantes</span>`;
+    setAnimatedText(value, formatMoney(roundMoney(remaining / daysLeft)));
+    label.textContent = `disponible por día · ${daysLeft} ${daysLeft === 1 ? "día" : "días"} restantes`;
   } else {
-    el.classList.add("bad");
-    el.innerHTML = `<span class="allowance-value">${formatMoney(Math.abs(remaining))}</span><span class="allowance-label">por encima de tus límites este mes</span>`;
+    setAnimatedText(value, formatMoney(Math.abs(remaining)));
+    label.textContent = "por encima de tus límites este mes";
   }
+}
+
+const EASE_OUT = "cubic-bezier(0.23, 1, 0.32, 1)";
+
+/* FLIP: al re-renderizar, las filas que siguen existiendo se deslizan desde donde estaban. */
+function captureRowPositions() {
+  const map = new Map();
+  if (reduceMotion.matches) return map;
+  document.querySelectorAll(".tx-row[data-id]").forEach((row) => {
+    if (row.offsetParent) map.set(`${row.parentElement.closest("[id]").id}:${row.dataset.id}`, row.getBoundingClientRect().top);
+  });
+  return map;
+}
+function playRowFlip(before) {
+  if (!before.size) return;
+  document.querySelectorAll(".tx-row[data-id]").forEach((row) => {
+    const prev = before.get(`${row.parentElement.closest("[id]").id}:${row.dataset.id}`);
+    if (prev === undefined || !row.offsetParent) return;
+    const delta = prev - row.getBoundingClientRect().top;
+    if (delta && Math.abs(delta) < 400) {
+      row.animate([{ transform: `translateY(${delta}px)` }, { transform: "none" }], { duration: 250, easing: EASE_OUT });
+    }
+  });
+}
+
+/** Cambia una cifra con un cruce suave (fundido + 6 px + desenfoque de 2 px que disimula la superposición). */
+function setAnimatedText(el, text) {
+  if (el.textContent === text) return;
+  const firstPaint = !el.dataset.painted;
+  el.textContent = text;
+  el.dataset.painted = "1";
+  if (firstPaint || document.hidden || !$("tab-dashboard").classList.contains("active")) return;
+  const frames = reduceMotion.matches
+    ? [{ opacity: 0.5 }, { opacity: 1 }]
+    : [
+        { opacity: 0, transform: "translateY(6px)", filter: "blur(2px)" },
+        { opacity: 1, transform: "none", filter: "blur(0)" }
+      ];
+  el.animate(frames, { duration: reduceMotion.matches ? 150 : 220, easing: EASE_OUT });
 }
 
 function renderBudgetAlerts(stats) {
@@ -1097,9 +1197,9 @@ function changeMonth(delta) {
   state.viewMonth = next;
   haptic();
   render();
-  if (!reduceMotion.matches) {
-    $("balance-card").animate([{ opacity: 0.4 }, { opacity: 1 }], { duration: 150, easing: "ease-out" });
-  }
+  // El mes entra desde el lado de la flecha pulsada: anterior desde la izquierda, siguiente desde la derecha.
+  const from = reduceMotion.matches ? "none" : `translateX(${delta < 0 ? -12 : 12}px)`;
+  $("month-label").animate([{ opacity: 0, transform: from }, { opacity: 1, transform: "none" }], { duration: 200, easing: EASE_OUT });
 }
 
 /* ==========================================================================
@@ -1415,6 +1515,7 @@ function initFirebase() {
 
 function handleAuthStateChange(user) {
   state.user = user || null;
+  state.cloudStatus = user ? "syncing" : null;
   if (user) {
     migrateLocalDataToCloud();
     syncWithFirestore();
@@ -1432,16 +1533,11 @@ function syncWithFirestore() {
   if (!isCloud()) return;
   const userRef = db.collection("users").doc(state.user.uid);
   let materialized = false;
-  const onData = () => {
-    saveState();
-    render();
-    checkBudgetAlerts();
-    refreshScheduledNotifications();
-    syncWidget();
-  };
+  const onData = commit;
   firestoreListeners.push(
     userRef.collection("transactions").onSnapshot((snap) => {
       state.transactions = snap.docs.map((d) => ({ id: d.id, ...d.data() }));
+      state.cloudStatus = null; // primera sincronización terminada
       onData();
       if (!materialized) {
         materialized = true;
@@ -1489,13 +1585,46 @@ function migrateLocalDataToCloud() {
 
 function loginWithGoogle() {
   if (!state.firebaseEnabled) return;
-  const provider = new firebase.auth.GoogleAuthProvider();
   closeModal("login-modal");
-  // En WebViews (Capacitor) el popup no funciona: se usa redirect.
-  const signIn = isNative ? auth.signInWithRedirect(provider) : auth.signInWithPopup(provider);
+  state.cloudStatus = "connecting";
+  updateFirebaseStatusUI();
+  const signIn = isNative ? signInWithGoogleNative() : auth.signInWithPopup(new firebase.auth.GoogleAuthProvider());
   signIn
-    .then(() => !isNative && showToast("Sesión iniciada", "success"))
-    .catch((error) => showToast("No se pudo iniciar sesión: " + error.message, "error", 5000));
+    .then((result) => result && showToast("Sesión iniciada", "success"))
+    .catch((error) => showToast("No se pudo iniciar sesión: " + error.message, "error", 5000))
+    .finally(() => {
+      // Cancelado o fallido: volver al estado normal. Con éxito, onAuthStateChanged ya pasó a "syncing".
+      if (!state.user) {
+        state.cloudStatus = null;
+        updateFirebaseStatusUI();
+      }
+    });
+}
+
+// Google bloquea el login OAuth dentro del WebView (disallowed_useragent): en Android
+// se hace con Google Sign-In nativo y el ID token se pasa a Firebase JS, que sigue
+// siendo el único dueño de la sesión (skipNativeAuth en capacitor.config.json).
+// Resuelve null si el usuario cancela el selector de cuentas.
+async function signInWithGoogleNative() {
+  const NativeAuth = plugin("FirebaseAuthentication");
+  if (!NativeAuth) throw new Error("login nativo no disponible");
+  let result;
+  try {
+    result = await NativeAuth.signInWithGoogle();
+  } catch (error) {
+    if (/cancel/i.test(error && error.message)) return null;
+    throw error;
+  }
+  const idToken = result && result.credential && result.credential.idToken;
+  if (!idToken) throw new Error("Google no devolvió credenciales");
+  return auth.signInWithCredential(firebase.auth.GoogleAuthProvider.credential(idToken));
+}
+
+function signOutEverywhere() {
+  const NativeAuth = isNative ? plugin("FirebaseAuthentication") : undefined;
+  // Cierra también la sesión de Google en el dispositivo para poder elegir otra cuenta.
+  if (NativeAuth) NativeAuth.signOut().catch(() => {});
+  return auth.signOut();
 }
 
 function handleFirebaseSettingsAction() {
@@ -1503,7 +1632,7 @@ function handleFirebaseSettingsAction() {
     showToast("La sincronización no está disponible sin conexión", "warning");
   } else if (state.user) {
     showConfirmDialog("¿Cerrar sesión?", "Volverás al modo local en este dispositivo.", () => {
-      auth.signOut().then(() => showToast("Sesión cerrada", "info"));
+      signOutEverywhere().then(() => showToast("Sesión cerrada", "info"));
     }, "Cerrar sesión");
   } else {
     openModal("login-modal");
@@ -1515,6 +1644,26 @@ function updateFirebaseStatusUI() {
   const title = $("firebase-status-title");
   const subtitle = $("firebase-status-subtitle");
   const btn = $("firebase-action-btn");
+  const spinner = '<span class="spinner" aria-hidden="true"></span>';
+  btn.disabled = state.cloudStatus === "connecting";
+  if (state.cloudStatus === "connecting") {
+    icon.textContent = "cloud";
+    icon.style.color = "";
+    title.textContent = "Conectando con Google…";
+    subtitle.textContent = "Elige tu cuenta para continuar.";
+    btn.innerHTML = `${spinner}Conectando…`;
+    btn.className = "btn-plain loading";
+    return;
+  }
+  if (state.user && state.cloudStatus === "syncing") {
+    icon.textContent = "cloud_sync";
+    icon.style.color = "";
+    title.textContent = "Sincronizando…";
+    subtitle.innerHTML = `${spinner}Descargando tus movimientos`;
+    btn.textContent = "Salir";
+    btn.className = "btn-plain destructive";
+    return;
+  }
   if (state.user) {
     icon.textContent = "cloud_done";
     icon.style.color = "var(--income)";
@@ -1787,8 +1936,9 @@ async function sendAIMessage() {
   appendMessage("user", text);
   input.value = "";
   sendBtn.disabled = true;
-  const typing = appendMessage("ai", "…");
+  const typing = appendMessage("ai", "");
   typing.classList.add("typing");
+  typing.firstElementChild.innerHTML = '<span class="typing-dots" role="status" aria-label="FinanBot está escribiendo"><i></i><i></i><i></i></span>';
 
   chatHistory.push({ role: "user", parts: [{ text }] });
   try {
@@ -1883,19 +2033,40 @@ function changeCurrency(currency) {
   syncWidget();
 }
 
-function downloadFile(content, filename, type) {
+// En el WebView de Android `<a download>` no hace nada: el archivo se escribe en
+// Cache (privado de la app) y se abre la hoja de compartir. Resuelve false si el
+// usuario cancela la hoja.
+async function downloadFile(content, filename, type) {
+  const Filesystem = plugin("Filesystem");
+  const Share = plugin("Share");
+  if (isNative && Filesystem && Share) {
+    const { uri } = await Filesystem.writeFile({ path: filename, data: content, directory: "CACHE", encoding: "utf8" });
+    try {
+      await Share.share({ title: filename, url: uri, dialogTitle: "Exportar " + filename });
+    } catch (error) {
+      if (/cancel/i.test(error && error.message)) return false;
+      throw error;
+    }
+    return true;
+  }
   const url = URL.createObjectURL(new Blob([content], { type }));
   const a = document.createElement("a");
   a.href = url;
   a.download = filename;
   a.click();
   setTimeout(() => URL.revokeObjectURL(url), 1000);
+  return true;
+}
+
+function exportFile(content, filename, type, successMessage) {
+  return downloadFile(content, filename, type)
+    .then((done) => done && showToast(successMessage, "success"))
+    .catch(() => showToast("No se pudo exportar el archivo", "error"));
 }
 
 function exportDataJSON() {
   const data = JSON.stringify({ app: "FinanFlow", currency: state.currency, transactions: state.transactions, budgets: state.budgets }, null, 2);
-  downloadFile(data, `finanflow-respaldo-${todayISO()}.json`, "application/json");
-  showToast("Respaldo exportado", "success");
+  return exportFile(data, `finanflow-respaldo-${todayISO()}.json`, "application/json", "Respaldo exportado");
 }
 
 function exportDataCSV() {
@@ -1904,8 +2075,7 @@ function exportDataCSV() {
   const rows = [...state.transactions]
     .sort(byDateDesc)
     .map((t) => [t.date, t.type === "income" ? "Ingreso" : "Gasto", getCategoryInfo(t.category, t.type).label, t.amount, t.method, t.note].map(esc).join(","));
-  downloadFile("﻿" + [header, ...rows].join("\n"), `finanflow-${todayISO()}.csv`, "text/csv;charset=utf-8");
-  showToast("CSV exportado", "success");
+  return exportFile("﻿" + [header, ...rows].join("\n"), `finanflow-${todayISO()}.csv`, "text/csv;charset=utf-8", "CSV exportado");
 }
 
 function isValidBackup(data) {

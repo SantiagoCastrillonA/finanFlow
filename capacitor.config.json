@@ -6,6 +6,10 @@
     "LocalNotifications": {
       "smallIcon": "ic_stat_finanflow",
       "iconColor": "#5E5CE6"
+    },
+    "FirebaseAuthentication": {
+      "skipNativeAuth": true,
+      "providers": ["google.com"]
     }
   }
 }

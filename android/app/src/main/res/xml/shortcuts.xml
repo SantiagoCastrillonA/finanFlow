@@ -4,7 +4,7 @@
     <shortcut
         android:shortcutId="add_expense"
         android:enabled="true"
-        android:icon="@mipmap/ic_launcher_foreground"
+        android:icon="@mipmap/ic_launcher"
         android:shortcutShortLabel="@string/shortcut_add_expense"
         android:shortcutLongLabel="@string/shortcut_add_expense_long">
         <intent
@@ -15,7 +15,7 @@
     <shortcut
         android:shortcutId="view_balance"
         android:enabled="true"
-        android:icon="@mipmap/ic_launcher_foreground"
+        android:icon="@mipmap/ic_launcher"
         android:shortcutShortLabel="@string/shortcut_view_balance"
         android:shortcutLongLabel="@string/shortcut_view_balance_long">
         <intent
@@ -26,7 +26,7 @@
     <shortcut
         android:shortcutId="view_history"
         android:enabled="true"
-        android:icon="@mipmap/ic_launcher_foreground"
+        android:icon="@mipmap/ic_launcher"
         android:shortcutShortLabel="@string/shortcut_view_history"
         android:shortcutLongLabel="@string/shortcut_view_history_long">
         <intent

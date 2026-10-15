@@ -37,7 +37,10 @@ Flujo de datos:
 UI:
 - Modales con `openModal(id)` / `closeModal(id)` y una pila (`modalStack`) que usan Escape y el botón Atrás de Android. Hojas inferiores `.sheet` con gesto de arrastrar para cerrar (`setupSheetGesture`).
 - Controles segmentados con `setupSegmented` / `setSegmented` (el indicador se mueve con `transform` directo en el elemento).
-- Movimiento: tokens `--ease-out`, `--ease-in-out`, `--ease-drawer` en `styles.css`; solo `transform`/`opacity`; entradas con `@starting-style`; bloque `prefers-reduced-motion` al final del CSS. No usar `transition: all` ni rebotes.
+- Movimiento: tokens `--ease-out`, `--ease-in-out`, `--ease-drawer` y `--dur-*` en `styles.css`; solo `transform`/`opacity`; entradas con `@starting-style`; animaciones dinámicas con WAAPI (`setAnimatedText` para cifras, FLIP de filas en `commit()` con `captureRowPositions`/`playRowFlip`); bloque `prefers-reduced-motion` al final del CSS (menos movimiento, no cero). No usar `transition: all` ni rebotes. Los planes de mejora de movimiento y layout viven en `plans/` (formato del skill improve-animations).
+- Layout responsive en la sección "Tablet y horizontal" de `styles.css`: celular horizontal (`max-height: 500px`) compacto; `min-width: 700px` hojas como ventanas centradas (sin gesto de arrastre, ver `centeredSheets` en `app.js`); `min-width: 900px` barra lateral estilo iPad e Inicio en dos columnas (`.dash-col-left`, `.chart-row`, `.dash-full`).
+- Ícono: fuente en `assets/icon.svg`; Android usa vectores (`drawable/ic_launcher_foreground.xml`, `ic_launcher_monochrome.xml`) sobre `#5E5CE6`. Los PNG de respaldo, `splash.png` e íconos PWA se generaron desde esa geometría.
+- `demo/finanflow-demo.json`: respaldo de demostración (jul–oct 2026) para probar con "Restaurar respaldo".
 - Tema: preferencia `dark | light | system` en `finanflow_theme`; `data-theme` en `<html>` se fija también con un script inline en `<head>` para evitar destellos.
 
 Nativo (Android, `android/`):

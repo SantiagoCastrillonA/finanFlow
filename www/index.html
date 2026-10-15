@@ -46,6 +46,7 @@
 
       <!-- ================= INICIO ================= -->
       <section id="tab-dashboard" class="tab-view" aria-label="Inicio">
+        <div class="dash-col-left">
         <div class="month-nav">
           <button type="button" id="month-prev" class="icon-btn plain" aria-label="Mes anterior">
             <span class="ms">chevron_left</span>
@@ -80,7 +81,9 @@
         </div>
 
         <div id="budget-alerts" class="alerts hidden"></div>
+        </div>
 
+        <div class="chart-row">
         <div class="card chart-card">
           <div class="card-header">
             <h2 class="card-title">Distribución</h2>
@@ -111,12 +114,15 @@
             </div>
           </div>
         </div>
-
-        <div class="section-header">
-          <h2>Recientes</h2>
-          <button type="button" class="btn-plain" onclick="app.switchTab('transactions')">Ver todo</button>
         </div>
-        <div id="recent-transactions-list" class="list-group"></div>
+
+        <div class="dash-full">
+          <div class="section-header">
+            <h2>Recientes</h2>
+            <button type="button" class="btn-plain" onclick="app.switchTab('transactions')">Ver todo</button>
+          </div>
+          <div id="recent-transactions-list" class="list-group"></div>
+        </div>
       </section>
 
       <!-- ================= HISTORIAL ================= -->
@@ -281,7 +287,7 @@
           </button>
         </div>
 
-        <p class="app-version">FinanFlow 0.2.0 · Tus datos son tuyos</p>
+        <p class="app-version">FinanFlow 0.2.1 · Tus datos son tuyos</p>
       </section>
     </main>
 
@@ -294,7 +300,7 @@
         <span class="ms">receipt_long</span><span class="nav-label">Historial</span>
       </button>
       <button type="button" class="nav-add" onclick="app.openTransactionModal()" aria-label="Agregar movimiento">
-        <span class="ms">add</span>
+        <span class="ms">add</span><span class="nav-add-label">Nuevo movimiento</span>
       </button>
       <button type="button" class="nav-item" data-tab="budgets" onclick="app.switchTab('budgets')">
         <span class="ms">donut_small</span><span class="nav-label">Límites</span>

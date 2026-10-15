@@ -18,5 +18,7 @@
 
     <style name="AppTheme.NoActionBarLaunch" parent="Theme.SplashScreen">
         <item name="android:background">@drawable/splash</item>
+        <!-- Android 12+: fondo índigo para que el ícono de barras se funda con la pantalla de carga -->
+        <item name="windowSplashScreenBackground">@color/ic_launcher_background</item>
     </style>
 </resources>

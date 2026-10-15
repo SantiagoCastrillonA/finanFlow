@@ -59,6 +59,12 @@
   --ease-out: cubic-bezier(0.23, 1, 0.32, 1);
   --ease-in-out: cubic-bezier(0.77, 0, 0.175, 1);
   --ease-drawer: cubic-bezier(0.32, 0.72, 0, 1);
+
+  /* Duraciones */
+  --dur-press: 100ms;   /* hundirse al presionar */
+  --dur-release: 200ms; /* volver al soltar: más lento, se siente elástico */
+  --dur-ui: 200ms;
+  --dur-sheet: 350ms;
 }
 
 /* ==========================================================================
@@ -146,14 +152,6 @@ a {
   margin: 0 auto;
   background: var(--bg);
   overflow: hidden;
-}
-
-@media (min-width: 560px) {
-  .app {
-    inset: 24px 0;
-    border-radius: 32px;
-    border: 1px solid var(--separator);
-  }
 }
 
 .app-header {
@@ -272,7 +270,7 @@ a {
   flex-shrink: 0;
   background: var(--fill);
   color: var(--accent);
-  transition: transform 120ms var(--ease-out), opacity 120ms ease;
+  transition: transform var(--dur-release) var(--ease-out), opacity var(--dur-release) ease;
 }
 
 .icon-btn.plain {
@@ -280,7 +278,8 @@ a {
 }
 
 .icon-btn:active {
-  transform: scale(0.94);
+  transform: scale(0.95);
+  transition-duration: var(--dur-press);
 }
 
 .icon-btn:disabled {
@@ -319,7 +318,7 @@ a {
   border-radius: 12px;
   font-size: 17px;
   font-weight: 600;
-  transition: transform 120ms var(--ease-out), opacity 120ms ease;
+  transition: transform var(--dur-release) var(--ease-out), opacity var(--dur-release) ease;
 }
 
 .btn-primary {
@@ -335,6 +334,7 @@ a {
 .btn-primary:active,
 .btn-tinted:active {
   transform: scale(0.97);
+  transition-duration: var(--dur-press);
 }
 
 .full {
@@ -433,6 +433,7 @@ a {
 }
 
 .month-label {
+  display: inline-block; /* para poder desplazarlo al cambiar de mes */
   font-size: 17px;
   font-weight: 600;
 }
@@ -1090,10 +1091,10 @@ a {
   left: 2px;
   width: 27px;
   height: 27px;
-  border-radius: 50%;
+  border-radius: 14px;
   background: #fff;
   box-shadow: 0 3px 8px rgba(0, 0, 0, 0.15), 0 3px 1px rgba(0, 0, 0, 0.06);
-  transition: transform 200ms var(--ease-out);
+  transition: transform var(--dur-ui) var(--ease-out), width var(--dur-ui) var(--ease-out);
 }
 
 .switch:checked {
@@ -1102,6 +1103,15 @@ a {
 
 .switch:checked::before {
   transform: translateX(20px);
+}
+
+/* Al presionar, la perilla se estira hacia donde va (como iOS) */
+.switch:active::before {
+  width: 33px;
+}
+
+.switch:checked:active::before {
+  transform: translateX(14px);
 }
 
 /* ==========================================================================
@@ -1118,8 +1128,8 @@ a {
   height: calc(var(--tab-h) + var(--safe-bottom));
   padding: 0 8px var(--safe-bottom);
   background: var(--bar-bg);
-  -webkit-backdrop-filter: saturate(180%) blur(20px);
-  backdrop-filter: saturate(180%) blur(20px);
+  -webkit-backdrop-filter: saturate(180%) blur(12px);
+  backdrop-filter: saturate(180%) blur(12px);
   border-top: 0.5px solid var(--separator);
   z-index: 10;
 }
@@ -1165,15 +1175,20 @@ a {
   background: var(--accent);
   color: #fff;
   box-shadow: 0 4px 12px color-mix(in srgb, var(--accent) 40%, transparent);
-  transition: transform 120ms var(--ease-out);
+  transition: transform var(--dur-release) var(--ease-out);
 }
 
 .nav-add .ms {
   font-size: 28px;
 }
 
+.nav-add-label {
+  display: none;
+}
+
 .nav-add:active {
-  transform: scale(0.92);
+  transform: scale(0.95);
+  transition-duration: var(--dur-press);
 }
 
 /* ==========================================================================
@@ -1232,7 +1247,7 @@ a {
 
 .modal.open .sheet {
   transform: translateY(0);
-  transition-duration: 350ms;
+  transition-duration: var(--dur-sheet);
 }
 
 .sheet.dragging {
@@ -1331,11 +1346,12 @@ a {
   padding: 10px 2px;
   border-radius: 12px;
   text-align: center;
-  transition: background-color 150ms ease, transform 120ms var(--ease-out);
+  transition: background-color 150ms ease, transform var(--dur-release) var(--ease-out);
 }
 
 .cat-btn:active {
   transform: scale(0.95);
+  transition-duration: 150ms, var(--dur-press);
 }
 
 .cat-icon {
@@ -1557,6 +1573,82 @@ a {
   justify-content: flex-end;
 }
 
+/* Las burbujas crecen desde su esquina, como en Mensajes */
+.ai-bubble {
+  transform-origin: bottom left;
+  transition: opacity var(--dur-ui) var(--ease-out), transform var(--dur-ui) var(--ease-out);
+}
+
+.ai-message.user .ai-bubble {
+  transform-origin: bottom right;
+}
+
+@starting-style {
+  .ai-bubble {
+    opacity: 0;
+    transform: translateY(8px) scale(0.98);
+  }
+}
+
+/* Indicador "escribiendo": tres puntos que ondulan */
+.typing-dots {
+  display: inline-flex;
+  gap: 4px;
+  padding: 4px 0;
+}
+
+.typing-dots i {
+  width: 7px;
+  height: 7px;
+  border-radius: 50%;
+  background: var(--text-secondary);
+  animation: typing-dot 1.2s ease-in-out infinite;
+}
+
+.typing-dots i:nth-child(2) {
+  animation-delay: 150ms;
+}
+
+.typing-dots i:nth-child(3) {
+  animation-delay: 300ms;
+}
+
+@keyframes typing-dot {
+  0%, 60%, 100% {
+    transform: translateY(0);
+    opacity: 0.4;
+  }
+  30% {
+    transform: translateY(-4px);
+    opacity: 1;
+  }
+}
+
+/* Spinner reutilizable (movimiento constante: lineal) */
+.spinner {
+  display: inline-block;
+  width: 16px;
+  height: 16px;
+  margin-right: 6px;
+  vertical-align: -3px;
+  border-radius: 50%;
+  border: 2px solid currentColor;
+  border-right-color: transparent;
+  animation: spin 0.8s linear infinite;
+}
+
+@keyframes spin {
+  to {
+    transform: rotate(360deg);
+  }
+}
+
+.btn-plain.loading,
+.btn-plain:disabled {
+  color: var(--text-secondary);
+  pointer-events: none;
+}
+
 .ai-bubble {
   max-width: 82%;
   padding: 9px 14px;
@@ -1618,11 +1710,12 @@ a {
   background: var(--accent);
   color: #fff;
   flex-shrink: 0;
-  transition: transform 120ms var(--ease-out), opacity 120ms ease;
+  transition: transform var(--dur-release) var(--ease-out), opacity var(--dur-release) ease;
 }
 
 .send-btn:active {
-  transform: scale(0.92);
+  transform: scale(0.95);
+  transition-duration: var(--dur-press);
 }
 
 .send-btn:disabled {
@@ -1676,6 +1769,14 @@ a {
   transition-duration: 200ms;
 }
 
+.toast {
+  touch-action: none; /* el aviso se puede deslizar hacia abajo para cerrarlo */
+}
+
+.toast.dragging {
+  transition: none;
+}
+
 .toast-icon {
   font-size: 20px;
   font-variation-settings: "FILL" 1;
@@ -1715,6 +1816,254 @@ a {
 }
 
 /* ==========================================================================
+   Tablet y horizontal
+   ========================================================================== */
+
+/* Celular en horizontal: recuperar altura útil */
+@media (orientation: landscape) and (max-height: 500px) {
+  :root {
+    --tab-h: 48px;
+  }
+
+  .app-header {
+    padding: calc(6px + var(--safe-top)) max(var(--gutter), env(safe-area-inset-right, 0px)) 4px max(var(--gutter), env(safe-area-inset-left, 0px));
+  }
+
+  .large-title {
+    font-size: 22px;
+  }
+
+  .app-content {
+    padding-left: max(var(--gutter), env(safe-area-inset-left, 0px));
+    padding-right: max(var(--gutter), env(safe-area-inset-right, 0px));
+  }
+
+  .nav-label {
+    display: none;
+  }
+
+  .nav-add {
+    width: 40px;
+    height: 40px;
+  }
+
+  .balance-amount {
+    font-size: 32px;
+    margin-bottom: 12px;
+  }
+
+  .chart-wrapper {
+    height: 170px;
+  }
+
+  .chart-wrapper.trend {
+    height: 150px;
+  }
+
+  .sheet {
+    max-height: calc(100% - 8px);
+  }
+
+  .amount-field {
+    padding: 4px 0 8px;
+  }
+
+  .amount-field input {
+    font-size: 36px;
+  }
+
+  .category-grid {
+    grid-template-columns: repeat(auto-fill, minmax(64px, 1fr));
+  }
+}
+
+/* Tablet (vertical u horizontal): pantalla completa y hojas como ventanas centradas */
+@media (min-width: 700px) {
+  .app {
+    max-width: none;
+  }
+
+  .app-header,
+  .app-content > .tab-view {
+    width: 100%;
+    max-width: 720px;
+    margin-left: auto;
+    margin-right: auto;
+  }
+
+  .chart-row {
+    display: grid;
+    grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
+    gap: 12px;
+  }
+
+  .chart-wrapper {
+    height: 220px;
+  }
+
+  .chart-wrapper.trend {
+    height: 220px;
+  }
+
+  .modal {
+    align-items: center;
+  }
+
+  .sheet {
+    width: min(560px, 100% - 48px);
+    max-height: min(760px, 100% - 48px);
+    border-radius: 16px;
+    padding-bottom: 20px;
+    opacity: 0;
+    transform: translateY(24px) scale(0.98);
+    transition: opacity 200ms var(--ease-out), transform 200ms var(--ease-out);
+  }
+
+  .modal.open .sheet {
+    opacity: 1;
+    transform: none;
+    transition-duration: 300ms;
+  }
+
+  .sheet.tall {
+    height: min(760px, 100% - 48px);
+  }
+
+  .sheet-handle {
+    visibility: hidden;
+    height: 8px;
+  }
+}
+
+/* Tablet horizontal / ventana ancha: barra lateral estilo iPad e Inicio en dos columnas */
+@media (min-width: 900px) {
+  :root {
+    --sidebar-w: 260px;
+  }
+
+  .app {
+    display: grid;
+    grid-template-columns: var(--sidebar-w) minmax(0, 1fr);
+    grid-template-rows: auto minmax(0, 1fr);
+  }
+
+  .app-header {
+    grid-column: 2;
+    grid-row: 1;
+    max-width: 980px;
+  }
+
+  .app-content {
+    grid-column: 2;
+    grid-row: 2;
+    padding-bottom: 32px;
+  }
+
+  .app-content > .tab-view {
+    max-width: 720px;
+  }
+
+  .app-content > #tab-dashboard {
+    max-width: 980px;
+  }
+
+  #tab-dashboard.active {
+    display: grid;
+    grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
+    gap: 0 16px;
+    align-items: start;
+  }
+
+  .chart-row {
+    grid-template-columns: minmax(0, 1fr);
+    gap: 0;
+  }
+
+  .dash-full {
+    grid-column: 1 / -1;
+  }
+
+  .tab-bar {
+    position: static;
+    grid-column: 1;
+    grid-row: 1 / -1;
+    height: auto;
+    flex-direction: column;
+    align-items: stretch;
+    justify-content: flex-start;
+    gap: 4px;
+    padding: calc(20px + var(--safe-top)) 12px 16px;
+    background: var(--card);
+    -webkit-backdrop-filter: none;
+    backdrop-filter: none;
+    border-top: 0;
+    border-right: 0.5px solid var(--separator);
+  }
+
+  .nav-item {
+    flex: none;
+    flex-direction: row;
+    justify-content: flex-start;
+    gap: 12px;
+    height: 44px;
+    padding: 0 12px;
+    border-radius: 10px;
+    color: var(--text);
+    transition: color 150ms ease, background-color 150ms ease;
+  }
+
+  .nav-item .ms {
+    font-size: 22px;
+    color: var(--accent);
+  }
+
+  .nav-label {
+    font-size: 16px;
+    font-weight: 500;
+  }
+
+  .nav-item.active {
+    background: var(--accent-tint);
+    color: var(--accent);
+  }
+
+  .nav-add {
+    order: -1;
+    width: 100%;
+    height: 44px;
+    margin: 0 0 12px;
+    border-radius: 12px;
+    gap: 8px;
+    font-size: 16px;
+    font-weight: 600;
+    box-shadow: none;
+  }
+
+  .nav-add .ms {
+    font-size: 22px;
+  }
+
+  .nav-add-label {
+    display: inline;
+  }
+
+  .nav-add:active {
+    transform: scale(0.97);
+  }
+
+  #toast-container {
+    left: calc(50% + var(--sidebar-w) / 2);
+    bottom: calc(24px + var(--safe-bottom));
+  }
+}
+
+@media (min-width: 900px) and (hover: hover) and (pointer: fine) {
+  .nav-item:not(.active):hover {
+    background: var(--fill);
+  }
+}
+
+/* ==========================================================================
    Movimiento reducido: sin desplazamientos, solo fundidos cortos
    ========================================================================== */
 
@@ -1740,9 +2089,46 @@ a {
     transform: none;
   }
 
+  /* Menos movimiento, no cero: los cambios de estado se marcan con fundidos */
   .seg-thumb,
   .switch::before {
-    transition-duration: 0ms;
+    transition: none;
+  }
+
+  .switch {
+    transition: background-color 150ms ease;
+  }
+
+  .segmented button.active {
+    animation: seg-fade 150ms ease;
+  }
+
+  @keyframes seg-fade {
+    from {
+      opacity: 0.4;
+    }
+  }
+
+  .ai-bubble {
+    transform: none !important;
+  }
+
+  .typing-dots i {
+    animation-name: dot-fade;
+  }
+
+  @keyframes dot-fade {
+    0%, 60%, 100% {
+      opacity: 0.4;
+    }
+    30% {
+      opacity: 1;
+    }
+  }
+
+  .spinner {
+    border-right-color: currentColor;
+    animation: dot-fade 1s ease-in-out infinite;
   }
 
   .tx-row.is-new,

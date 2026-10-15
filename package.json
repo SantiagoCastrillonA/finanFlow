@@ -1,6 +1,6 @@
 {
   "name": "finanflow",
-  "version": "0.2.0",
+  "version": "0.2.1",
   "description": "Control de gastos personal para Android (Capacitor) y PWA: rápido, privado y sin conexión.",
   "main": "www/index.html",
   "scripts": {
@@ -20,12 +20,15 @@
   "author": "Antigravity",
   "license": "MIT",
   "dependencies": {
+    "@capacitor-firebase/authentication": "^5.4.1",
     "@capacitor/android": "^5.7.0",
     "@capacitor/app": "^5.0.8",
     "@capacitor/cli": "^5.7.0",
     "@capacitor/core": "^5.7.0",
+    "@capacitor/filesystem": "^5.2.2",
     "@capacitor/haptics": "^5.0.8",
     "@capacitor/local-notifications": "^5.0.8",
+    "@capacitor/share": "^5.0.8",
     "chart.js": "^4.5.1"
   },
   "devDependencies": {

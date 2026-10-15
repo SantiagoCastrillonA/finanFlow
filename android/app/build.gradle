@@ -44,5 +44,6 @@ try {
         apply plugin: 'com.google.gms.google-services'
     }
 } catch(Exception e) {
-    logger.info("google-services.json not found, google-services plugin not applied. Push Notifications won't work")
+    // Sin este archivo FirebaseAuthentication no puede inicializar Firebase y la app se cierra al abrir.
+    logger.warn("ADVERTENCIA: falta android/app/google-services.json. El login con Google (FirebaseAuthentication) hará que la app se cierre al iniciar. Descárgalo de la consola de Firebase.")
 }

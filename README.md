@@ -1,6 +1,6 @@
 # FinanFlow - Control de Gastos Personales
 
-> **Version:** 0.2.0  
+> **Version:** 0.2.1  
 > **Privacidad 100% garantizada** | **Funciona sin conexión** | **Sincronización opcional con Google Cloud**
 
 FinanFlow es una aplicación móvil de control de gastos e ingresos personales, con un diseño sobrio inspirado en iOS. Funciona como **PWA** (Progressive Web App) y como **aplicación nativa Android** mediante [Capacitor](https://capacitorjs.com/).
@@ -49,7 +49,7 @@ FinanFlow te permite llevar un registro de tus finanzas de forma **rápida, priv
 
 ### Sincronización y respaldo
 - **Google Cloud Firebase** (opcional) o **modo local** sin cuenta.
-- **Exportar JSON / CSV** y **restaurar respaldo** (con validación del archivo).
+- **Exportar JSON / CSV** y **restaurar respaldo** (con validación del archivo). En Android el archivo se abre en la hoja de compartir (Drive, correo, WhatsApp…).
 
 ---
 
@@ -80,7 +80,7 @@ Tecnologías web sin frameworks ni bundler:
 - **Gráficos:** [Chart.js](https://www.chartjs.org/) 4, incluido localmente en `www/vendor/` para funcionar sin conexión
 - **Backend/Sync:** [Firebase](https://firebase.google.com/) (Auth + Firestore)
 - **IA:** [Google Gemini API](https://aistudio.google.com/app/apikey)
-- **Mobile Wrapper:** [Capacitor](https://capacitorjs.com/) 5 con `@capacitor/app`, `@capacitor/haptics` y `@capacitor/local-notifications`
+- **Mobile Wrapper:** [Capacitor](https://capacitorjs.com/) 5 con `@capacitor/app`, `@capacitor/haptics`, `@capacitor/local-notifications`, `@capacitor/filesystem`, `@capacitor/share` y `@capacitor-firebase/authentication` (login de Google nativo)
 - **Widget Android:** `BalanceWidgetProvider` + plugin local `WidgetBridge` (Java)
 - **PWA:** Service Worker + Manifest
 
@@ -93,6 +93,7 @@ Tecnologías web sin frameworks ni bundler:
 2. Agrega una app Web y copia las credenciales.
 3. Pégalas en `www/app.js` reemplazando `FIREBASE_CONFIG`.
 4. Activa **Firestore Database** y **Authentication** (método Google).
+5. **Android:** Google bloquea el login dentro del WebView, así que la app usa Google Sign-In nativo. Agrega una app Android con el paquete `com.finanflow.app`, registra la huella SHA-1 (`cd android && ./gradlew signingReport`; la de debug y la de la llave de release son distintas) y descarga `google-services.json` en `android/app/`. **Sin ese archivo la app Android se cierra al abrir.**
 
 ### Activar FinanBot (Asistente de IA)
 1. Obtén una API Key gratuita en [Google AI Studio](https://aistudio.google.com/app/apikey).

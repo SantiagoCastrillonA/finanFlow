@@ -4,4 +4,17 @@
     <string name="title_activity_main">FinanFlow</string>
     <string name="package_name">com.finanflow.app</string>
     <string name="custom_url_scheme">com.finanflow.app</string>
+    <string name="shortcut_add_expense">Agregar Gasto</string>
+    <string name="shortcut_add_expense_long">Agregar un nuevo gasto o ingreso</string>
+    <string name="shortcut_view_balance">Ver Balance</string>
+    <string name="shortcut_view_balance_long">Ver dashboard y balance</string>
+    <string name="shortcut_view_history">Ver Historial</string>
+    <string name="shortcut_view_history_long">Ver historial de transacciones</string>
+    <string name="widget_name">FinanFlow</string>
+    <string name="widget_description">Saldo y movimientos del mes, con acceso rápido para agregar un gasto</string>
+    <string name="widget_balance_label">Saldo</string>
+    <string name="widget_income_label">Ingresos</string>
+    <string name="widget_expense_label">Gastos</string>
+    <string name="widget_add">Agregar gasto</string>
+    <string name="widget_stale">Abre FinanFlow para actualizar</string>
 </resources>

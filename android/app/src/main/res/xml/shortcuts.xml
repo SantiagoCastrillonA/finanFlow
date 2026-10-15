@@ -1,0 +1,37 @@
+<?xml version="1.0" encoding="utf-8"?>
+<shortcuts xmlns:android="http://schemas.android.com/apk/res/android">
+
+    <shortcut
+        android:shortcutId="add_expense"
+        android:enabled="true"
+        android:icon="@mipmap/ic_launcher_foreground"
+        android:shortcutShortLabel="@string/shortcut_add_expense"
+        android:shortcutLongLabel="@string/shortcut_add_expense_long">
+        <intent
+            android:action="android.intent.action.VIEW"
+            android:data="finanflow://action/add-expense" />
+    </shortcut>
+
+    <shortcut
+        android:shortcutId="view_balance"
+        android:enabled="true"
+        android:icon="@mipmap/ic_launcher_foreground"
+        android:shortcutShortLabel="@string/shortcut_view_balance"
+        android:shortcutLongLabel="@string/shortcut_view_balance_long">
+        <intent
+            android:action="android.intent.action.VIEW"
+            android:data="finanflow://action/view-balance" />
+    </shortcut>
+
+    <shortcut
+        android:shortcutId="view_history"
+        android:enabled="true"
+        android:icon="@mipmap/ic_launcher_foreground"
+        android:shortcutShortLabel="@string/shortcut_view_history"
+        android:shortcutLongLabel="@string/shortcut_view_history_long">
+        <intent
+            android:action="android.intent.action.VIEW"
+            android:data="finanflow://action/view-history" />
+    </shortcut>
+
+</shortcuts>

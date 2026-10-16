@@ -65,7 +65,58 @@ const ACCOUNT_KINDS = {
   goal: { label: "Meta de ahorro", icon: "savings" }
 };
 
-const CATEGORY_COLORS = ["#FF453A", "#FF9F0A", "#E5B800", "#30D158", "#40C8E0", "#0A84FF", "#5E5CE6", "#BF5AF2", "#FF375F", "#8E8E93"];
+const CATEGORY_COLORS = [
+  "#FF453A", "#FF9F0A", "#E5B800", "#9BD32F", "#30D158", "#00C7BE", "#40C8E0",
+  "#0A84FF", "#5E5CE6", "#BF5AF2", "#E879F9", "#FF375F", "#A2845E", "#8E8E93"
+];
+const NEW_CATEGORY_COLOR = "#5E5CE6";
+
+/* Marcas (www/vendor/brands.js, generado por npm run vendor): logo de la marca en vez del ícono. */
+const BRANDS = window.BRANDS || [];
+const BRAND_BY_ID = new Map(BRANDS.map((b) => [b.id, b]));
+// Las palabras más largas primero: "uber eats" gana a "uber".
+const BRAND_KEYS = BRANDS.flatMap((b) => b.keys.map((k) => [` ${k} `, b])).sort((x, y) => y[0].length - x[0].length);
+const brandCache = new Map();
+/** "McDonald's Unicentro" → " mcdonalds unicentro ", para buscar palabras completas. */
+function normalizeText(s) {
+  return ` ${String(s || "")
+    .normalize("NFD")
+    .replace(/[\u0300-\u036f]/g, "")
+    .toLowerCase()
+    .replace(/['’]/g, "")
+    .replace(/[^a-z0-9]+/g, " ")
+    .trim()} `;
+}
+/** Marca mencionada en un texto (nota, comercio o nombre de categoría), o null. */
+function brandFor(text) {
+  if (!text) return null;
+  if (!brandCache.has(text)) {
+    const norm = normalizeText(text);
+    const hit = BRAND_KEYS.find(([k]) => norm.includes(k));
+    brandCache.set(text, hit ? hit[1] : null);
+  }
+  return brandCache.get(text);
+}
+const catBrand = (cat) => (cat && BRAND_BY_ID.get(cat.brand)) || null;
+/** Logo o glifo oscuro sobre colores claros (como Simple Icons). */
+function isLightHex(hex) {
+  const n = parseInt(hex.replace("#", ""), 16);
+  const lin = (v) => ((v /= 255) <= 0.03928 ? v / 12.92 : ((v + 0.055) / 1.055) ** 2.4);
+  return 0.2126 * lin(n >> 16) + 0.7152 * lin((n >> 8) & 255) + 0.0722 * lin(n & 255) > 0.4;
+}
+/** Chip de la marca con su color: el logo (SVG) o, si Simple Icons no lo tiene, su monograma. */
+function brandChip(b, cls, extra = "") {
+  const inner = b.path
+    ? `<svg viewBox="0 0 24 24" aria-hidden="true"><path d="${b.path}"/></svg>`
+    : `<span class="brand-mono">${escapeHtml(b.mono)}</span>`;
+  return `<span class="${cls} brand${isLightHex(b.hex) ? " light" : ""}" style="--brand:#${b.hex}" title="${escapeHtml(b.title)}">${inner}${extra}</span>`;
+}
+/** Ícono de una fila: el logo si hay marca; si no, el ícono de la categoría sobre su color. */
+function rowIcon(cat, brand = catBrand(cat), extra = "") {
+  if (brand) return brandChip(brand, "row-icon", extra);
+  return `<span class="row-icon" style="color:${cat.color};background:${cat.color}24"><span class="ms">${cat.icon}</span>${extra}</span>`;
+}
+const TRANSFER_ICON = '<span class="row-icon" style="color:var(--accent);background:var(--accent-tint)"><span class="ms">swap_horiz</span></span>';
 
 const GEMINI_CONFIG = {
   // Alias que Google mantiene apuntando al Flash estable más reciente (evita que el asistente
@@ -135,7 +186,9 @@ function cleanCategory(c) {
     type: c.type === "income" ? "income" : "expense",
     label: c.label.trim().slice(0, 24),
     icon: CATEGORY_ICONS.includes(c.icon) ? c.icon : "sell",
-    color: /^#[0-9a-f]{6}$/i.test(c.color) ? c.color : "#8E8E93",
+    // En el marcador de una categoría de la app, sin color = el suyo de siempre.
+    color: /^#[0-9a-f]{6}$/i.test(c.color) ? c.color : isBaseCategory(c.id, c.type) ? "" : "#8E8E93",
+    brand: BRAND_BY_ID.has(c.brand) ? c.brand : "",
     excluded: !!c.excluded,
     hidden: !!c.hidden,
     createdAt: Number(c.createdAt) || 0
@@ -462,16 +515,25 @@ function cardPayment(a, list = state.transactions) {
 }
 
 /**
- * Categorías base + propias del espacio, con "Otros" siempre al final. Una base se oculta con un
- * marcador { id, hidden: true } entre las propias; con includeHidden se incluyen (para mostrar
- * movimientos viejos y reservar sus nombres).
+ * Categorías base + propias del espacio, con "Otros" siempre al final. Una base se personaliza con
+ * un marcador entre las propias (mismo id que la base): { hidden } la oculta y { color } la recolorea.
+ * Con includeHidden se incluyen las ocultas (para mostrar movimientos viejos y reservar sus nombres).
  */
+function isBaseCategory(id, type) {
+  return (CATEGORIES[type] || []).some((b) => b.id === id);
+}
 function categoriesFor(type, custom = state.categories, includeHidden = false) {
   const base = CATEGORIES[type] || [];
-  const own = (custom && custom[type]) || [];
-  const hidden = new Set(own.filter((c) => c.hidden).map((c) => c.id));
-  const visibleBase = includeHidden ? base : base.filter((c, i) => i === base.length - 1 || !hidden.has(c.id));
-  return [...visibleBase.slice(0, -1), ...own.filter((c) => !c.hidden), ...visibleBase.slice(-1)];
+  const records = (custom && custom[type]) || [];
+  const marks = new Map(records.filter((c) => isBaseCategory(c.id, type)).map((c) => [c.id, c]));
+  const shown = base
+    .filter((c, i) => includeHidden || i === base.length - 1 || !(marks.get(c.id) || {}).hidden)
+    .map((c) => {
+      const m = marks.get(c.id);
+      return m && m.color ? { ...c, color: m.color } : c;
+    });
+  const own = records.filter((c) => !c.hidden && !marks.has(c.id));
+  return [...shown.slice(0, -1), ...own, ...shown.slice(-1)];
 }
 // Una categoría borrada sigue mostrando su nombre: su id es el nombre con que se creó.
 function getCategoryInfo(catId, type = "expense", custom = state.categories) {
@@ -906,7 +968,7 @@ function openYearSummary() {
     const row = document.createElement("div");
     row.className = "list-row";
     row.innerHTML = `
-      <span class="row-icon" style="color:${c.color};background:${c.color}24"><span class="ms">${c.icon}</span></span>
+      ${rowIcon(c)}
       <span class="row-main">
         <span class="row-title">${escapeHtml(c.label)}</span>
         <span class="row-sub">${Math.round(share * 100)}% del gasto</span>
@@ -1418,7 +1480,7 @@ function txRow(t, showDate) {
     ? `<span class="row-author" title="Registró ${escapeHtml(memberName(t.createdBy))}">${escapeHtml((authorInfo.name || "?").charAt(0).toUpperCase())}</span>`
     : "";
   el.innerHTML = `
-    <span class="row-icon" style="color:${cat.color};background:${cat.color}24"><span class="ms">${cat.icon}</span>${author}</span>
+    ${rowIcon(cat, brandFor(t.note) || catBrand(cat), author)}
     <span class="row-main">
       <span class="row-title">${escapeHtml(t.note || cat.label)}</span>
       <span class="row-sub">${sub}</span>
@@ -1633,9 +1695,10 @@ function renderBudgetsList(stats) {
       const row = document.createElement("button");
       row.type = "button";
       row.className = `budget-row ${u.level}`;
+      row.style.setProperty("--c", info.color);
       row.innerHTML = `
         <div class="budget-top">
-          <span class="row-icon" style="color:${info.color};background:${info.color}24"><span class="ms">${info.icon}</span></span>
+          ${rowIcon(info)}
           <span class="row-main">
             <span class="row-title">${escapeHtml(info.label)}</span>
             <span class="row-sub">${formatMoney(u.spent)} de ${formatMoney(u.limit)}</span>
@@ -1711,7 +1774,8 @@ function renderCategoryGrid() {
     b.classList.toggle("active", on);
     b.setAttribute("aria-checked", String(on));
     b.style.setProperty("--c", c.color);
-    b.innerHTML = `<span class="cat-icon"><span class="ms">${c.icon}</span></span><span class="cat-label">${escapeHtml(c.label)}</span>`;
+    const brand = catBrand(c);
+    b.innerHTML = `${brand ? brandChip(brand, "cat-icon") : `<span class="cat-icon"><span class="ms">${c.icon}</span></span>`}<span class="cat-label">${escapeHtml(c.label)}</span>`;
     b.onclick = () => {
       txSheet.category = c.id;
       grid.querySelectorAll(".cat-btn").forEach((x) => {
@@ -2249,7 +2313,8 @@ function deleteBudgetFromSheet() {
    Categorías propias (Ajustes → Categorías y "Nueva" en la hoja de registro)
    ========================================================================== */
 
-const catSheet = { type: "expense", editing: null, icon: CATEGORY_ICONS[0], color: CATEGORY_COLORS[6], fromTx: false };
+// look: "icon" | "brand" (pestaña elegida); base: editando una de la app (solo el color).
+const catSheet = { type: "expense", editing: null, icon: CATEGORY_ICONS[0], color: NEW_CATEGORY_COLOR, brand: "", look: "icon", base: false, fromTx: false, lookTouched: false };
 let categoriesListType = "expense";
 
 function openCategories() {
@@ -2262,37 +2327,51 @@ function openCategories() {
 function renderCategoriesList() {
   const box = $("categories-list");
   const type = categoriesListType;
-  const own = state.categories[type].filter((c) => !c.hidden);
+  const own = state.categories[type].filter((c) => !c.hidden && !isBaseCategory(c.id, type));
   box.innerHTML = "";
   if (!own.length) {
     box.innerHTML = emptyStateHTML("category", "Sin categorías propias", "Crea las que necesites, por ejemplo “Tarjeta de crédito”.");
   } else {
     box.appendChild(ownCategoriesGroup(own));
   }
-  // Las de la app no se editan, pero se pueden ocultar ("Otros" siempre queda).
+  // Las de la app: se les cambia el color y se pueden ocultar ("Otros" siempre queda).
   const title = document.createElement("h2");
   title.className = "group-title";
   title.textContent = "De la app";
   box.appendChild(title);
   const group = document.createElement("div");
   group.className = "list-group";
-  const hidden = new Map(state.categories[type].filter((c) => c.hidden).map((c) => [c.id, c]));
+  const shown = new Map(categoriesFor(type, state.categories, true).map((c) => [c.id, c]));
   CATEGORIES[type].slice(0, -1).forEach((c) => {
-    const row = document.createElement("label");
+    const mark = baseMark(type, c.id);
+    const cur = shown.get(c.id);
+    const row = document.createElement("div");
     row.className = "list-row";
     row.innerHTML = `
-      <span class="row-icon" style="color:${c.color};background:${c.color}24"><span class="ms">${c.icon}</span></span>
-      <span class="row-main"><span class="row-title">${escapeHtml(c.label)}</span></span>
-      <input type="checkbox" class="switch" aria-label="Mostrar ${escapeHtml(c.label)}" ${hidden.has(c.id) ? "" : "checked"}>`;
+      <button type="button" class="row-link">
+        ${rowIcon(cur)}
+        <span class="row-main"><span class="row-title">${escapeHtml(c.label)}</span></span>
+      </button>
+      <input type="checkbox" class="switch" aria-label="Mostrar ${escapeHtml(c.label)}" ${mark && mark.hidden ? "" : "checked"}>`;
+    row.querySelector(".row-link").onclick = () => openCategoryModal({ ...cur, type }, type);
     row.querySelector("input").onchange = (e) => {
-      if (e.target.checked) removeCategory(hidden.get(c.id));
-      else upsertCategory({ ref: `hide-${type}-${hashString(c.id)}`, id: c.id, type, label: c.label, hidden: true, createdAt: Date.now() });
+      const show = e.target.checked;
+      if (show && mark && !mark.color) removeCategory(mark);
+      else upsertCategory({ ...(mark || newBaseMark(type, c)), hidden: !show });
       haptic();
       renderCategoriesList();
     };
     group.appendChild(row);
   });
   box.appendChild(group);
+}
+
+/** Marcador de una categoría de la app (oculta o con otro color), si existe. */
+function baseMark(type, id) {
+  return state.categories[type].find((c) => c.id === id);
+}
+function newBaseMark(type, c) {
+  return { ref: `hide-${type}-${hashString(c.id)}`, id: c.id, type, label: c.label, hidden: false, color: "", createdAt: Date.now() };
 }
 
 function ownCategoriesGroup(own) {
@@ -2303,7 +2382,7 @@ function ownCategoriesGroup(own) {
     row.type = "button";
     row.className = "list-row";
     row.innerHTML = `
-      <span class="row-icon" style="color:${c.color};background:${c.color}24"><span class="ms">${c.icon}</span></span>
+      ${rowIcon(c)}
       <span class="row-main">
         <span class="row-title">${escapeHtml(c.label)}</span>
         ${c.excluded ? '<span class="row-sub">No suma en totales</span>' : ""}
@@ -2318,15 +2397,23 @@ function ownCategoriesGroup(own) {
 function openCategoryModal(cat = null, type = categoriesListType, fromTx = false) {
   catSheet.editing = cat;
   catSheet.type = cat ? cat.type : type;
+  catSheet.base = !!cat && isBaseCategory(cat.id, catSheet.type);
   catSheet.fromTx = fromTx;
   catSheet.icon = cat ? cat.icon : CATEGORY_ICONS[0];
-  catSheet.color = cat ? cat.color : CATEGORY_COLORS[6];
+  catSheet.color = cat ? cat.color : NEW_CATEGORY_COLOR;
+  catSheet.brand = (cat && cat.brand) || "";
+  catSheet.look = catSheet.brand ? "brand" : "icon";
+  catSheet.lookTouched = !!cat;
   $("category-form").reset();
-  $("category-title").textContent = cat ? "Editar categoría" : "Nueva categoría";
-  $("cat-type-note").textContent = catSheet.type === "income" ? "Categoría de ingreso" : "Categoría de gasto";
+  $("category-title").textContent = catSheet.base ? cat.label : cat ? "Editar categoría" : "Nueva categoría";
+  const kind = catSheet.type === "income" ? "ingreso" : "gasto";
+  $("cat-type-note").textContent = catSheet.base ? `Categoría de ${kind} de la app` : `Categoría de ${kind}`;
   $("cat-name").value = cat ? cat.label : "";
   $("cat-excluded").checked = !!(cat && cat.excluded);
-  $("cat-delete-btn").classList.toggle("hidden", !cat);
+  // De las de la app solo se cambia el color: su nombre e ícono son fijos.
+  ["cat-name-group", "cat-look", "cat-extra"].forEach((id) => $(id).classList.toggle("hidden", catSheet.base));
+  $("cat-delete-btn").classList.toggle("hidden", !cat || catSheet.base);
+  setSegmented($("cat-look-type"), catSheet.look);
   renderCategoryPickers();
   openModal("category-modal", cat ? null : "cat-name");
 }
@@ -2366,9 +2453,61 @@ function renderCategoryPickers() {
     },
     (icon) => {
       catSheet.icon = icon;
+      catSheet.lookTouched = true;
       updateCategoryPreview();
     }
   );
+  renderPicker(
+    $("cat-brands"),
+    BRANDS.map((b) => b.id),
+    catSheet.brand,
+    (b, id) => {
+      const brand = BRAND_BY_ID.get(id);
+      b.className = "pick-brand";
+      b.setAttribute("aria-label", brand.title);
+      b.innerHTML = brandChip(brand, "brand-chip");
+    },
+    (id) => {
+      catSheet.lookTouched = true;
+      pickBrand(BRAND_BY_ID.get(id));
+    }
+  );
+  renderColorPicker();
+}
+
+/** Elegir una marca: la categoría toma su nombre (si no tiene) y su color (si se distingue en pantalla). */
+function pickBrand(brand) {
+  catSheet.brand = brand.id;
+  if (!$("cat-name").value.trim()) $("cat-name").value = brand.title;
+  if (!isLightHex(brand.hex) && brand.hex.toUpperCase() !== "000000") {
+    catSheet.color = `#${brand.hex}`;
+    renderColorPicker();
+  }
+  updateCategoryPreview();
+}
+
+/** Al escribir el nombre de una categoría nueva, si es una marca conocida se propone su logo. */
+function suggestBrand() {
+  if (catSheet.base || catSheet.lookTouched) return;
+  const brand = brandFor($("cat-name").value);
+  if (brand && brand.id !== catSheet.brand) {
+    catSheet.look = "brand";
+    setSegmented($("cat-look-type"), "brand");
+    pickBrand(brand);
+    $("cat-brands").querySelectorAll("button").forEach((x, i) => {
+      const on = BRANDS[i].id === brand.id;
+      x.classList.toggle("active", on);
+      x.setAttribute("aria-checked", String(on));
+    });
+  } else if (!brand && catSheet.look === "brand") {
+    catSheet.look = "icon";
+    catSheet.brand = "";
+    setSegmented($("cat-look-type"), "icon");
+    updateCategoryPreview();
+  }
+}
+
+function renderColorPicker() {
   renderPicker(
     $("cat-colors"),
     CATEGORY_COLORS,
@@ -2386,10 +2525,13 @@ function renderCategoryPickers() {
 }
 
 function updateCategoryPreview() {
-  const preview = $("cat-preview");
-  preview.style.setProperty("--c", catSheet.color);
-  preview.querySelector(".ms").textContent = catSheet.icon;
+  const brand = catSheet.look === "brand" ? BRAND_BY_ID.get(catSheet.brand) : null;
+  $("cat-preview").outerHTML = brand
+    ? brandChip(brand, "cat-icon cat-preview").replace("<span ", '<span id="cat-preview" aria-hidden="true" ')
+    : `<span id="cat-preview" class="cat-icon cat-preview" aria-hidden="true" style="--c:${catSheet.color}"><span class="ms">${catSheet.icon}</span></span>`;
   $("cat-icons").style.setProperty("--c", catSheet.color);
+  $("cat-icons").classList.toggle("hidden", catSheet.look !== "icon");
+  $("cat-brands").classList.toggle("hidden", catSheet.look !== "brand");
 }
 
 function refreshCategoryViews() {
@@ -2405,6 +2547,7 @@ function saveCategory(event) {
     $("cat-name").focus();
     return;
   }
+  if (catSheet.base) return saveBaseCategory();
   const prev = catSheet.editing;
   const same = (s) => s.toLowerCase() === label.toLowerCase();
   if (categoriesFor(catSheet.type, state.categories, true).some((c) => c.ref !== (prev && prev.ref) && (same(c.label) || same(c.id)))) {
@@ -2419,11 +2562,28 @@ function saveCategory(event) {
     label,
     icon: catSheet.icon,
     color: catSheet.color,
+    brand: catSheet.look === "brand" ? catSheet.brand : "",
     excluded: $("cat-excluded").checked,
     createdAt: prev ? prev.createdAt : Date.now()
   };
   if (catSheet.fromTx && !prev) txSheet.category = cat.id;
   upsertCategory(cat);
+  closeModal("category-modal");
+  haptic("success");
+  refreshCategoryViews();
+}
+
+/** Color de una categoría de la app: se guarda en su marcador (el mismo que la oculta). */
+function saveBaseCategory() {
+  const type = catSheet.type;
+  const def = CATEGORIES[type].find((c) => c.id === catSheet.editing.id);
+  const mark = baseMark(type, def.id);
+  const color = catSheet.color.toUpperCase() === def.color.toUpperCase() ? "" : catSheet.color;
+  if (!color && !(mark && mark.hidden)) {
+    if (mark) removeCategory(mark);
+  } else {
+    upsertCategory({ ...(mark || newBaseMark(type, def)), color });
+  }
   closeModal("category-modal");
   haptic("success");
   refreshCategoryViews();
@@ -2544,10 +2704,9 @@ function renderUpcoming(isCurrent) {
       const t = it.tx;
       const transfer = t.kind === "transfer";
       const cat = getCategoryInfo(t.category, t.type);
-      const color = transfer ? "var(--accent)" : cat.color;
       const title = t.note || (transfer ? `${accountInfo(t.from).name} → ${accountInfo(t.to).name}` : cat.label);
       row.innerHTML = `
-        <span class="row-icon" style="color:${color};background:${transfer ? "var(--accent-tint)" : `${cat.color}24`}"><span class="ms">${transfer ? "swap_horiz" : cat.icon}</span></span>
+        ${transfer ? TRANSFER_ICON : rowIcon(cat, brandFor(t.note) || catBrand(cat))}
         <span class="row-main">
           <span class="row-title">${escapeHtml(title)}</span>
           <span class="row-sub">${escapeHtml(`${when} · ${RECURRING_LABELS[t.recurring].toLowerCase()}`)}</span>
@@ -3971,14 +4130,13 @@ function renderInbox() {
   inbox.forEach((it) => {
     const transfer = it.type === "transfer";
     const cat = transfer ? null : getCategoryInfo(it.category, it.type);
-    const color = transfer ? "var(--accent)" : cat.color;
     const name = (id, fallback) => (id ? accountInfo(id).name : fallback || "?");
     const account = transfer ? `${name(it.from, "Elegir cuenta")} → ${name(it.to, it.toKey)}` : name(it.account, it.cardKey);
     const row = document.createElement("div");
     row.className = "list-row inbox-row";
     row.innerHTML = `
       <button type="button" class="inbox-open">
-        <span class="row-icon" style="color:${color};background:${transfer ? "var(--accent-tint)" : `${color}24`}"><span class="ms">${transfer ? "swap_horiz" : cat.icon}</span></span>
+        ${transfer ? TRANSFER_ICON : rowIcon(cat, brandFor(prettyMerchant(it.merchant)) || catBrand(cat))}
         <span class="row-main">
           <span class="row-title">${escapeHtml(prettyMerchant(it.merchant) || "Pago")}</span>
           <span class="row-sub">${escapeHtml([formatDateFriendly(it.date), account].join(" · "))}</span>
@@ -4445,6 +4603,12 @@ function bindUI() {
   $("budget-delete-btn").onclick = deleteBudgetFromSheet;
   $("category-form").addEventListener("submit", saveCategory);
   $("cat-delete-btn").onclick = deleteCategoryFromSheet;
+  $("cat-name").addEventListener("input", suggestBrand);
+  setupSegmented($("cat-look-type"), (look) => {
+    catSheet.look = look;
+    catSheet.lookTouched = true;
+    updateCategoryPreview();
+  });
   $("categories-add-btn").onclick = () => openCategoryModal(null, categoriesListType);
   $("account-form").addEventListener("submit", saveAccount);
   $("range-form").addEventListener("submit", applyRange);

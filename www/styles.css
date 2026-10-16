@@ -1016,6 +1016,41 @@ a {
   font-variation-settings: "FILL" 1;
 }
 
+/* Logo de una marca sobre su color (Simple Icons), o su monograma si no hay logo */
+.brand {
+  background: var(--brand);
+  color: #fff;
+  box-shadow: inset 0 0 0 0.5px var(--separator);
+}
+
+.brand.light {
+  color: #000;
+}
+
+.brand svg {
+  width: 50%;
+  height: 50%;
+  fill: currentColor;
+}
+
+.brand-mono {
+  font-size: 15px;
+  font-weight: 700;
+  letter-spacing: -0.02em;
+  line-height: 1;
+}
+
+/* Fila con un botón (abre) y un switch al lado */
+.row-link {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  flex: 1;
+  min-width: 0;
+  color: inherit;
+  text-align: left;
+}
+
 .row-main {
   flex: 1;
   min-width: 0;
@@ -1205,8 +1240,8 @@ a {
   width: 100%;
   padding: 14px 16px;
   border-radius: var(--radius);
-  background: var(--surface);
-  box-shadow: inset 0 0 0 0.5px var(--surface-edge), inset 0 1px 0 var(--surface-glint);
+  background: color-mix(in srgb, var(--c, transparent) 10%, var(--surface));
+  box-shadow: inset 0 0 0 0.5px color-mix(in srgb, var(--c, transparent) 22%, var(--surface-edge)), inset 0 1px 0 var(--surface-glint);
   transition: background-color 100ms ease;
 }
 
@@ -1245,7 +1280,7 @@ a {
   height: 100%;
   width: 100%;
   border-radius: 4px;
-  background: var(--income);
+  background: var(--c, var(--income));
   transform-origin: left;
 }
 
@@ -1739,6 +1774,29 @@ a {
   color: #fff;
 }
 
+.cat-icon .brand-mono {
+  font-size: 17px;
+}
+
+/* Con logo, el elegido conserva el color de la marca y se marca con un anillo */
+.cat-btn .cat-icon.brand {
+  background: var(--brand);
+  color: #fff;
+}
+
+.cat-btn .cat-icon.brand.light {
+  color: #000;
+}
+
+.cat-btn.active .cat-icon.brand {
+  color: #fff;
+  box-shadow: 0 0 0 2px var(--card), 0 0 0 4px var(--c);
+}
+
+.cat-btn.active .cat-icon.brand.light {
+  color: #000;
+}
+
 .cat-btn.active .cat-label {
   color: var(--text);
   font-weight: 600;
@@ -1782,16 +1840,24 @@ a {
   font-size: 32px;
 }
 
+.cat-preview.brand {
+  background: var(--brand);
+}
+
+.cat-preview .brand-mono {
+  font-size: 24px;
+}
+
 .cat-preview-wrap .footnote {
   margin: 0;
 }
 
-/* 10 colores en dos filas de 5 y 16 íconos en dos de 8: filas parejas en cualquier ancho */
+/* 14 colores en dos filas de 7 y 16 íconos en dos de 8: filas parejas en cualquier ancho */
 .color-picker {
   display: grid;
-  grid-template-columns: repeat(5, 32px);
+  grid-template-columns: repeat(7, 32px);
   justify-content: center;
-  gap: 12px 20px;
+  gap: 12px 14px;
   margin: 16px 0 14px;
 }
 
@@ -1834,8 +1900,50 @@ a {
   color: var(--c);
 }
 
+/* Pestañas Ícono / Marca y logos para elegir */
+#cat-look .segmented {
+  margin-bottom: 12px;
+}
+
+.brand-picker {
+  max-height: 232px;
+  overflow-y: auto;
+  overscroll-behavior: contain;
+}
+
+.pick-brand {
+  height: 44px;
+  border-radius: 12px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  transition: background-color 150ms ease, transform var(--dur-release) var(--ease-out);
+}
+
+.brand-chip {
+  width: 32px;
+  height: 32px;
+  border-radius: 9px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.brand-chip .brand-mono {
+  font-size: 12px;
+}
+
+.pick-brand.active {
+  background: var(--fill);
+}
+
+.pick-brand.active .brand-chip {
+  box-shadow: 0 0 0 2px var(--card), 0 0 0 4px var(--accent);
+}
+
 .pick-color:active,
-.pick-icon:active {
+.pick-icon:active,
+.pick-brand:active {
   transform: scale(0.92);
   transition-duration: var(--dur-press);
 }

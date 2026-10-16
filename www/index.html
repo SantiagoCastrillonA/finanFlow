@@ -417,7 +417,7 @@
           </button>
         </div>
 
-        <p class="app-version">FinanFlow 0.9.0 · Tus datos son tuyos</p>
+        <p class="app-version">FinanFlow 0.10.0 · Tus datos son tuyos</p>
       </section>
     </main>
 
@@ -640,7 +640,7 @@
       <button type="button" id="categories-add-btn" class="btn-tinted full">
         <span class="ms">add</span> Nueva categoría
       </button>
-      <p class="footnote">Las de la app no se editan, pero puedes ocultar las que no uses: tus movimientos viejos las
+      <p class="footnote">Toca una de la app para cambiar su color, u ocúltala si no la usas: tus movimientos viejos la
         siguen mostrando. En el Hogar, las categorías se comparten con tu pareja.</p>
     </div>
   </div>
@@ -814,22 +814,31 @@
           <span id="cat-preview" class="cat-icon cat-preview" aria-hidden="true"><span class="ms">credit_card</span></span>
           <span id="cat-type-note" class="footnote">Categoría de gasto</span>
         </div>
-        <div class="list-group form-group">
+        <div id="cat-name-group" class="list-group form-group">
           <label class="form-row">
             <span>Nombre</span>
             <input type="text" id="cat-name" placeholder="Tarjeta de crédito" maxlength="24" enterkeyhint="done">
           </label>
         </div>
         <div id="cat-colors" class="color-picker" role="radiogroup" aria-label="Color"></div>
-        <div id="cat-icons" class="icon-picker" role="radiogroup" aria-label="Ícono"></div>
-        <div class="list-group form-group">
-          <label class="form-row">
-            <span>No sumar en totales</span>
-            <input type="checkbox" id="cat-excluded" class="switch">
-          </label>
+        <div id="cat-look">
+          <div id="cat-look-type" class="segmented" aria-label="Ícono o marca">
+            <button data-value="icon">Ícono</button>
+            <button data-value="brand">Marca</button>
+          </div>
+          <div id="cat-icons" class="icon-picker" role="radiogroup" aria-label="Ícono"></div>
+          <div id="cat-brands" class="icon-picker brand-picker hidden" role="radiogroup" aria-label="Marca"></div>
         </div>
-        <p class="footnote">Actívalo para pagos de tarjeta o pasar plata entre tus cuentas: si ya registraste cada
-          compra, el pago no se cuenta dos veces.</p>
+        <div id="cat-extra">
+          <div class="list-group form-group">
+            <label class="form-row">
+              <span>No sumar en totales</span>
+              <input type="checkbox" id="cat-excluded" class="switch">
+            </label>
+          </div>
+          <p class="footnote">Actívalo para pagos de tarjeta o pasar plata entre tus cuentas: si ya registraste cada
+            compra, el pago no se cuenta dos veces.</p>
+        </div>
         <button type="submit" class="btn-primary full">Guardar</button>
         <button type="button" id="cat-delete-btn" class="btn-plain destructive full hidden">Eliminar categoría</button>
       </form>
@@ -941,6 +950,7 @@
   <script src="vendor/firebase/firebase-app-compat.js"></script>
   <script src="vendor/firebase/firebase-firestore-compat.js"></script>
   <script src="vendor/firebase/firebase-auth-compat.js"></script>
+  <script src="vendor/brands.js"></script>
   <script src="app.js"></script>
 </body>
 

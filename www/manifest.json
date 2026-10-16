@@ -1,7 +1,7 @@
 {
   "name": "FinanFlow - Control de Gastos",
   "short_name": "FinanFlow",
-  "version": "0.9.0",
+  "version": "0.10.0",
   "start_url": "./index.html",
   "display": "standalone",
   "background_color": "#0A1414",

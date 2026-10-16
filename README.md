@@ -1,6 +1,6 @@
 # FinanFlow - Control de Gastos Personales
 
-> **Version:** 0.9.0  
+> **Version:** 0.10.0  
 > **Privacidad 100% garantizada** | **Funciona sin conexión** | **Sincronización opcional con Google Cloud**
 
 FinanFlow es una aplicación móvil de control de gastos e ingresos personales, con un diseño sobrio inspirado en iOS. Funciona como **PWA** (Progressive Web App) y como **aplicación nativa Android** mediante [Capacitor](https://capacitorjs.com/).
@@ -17,11 +17,13 @@ FinanFlow te permite llevar un registro de tus finanzas de forma **rápida, priv
 
 ### Registro en segundos
 - **Agregar en dos toques:** monto → categoría (cuadrícula con íconos) → Guardar. La app recuerda la última categoría y método usados.
-- **Categorías propias:** crea las tuyas (nombre, ícono y color) desde la casilla **Nueva** o en Ajustes → Categorías. Las marcadas **"No sumar en totales"** (p. ej. el pago de la tarjeta de crédito) no cuentan como gasto ni ingreso.
+- **Categorías propias:** crea las tuyas (nombre, ícono o logo de marca, y color) desde la casilla **Nueva** o en Ajustes → Categorías. Las marcadas **"No sumar en totales"** (p. ej. el pago de la tarjeta de crédito) no cuentan como gasto ni ingreso.
 - **Monto con separador de miles** mientras escribes (`3.200.000`).
 - **Movimientos recurrentes:** repite un ingreso, gasto o transferencia cada mes, cada quincena (15 y fin de mes) o cada semana (salario, arriendo, suscripciones, ahorro) y se crea solo.
 - **Próximos 7 días:** en Inicio, los recurrentes que vienen y los pagos de tarjeta pendientes.
-- **Ocultar categorías** de la app que no uses (Ajustes → Categorías).
+- **Ocultar categorías** de la app que no uses o cambiarles el color (Ajustes → Categorías).
+- **Logos de marcas:** si la nota o el comercio dice Netflix, Spotify, Rappi, Uber, D1, Claro… la fila muestra su logo (77 marcas, guardadas en el teléfono; sin conexión).
+- **Límites con color:** cada tarjeta lleva el color de su categoría; ámbar cerca del límite y rojo al superarlo.
 - **Editar y borrar estilo iOS:** toca un movimiento para editarlo; al borrarlo puedes **Deshacer**.
 
 ### Cuentas, tarjetas y metas

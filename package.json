@@ -1,6 +1,6 @@
 {
   "name": "finanflow",
-  "version": "0.10.1",
+  "version": "0.10.2",
   "description": "Control de gastos personal para Android (Capacitor) y PWA: rápido, privado y sin conexión.",
   "main": "www/index.html",
   "scripts": {

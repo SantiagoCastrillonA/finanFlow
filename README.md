@@ -2,7 +2,7 @@
 
 **Tu plata, clara y en tu bolsillo.** FinanFlow es una app gratuita para llevar tus gastos, ingresos, cuentas y tarjetas sin complicarte: anotas un gasto en dos toques y en un vistazo sabes cuánto tienes, cuánto debes y cuánto puedes gastar al día lo que queda del mes.
 
-> **Versión:** 0.10.1 · Android y web (iPhone como app web) · En español · Sin anuncios · Funciona sin conexión
+> **Versión:** 0.10.2 · Android y web (iPhone como app web) · En español · Sin anuncios · Funciona sin conexión
 
 <p align="center">
   <img src="docs/screenshots/inicio.jpg" width="200" alt="Inicio: saldo, disponible y deudas, ingresos y gastos del mes">
@@ -70,7 +70,7 @@
 - La primera vez con una tarjeta pregunta qué cuenta es y lo recuerda; también aprende la categoría de cada comercio.
 - Pagos de tarjeta y dinero que te envías a ti mismo se registran como **transferencias**. Si dos apps avisan el mismo pago, cuenta uno solo.
 - Lo que no confirmes queda en **Por confirmar** en Inicio. Nada se registra sin tu toque y el texto de los avisos no sale del celular.
-- Se activa en Ajustes → Detectar pagos (permisos "Acceso a notificaciones" y "Mostrar sobre otras apps"). Con **Probar la tarjeta** ves cómo aparece con un pago de ejemplo, sin registrar nada.
+- Se activa en Ajustes → Detectar pagos (permisos "Acceso a notificaciones" y "Mostrar sobre otras apps").
 
 ### Widget y accesos rápidos (Android)
 - **Widget de pantalla de inicio:** saldo, ingresos y gastos del mes, y un botón **+** para agregar un gasto.

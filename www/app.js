@@ -65,7 +65,58 @@ const ACCOUNT_KINDS = {
   goal: { label: "Meta de ahorro", icon: "savings" }
 };
 
-const CATEGORY_COLORS = ["#FF453A", "#FF9F0A", "#E5B800", "#30D158", "#40C8E0", "#0A84FF", "#5E5CE6", "#BF5AF2", "#FF375F", "#8E8E93"];
+const CATEGORY_COLORS = [
+  "#FF453A", "#FF9F0A", "#E5B800", "#9BD32F", "#30D158", "#00C7BE", "#40C8E0",
+  "#0A84FF", "#5E5CE6", "#BF5AF2", "#E879F9", "#FF375F", "#A2845E", "#8E8E93"
+];
+const NEW_CATEGORY_COLOR = "#5E5CE6";
+
+/* Marcas (www/vendor/brands.js, generado por npm run vendor): logo de la marca en vez del ícono. */
+const BRANDS = window.BRANDS || [];
+const BRAND_BY_ID = new Map(BRANDS.map((b) => [b.id, b]));
+// Las palabras más largas primero: "uber eats" gana a "uber".
+const BRAND_KEYS = BRANDS.flatMap((b) => b.keys.map((k) => [` ${k} `, b])).sort((x, y) => y[0].length - x[0].length);
+const brandCache = new Map();
+/** "McDonald's Unicentro" → " mcdonalds unicentro ", para buscar palabras completas. */
+function normalizeText(s) {
+  return ` ${String(s || "")
+    .normalize("NFD")
+    .replace(/[\u0300-\u036f]/g, "")
+    .toLowerCase()
+    .replace(/['’]/g, "")
+    .replace(/[^a-z0-9]+/g, " ")
+    .trim()} `;
+}
+/** Marca mencionada en un texto (nota, comercio o nombre de categoría), o null. */
+function brandFor(text) {
+  if (!text) return null;
+  if (!brandCache.has(text)) {
+    const norm = normalizeText(text);
+    const hit = BRAND_KEYS.find(([k]) => norm.includes(k));
+    brandCache.set(text, hit ? hit[1] : null);
+  }
+  return brandCache.get(text);
+}
+const catBrand = (cat) => (cat && BRAND_BY_ID.get(cat.brand)) || null;
+/** Logo o glifo oscuro sobre colores claros (como Simple Icons). */
+function isLightHex(hex) {
+  const n = parseInt(hex.replace("#", ""), 16);
+  const lin = (v) => ((v /= 255) <= 0.03928 ? v / 12.92 : ((v + 0.055) / 1.055) ** 2.4);
+  return 0.2126 * lin(n >> 16) + 0.7152 * lin((n >> 8) & 255) + 0.0722 * lin(n & 255) > 0.4;
+}
+/** Chip de la marca con su color: el logo (SVG) o, si Simple Icons no lo tiene, su monograma. */
+function brandChip(b, cls, extra = "") {
+  const inner = b.path
+    ? `<svg viewBox="0 0 24 24" aria-hidden="true"><path d="${b.path}"/></svg>`
+    : `<span class="brand-mono">${escapeHtml(b.mono)}</span>`;
+  return `<span class="${cls} brand${isLightHex(b.hex) ? " light" : ""}" style="--brand:#${b.hex}" title="${escapeHtml(b.title)}">${inner}${extra}</span>`;
+}
+/** Ícono de una fila: el logo si hay marca; si no, el ícono de la categoría sobre su color. */
+function rowIcon(cat, brand = catBrand(cat), extra = "") {
+  if (brand) return brandChip(brand, "row-icon", extra);
+  return `<span class="row-icon" style="color:${cat.color};background:${cat.color}24"><span class="ms">${cat.icon}</span>${extra}</span>`;
+}
+const TRANSFER_ICON = '<span class="row-icon" style="color:var(--accent);background:var(--accent-tint)"><span class="ms">swap_horiz</span></span>';
 
 const GEMINI_CONFIG = {
   // Alias que Google mantiene apuntando al Flash estable más reciente (evita que el asistente
@@ -135,7 +186,9 @@ function cleanCategory(c) {
     type: c.type === "income" ? "income" : "expense",
     label: c.label.trim().slice(0, 24),
     icon: CATEGORY_ICONS.includes(c.icon) ? c.icon : "sell",
-    color: /^#[0-9a-f]{6}$/i.test(c.color) ? c.color : "#8E8E93",
+    // En el marcador de una categoría de la app, sin color = el suyo de siempre.
+    color: /^#[0-9a-f]{6}$/i.test(c.color) ? c.color : isBaseCategory(c.id, c.type) ? "" : "#8E8E93",
+    brand: BRAND_BY_ID.has(c.brand) ? c.brand : "",
     excluded: !!c.excluded,
     hidden: !!c.hidden,
     createdAt: Number(c.createdAt) || 0
@@ -161,6 +214,7 @@ function cleanAccount(a) {
     cutoffDay: day(a.cutoffDay),
     dueDay: day(a.dueDay),
     creditLimit: money(a.creditLimit) > 0 ? money(a.creditLimit) : null,
+    monthlyPayment: money(a.monthlyPayment) > 0 ? money(a.monthlyPayment) : null,
     target: money(a.target) > 0 ? money(a.target) : null,
     deadline: /^\d{4}-\d{2}$/.test(a.deadline) ? a.deadline : null,
     createdAt: Number(a.createdAt) || 0
@@ -383,7 +437,7 @@ function amountToInput(amount) {
 function accountsFor(accounts = state.accounts) {
   const stored = new Map(accounts.map((a) => [a.id, a]));
   const base = BASE_ACCOUNTS.map((b) =>
-    stored.has(b.id) ? { ...stored.get(b.id), name: b.name, kind: b.kind, base: true, active: true } : { ...b, base: true, active: false }
+    stored.has(b.id) ? { ...stored.get(b.id), kind: b.kind, base: true, active: true } : { ...b, base: true, active: false }
   );
   const own = accounts.filter((a) => a.kind !== "goal" && !BASE_ACCOUNTS.some((b) => b.id === a.id)).map((a) => ({ ...a, active: true }));
   return [...base, ...own];
@@ -443,16 +497,43 @@ function nextDueDate(day, from = new Date()) {
 }
 
 /**
- * Categorías base + propias del espacio, con "Otros" siempre al final. Una base se oculta con un
- * marcador { id, hidden: true } entre las propias; con includeHidden se incluyen (para mostrar
- * movimientos viejos y reservar sus nombres).
+ * Pago del ciclo de una tarjeta. Con "Cuota del mes", lo que toca pagar es la cuota (o la deuda si
+ * es menor) menos lo transferido a la tarjeta desde la fecha de pago anterior; sin cuota, la deuda.
  */
+function cardPayment(a, list = state.transactions) {
+  const debt = Math.max(0, -accountBalance(a, list));
+  if (!a.monthlyPayment || !a.dueDay) return { debt, left: debt, paid: 0 };
+  const prevYM = addMonths(nextDueDate(a.dueDay).slice(0, 7), -1);
+  const prevDue = `${prevYM}-${pad(Math.min(a.dueDay, daysInMonth(prevYM)))}`;
+  const today = todayISO();
+  const paid = roundMoney(
+    list
+      .filter((t) => t.kind === "transfer" && t.to === a.id && t.date > prevDue && t.date <= today && countsForAccount(t, a))
+      .reduce((s, t) => s + (Number(t.amount) || 0), 0)
+  );
+  return { debt, paid, left: roundMoney(Math.max(0, Math.min(a.monthlyPayment - paid, debt))) };
+}
+
+/**
+ * Categorías base + propias del espacio, con "Otros" siempre al final. Una base se personaliza con
+ * un marcador entre las propias (mismo id que la base): { hidden } la oculta y { color } la recolorea.
+ * Con includeHidden se incluyen las ocultas (para mostrar movimientos viejos y reservar sus nombres).
+ */
+function isBaseCategory(id, type) {
+  return (CATEGORIES[type] || []).some((b) => b.id === id);
+}
 function categoriesFor(type, custom = state.categories, includeHidden = false) {
   const base = CATEGORIES[type] || [];
-  const own = (custom && custom[type]) || [];
-  const hidden = new Set(own.filter((c) => c.hidden).map((c) => c.id));
-  const visibleBase = includeHidden ? base : base.filter((c, i) => i === base.length - 1 || !hidden.has(c.id));
-  return [...visibleBase.slice(0, -1), ...own.filter((c) => !c.hidden), ...visibleBase.slice(-1)];
+  const records = (custom && custom[type]) || [];
+  const marks = new Map(records.filter((c) => isBaseCategory(c.id, type)).map((c) => [c.id, c]));
+  const shown = base
+    .filter((c, i) => includeHidden || i === base.length - 1 || !(marks.get(c.id) || {}).hidden)
+    .map((c) => {
+      const m = marks.get(c.id);
+      return m && m.color ? { ...c, color: m.color } : c;
+    });
+  const own = records.filter((c) => !c.hidden && !marks.has(c.id));
+  return [...shown.slice(0, -1), ...own, ...shown.slice(-1)];
 }
 // Una categoría borrada sigue mostrando su nombre: su id es el nombre con que se creó.
 function getCategoryInfo(catId, type = "expense", custom = state.categories) {
@@ -503,7 +584,9 @@ function cssVar(name) {
 // No son ingresos ni gastos: las liquidaciones entre la pareja ("Saldar cuentas"), las transferencias
 // entre cuentas (p. ej. pagar la tarjeta) y las categorías marcadas "No sumar en totales".
 const isExcludedCategory = (t, custom) => !!getCategoryInfo(t.category, t.type, custom).excluded;
-const countsAsMoney = (t, custom) => t.kind !== "settlement" && t.kind !== "transfer" && !isExcludedCategory(t, custom);
+// El reflejo personal de un gasto del Hogar ("household") solo mueve tu cuenta: el gasto se cuenta en el Hogar.
+const countsAsMoney = (t, custom) =>
+  t.kind !== "settlement" && t.kind !== "transfer" && t.kind !== "household" && !isExcludedCategory(t, custom);
 
 function monthStats(ym, untilDay = 31, list = state.transactions, custom = state.categories) {
   let income = 0;
@@ -551,7 +634,7 @@ function applyThemePref(pref) {
   const theme = pref === "system" ? (darkQuery.matches ? "dark" : "light") : pref;
   const changed = document.documentElement.getAttribute("data-theme") !== theme;
   document.documentElement.setAttribute("data-theme", theme);
-  document.querySelector('meta[name="theme-color"]')?.setAttribute("content", theme === "dark" ? "#000000" : "#F2F2F7");
+  document.querySelector('meta[name="theme-color"]')?.setAttribute("content", theme === "dark" ? "#0A1414" : "#EEF4F3");
   const select = $("settings-theme");
   if (select) select.value = pref;
   if (changed && (charts.category || charts.trend)) resetCharts();
@@ -885,7 +968,7 @@ function openYearSummary() {
     const row = document.createElement("div");
     row.className = "list-row";
     row.innerHTML = `
-      <span class="row-icon" style="color:${c.color};background:${c.color}24"><span class="ms">${c.icon}</span></span>
+      ${rowIcon(c)}
       <span class="row-main">
         <span class="row-title">${escapeHtml(c.label)}</span>
         <span class="row-sub">${Math.round(share * 100)}% del gasto</span>
@@ -928,7 +1011,7 @@ function renderSummaryChart(months, stats) {
       labels,
       datasets: [
         { label: "Ingresos", data: data[0], backgroundColor: cssVar("--income"), borderRadius: 4, barPercentage: 0.8, categoryPercentage: 0.7 },
-        { label: "Gastos", data: data[1], backgroundColor: cssVar("--expense"), borderRadius: 4, barPercentage: 0.8, categoryPercentage: 0.7 }
+        { label: "Gastos", data: data[1], backgroundColor: cssVar("--spend"), borderRadius: 4, barPercentage: 0.8, categoryPercentage: 0.7 }
       ]
     },
     options: {
@@ -970,7 +1053,7 @@ function renderCategoryChart(stats) {
     ids = ["income", "expense"];
     labels = ["Ingresos", "Gastos"];
     data = [stats.income, stats.expense];
-    colors = [cssVar("--income"), cssVar("--expense")];
+    colors = [cssVar("--income"), cssVar("--spend")];
     const net = stats.income - stats.expense;
     center = ["Neto", (net > 0 ? "+" : "") + formatCompact(net)];
   } else {
@@ -1154,12 +1237,21 @@ function renderDashboard(stats) {
   if (inHousehold()) {
     // El Hogar no es una cuenta con saldo: lo útil es cuánto se ha gastado en común este mes.
     setAnimatedText($("total-balance"), formatMoney(stats.expense));
+    $("total-balance").classList.remove("positive", "negative");
+    renderBalanceSplit([], []);
     $("balance-label").textContent = `Gastos del Hogar · ${monthLabel(state.viewMonth, false).toLowerCase()}`;
   } else {
-    setAnimatedText($("total-balance"), formatMoney(personalBalance(endOfView, isCurrent)));
-    const inAccounts = isCurrent && activeAccounts().length;
-    $("balance-label").textContent = inAccounts
-      ? "Saldo en tus cuentas"
+    const balance = personalBalance(endOfView, isCurrent);
+    setAnimatedText($("total-balance"), formatMoney(balance));
+    $("total-balance").classList.toggle("positive", balance > 0);
+    $("total-balance").classList.toggle("negative", balance < 0);
+    const accounts = isCurrent ? activeAccounts() : [];
+    const cards = accounts.filter((a) => a.kind === "card");
+    renderBalanceSplit(accounts, cards);
+    $("balance-label").textContent = accounts.length
+      ? cards.length === accounts.length
+        ? "Deuda en tarjetas"
+        : "Saldo en tus cuentas"
       : isCurrent
         ? "Saldo"
         : `Saldo al cierre de ${monthLabel(state.viewMonth, false).toLowerCase()}`;
@@ -1171,12 +1263,27 @@ function renderDashboard(stats) {
   renderAllowance(stats, isCurrent);
   renderBudgetAlerts(stats);
   renderHouseholdBalance();
+  renderInbox();
   renderUpcoming(isCurrent);
   renderAccountsSection();
   renderGoalsSection();
   renderRecentTransactions();
   // Chart.js mide el canvas al crearse: solo dibujar con la pestaña visible.
   if ($("tab-dashboard").classList.contains("active")) renderCharts(stats);
+}
+
+/** "Disponible $X · Deudas −$Y" bajo el saldo, cuando sigues tarjetas y también otras cuentas. */
+function renderBalanceSplit(accounts, cards) {
+  const el = $("balance-split");
+  const show = cards.length > 0 && cards.length < accounts.length;
+  el.classList.toggle("hidden", !show);
+  if (!show) return;
+  const sum = (list) => roundMoney(list.reduce((s, a) => s + accountBalance(a), 0));
+  const available = sum(accounts.filter((a) => a.kind !== "card"));
+  const debt = -sum(cards);
+  el.innerHTML =
+    `<span class="${available < 0 ? "negative" : "positive"}">Disponible ${formatMoney(available)}</span>` +
+    `<span class="${debt > 0 ? "negative" : ""}">Deudas ${debt > 0 ? "−" : ""}${formatMoney(Math.abs(debt))}</span>`;
 }
 
 function renderComparison(stats, isCurrent) {
@@ -1331,6 +1438,21 @@ function txRow(t, showDate) {
     return el;
   }
 
+  if (t.kind === "household") {
+    // Pago de un gasto del Hogar con tu cuenta: se ve aquí, pero se edita desde el Hogar.
+    const account = accountInfo(t.method).name;
+    el.innerHTML = `
+      <span class="row-icon" style="color:var(--accent);background:var(--accent-tint)"><span class="ms">home</span></span>
+      <span class="row-main">
+        <span class="row-title">${escapeHtml(t.note || "Gasto del Hogar")}</span>
+        <span class="row-sub">${escapeHtml(["Hogar", account, date].filter(Boolean).join(" · "))}</span>
+      </span>
+      <span class="row-amount excluded">${formatMoney(t.amount)}</span>`;
+    el.onclick = () =>
+      showConfirmDialog("Gasto del Hogar", `Se edita desde el Hogar. ¿Quitar este pago de ${account}?`, () => deleteTransaction(t.id), "Quitar");
+    return el;
+  }
+
   if (t.kind === "transfer") {
     // Dinero que pasa de una cuenta a otra (pagar la tarjeta, ahorrar en una meta): no es gasto ni ingreso.
     const to = accountInfo(t.to);
@@ -1358,12 +1480,12 @@ function txRow(t, showDate) {
     ? `<span class="row-author" title="Registró ${escapeHtml(memberName(t.createdBy))}">${escapeHtml((authorInfo.name || "?").charAt(0).toUpperCase())}</span>`
     : "";
   el.innerHTML = `
-    <span class="row-icon" style="color:${cat.color};background:${cat.color}24"><span class="ms">${cat.icon}</span>${author}</span>
+    ${rowIcon(cat, brandFor(t.note) || catBrand(cat), author)}
     <span class="row-main">
       <span class="row-title">${escapeHtml(t.note || cat.label)}</span>
       <span class="row-sub">${sub}</span>
     </span>
-    <span class="row-amount ${cat.excluded ? "excluded" : t.type}">${repeat}${t.type === "income" && !cat.excluded ? "+" : ""}${formatMoney(t.amount)}</span>`;
+    <span class="row-amount ${cat.excluded ? "excluded" : t.type}">${repeat}${cat.excluded ? "" : t.type === "income" ? "+" : "−"}${formatMoney(t.amount)}</span>`;
   el.onclick = () => openTransactionModal(t.id);
   return el;
 }
@@ -1477,7 +1599,7 @@ function renderTransactionsList() {
   const filtered = state.transactions
     .filter((t) => {
       // Las transferencias no son ingresos ni gastos: solo aparecen en "Todos".
-      if (f.type !== "all" && (t.type !== f.type || t.kind === "transfer")) return false;
+      if (f.type !== "all" && (t.type !== f.type || t.kind === "transfer" || t.kind === "household")) return false;
       if (f.category !== "all" && t.category !== f.category) return false;
       if (!matchesDateFilter(t.date, f.date)) return false;
       if (q) {
@@ -1573,9 +1695,10 @@ function renderBudgetsList(stats) {
       const row = document.createElement("button");
       row.type = "button";
       row.className = `budget-row ${u.level}`;
+      row.style.setProperty("--c", info.color);
       row.innerHTML = `
         <div class="budget-top">
-          <span class="row-icon" style="color:${info.color};background:${info.color}24"><span class="ms">${info.icon}</span></span>
+          ${rowIcon(info)}
           <span class="row-main">
             <span class="row-title">${escapeHtml(info.label)}</span>
             <span class="row-sub">${formatMoney(u.spent)} de ${formatMoney(u.limit)}</span>
@@ -1651,7 +1774,8 @@ function renderCategoryGrid() {
     b.classList.toggle("active", on);
     b.setAttribute("aria-checked", String(on));
     b.style.setProperty("--c", c.color);
-    b.innerHTML = `<span class="cat-icon"><span class="ms">${c.icon}</span></span><span class="cat-label">${escapeHtml(c.label)}</span>`;
+    const brand = catBrand(c);
+    b.innerHTML = `${brand ? brandChip(brand, "cat-icon") : `<span class="cat-icon"><span class="ms">${c.icon}</span></span>`}<span class="cat-label">${escapeHtml(c.label)}</span>`;
     b.onclick = () => {
       txSheet.category = c.id;
       grid.querySelectorAll(".cat-btn").forEach((x) => {
@@ -1696,7 +1820,7 @@ function setTxType(type, keepCategory = false) {
   setSegmented($("tx-type"), type);
   const transfer = type === "transfer";
   $("tx-category-grid").classList.toggle("hidden", transfer);
-  $("tx-method-row").classList.toggle("hidden", transfer);
+  $("tx-method-row").classList.toggle("hidden", transfer || (inHousehold() && !accountsFor().some((a) => a.active)));
   $("tx-from-row").classList.toggle("hidden", !transfer);
   $("tx-to-row").classList.toggle("hidden", !transfer);
   const last = state.lastUsed[type] || {};
@@ -1724,6 +1848,9 @@ function openTransactionModal(editId = null, presetType = "expense", preset = {}
   $("transaction-form").reset();
   $("modal-title").textContent = tx ? "Editar movimiento" : "Nuevo movimiento";
   $("tx-delete-btn").classList.toggle("hidden", !tx);
+  const movable = !!tx && canMove(tx);
+  $("tx-move-btn").classList.toggle("hidden", !movable);
+  if (movable) $("tx-move-btn").textContent = inHousehold() ? "Mover a Personal" : `Mover a ${state.household.name || "Hogar"}`;
   $("tx-date").value = tx ? tx.date : todayISO();
   $("tx-amount").value = tx ? amountToInput(tx.amount) : "";
   $("tx-note").value = tx ? tx.note || "" : "";
@@ -1748,7 +1875,19 @@ function openTransactionModal(editId = null, presetType = "expense", preset = {}
     if ($("tx-from").value === preset.to) $("tx-from").selectedIndex = 0;
   }
   setupSplitFields(tx);
-  openModal("transaction-modal", tx ? null : "tx-amount");
+  setupPaidFrom(tx);
+  // Pago detectado: todo viene lleno, solo hay que revisar y guardar.
+  txSheet.inbox = preset.inbox || null;
+  if (preset.amount) $("tx-amount").value = amountToInput(preset.amount);
+  if (preset.date) $("tx-date").value = preset.date;
+  if (preset.note) $("tx-note").value = preset.note;
+  if (preset.method) setSelectValue($("tx-method"), preset.method);
+  if (preset.from) setSelectValue($("tx-from"), preset.from);
+  if (preset.category && txSheet.type !== "transfer" && categoriesFor(txSheet.type, state.categories, true).some((c) => c.id === preset.category)) {
+    txSheet.category = preset.category;
+    renderCategoryGrid();
+  }
+  openModal("transaction-modal", tx || preset.inbox ? null : "tx-amount");
 }
 
 /* --- Hogar: quién pagó y cómo se divide (parte de quien pagó, 0–100 %) --- */
@@ -1775,6 +1914,7 @@ function updateSplitLabels() {
   // Una transferencia no es un gasto común: no lleva quién pagó ni división.
   const income = txSheet.type === "income";
   const transfer = txSheet.type === "transfer";
+  updatePaidFromRow();
   $("tx-paidby-label").textContent = income ? "Recibió" : "Pagó";
   if (!inHousehold() || !partnerUid()) return;
   $("tx-paidby-row").classList.toggle("hidden", transfer);
@@ -1789,6 +1929,102 @@ function readSplitFields() {
   const v = $("tx-split").value;
   const share = v === "custom" ? Math.min(100, Math.max(0, Number($("tx-share").value) || 0)) : Number(v);
   return { paidBy, payerShare: share };
+}
+
+/* --- Hogar: gastos pagados con tus cuentas personales y mover entre espacios --- */
+
+const mirrorId = (id) => `hogar-${id}`;
+const isMine = (t) => !t.paidBy || (state.user && t.paidBy === state.user.uid);
+const personalTx = (id) => personalData().transactions.find((t) => t.id === id);
+
+/** Escribe (o borra, sin tx) en tu espacio personal aunque estés viendo el Hogar, que solo existe con la nube. */
+function personalWrite(id, tx = null) {
+  if (!isCloud()) return;
+  const ref = userRef().collection("transactions").doc(id);
+  cloudWrite(tx ? ref.set(tx) : ref.delete());
+}
+
+/**
+ * Reflejo personal de un gasto del Hogar que pagaste desde `account`: baja esa cuenta sin contarse
+ * como gasto personal. Sin cuenta (o si pagó tu pareja), se quita.
+ */
+function syncHouseholdMirror(tx, account) {
+  const id = mirrorId(tx.id);
+  const prev = personalTx(id);
+  if (account && tx.type === "expense" && !tx.kind && isMine(tx)) {
+    personalWrite(id, {
+      id,
+      kind: "household",
+      householdTx: tx.id,
+      type: "expense",
+      amount: tx.amount,
+      date: tx.date,
+      note: tx.note || getCategoryInfo(tx.category, tx.type).label,
+      category: tx.category,
+      method: account,
+      createdAt: prev ? prev.createdAt : tx.createdAt || Date.now()
+    });
+  } else if (prev) {
+    personalWrite(id);
+  }
+}
+
+/** "Salió de": tus cuentas personales activas, con la del reflejo ya elegida al editar. */
+function setupPaidFrom(tx) {
+  const select = $("tx-paidfrom");
+  select.innerHTML = "";
+  if (inHousehold()) {
+    select.appendChild(new Option("No registrar", ""));
+    accountsFor(personalData().accounts)
+      .filter((a) => a.active)
+      .forEach((a) => select.appendChild(new Option(a.name, a.id)));
+    const mirror = tx && personalTx(mirrorId(tx.id));
+    const value = mirror ? mirror.method : tx ? "" : state.lastUsed.paidFrom || "";
+    if (![...select.options].some((o) => o.value === value)) select.appendChild(new Option(value, value));
+    select.value = value;
+  }
+  updatePaidFromRow();
+}
+
+function updatePaidFromRow() {
+  const show =
+    inHousehold() &&
+    txSheet.type === "expense" &&
+    $("tx-paidfrom").options.length > 1 &&
+    (!partnerUid() || $("tx-paidby").value === state.user.uid);
+  $("tx-paidfrom-row").classList.toggle("hidden", !show);
+}
+
+/** Se mueven gastos e ingresos sueltos; no transferencias, pagos entre la pareja, reflejos ni recurrentes. */
+const canMove = (tx) => !!state.household && isCloud() && !tx.kind && !tx.recurring && !tx.recurringOf && (!inHousehold() || isMine(tx));
+
+/** Pasa un movimiento entre Personal y el Hogar sin cambiar el saldo de tus cuentas personales. */
+function moveTransaction() {
+  const tx = txSheet.editing;
+  if (!tx || !canMove(tx)) return;
+  closeModal("transaction-modal");
+  const plain = { ...tx };
+  ["paidBy", "payerShare", "createdBy", "updatedBy"].forEach((k) => delete plain[k]);
+  const toHousehold = !inHousehold();
+  if (toHousehold) {
+    const moved = { ...plain, paidBy: state.user.uid, payerShare: tx.type === "income" ? 100 : 50, createdBy: state.user.uid, updatedBy: state.user.uid };
+    cloudWrite(householdRef().collection("transactions").doc(tx.id).set(moved));
+    logActivity("add", moved);
+    // La cuenta personal con que se pagó queda como "Salió de": el saldo del banco no cambia.
+    const account = accountsFor().find((a) => a.active && a.id === tx.method);
+    syncHouseholdMirror(moved, account ? account.id : "");
+  } else {
+    const mirror = personalTx(mirrorId(tx.id));
+    personalWrite(tx.id, { ...plain, method: mirror ? mirror.method : tx.method });
+    if (mirror) personalWrite(mirror.id);
+  }
+  removeTransaction(tx.id);
+  haptic("success");
+  const target = toHousehold ? "household" : "personal";
+  showToast(toHousehold ? `Movido a ${state.household.name || "Hogar"}` : "Movido a Personal", "success", 5000, {
+    label: "Ver",
+    onClick: () => switchSpace(target)
+  });
 }
 
 /** Cuánto le debe tu pareja a ti (negativo: cuánto le debes tú). */
@@ -1892,6 +2128,12 @@ function saveTransaction(event) {
   state.lastUsed[txSheet.type] = transfer ? { from, to } : { category: tx.category, method: tx.method };
   lastChangedId = tx.id;
   upsertTransaction(tx);
+  if (txSheet.inbox) finishInboxItem(txSheet.inbox, tx);
+  if (inHousehold()) {
+    const from = $("tx-paidfrom-row").classList.contains("hidden") ? "" : $("tx-paidfrom").value;
+    syncHouseholdMirror(tx, from);
+    if (from) state.lastUsed.paidFrom = from;
+  }
   if (tx.recurring) materializeRecurring();
   closeModal("transaction-modal");
   haptic("success");
@@ -1923,10 +2165,14 @@ function deleteTransaction(id) {
       if (template) {
         upsertTransaction({ ...template, skipMonths: [...new Set([...(template.skipMonths || []), key])] }, false);
       }
+      // Borrar un gasto del Hogar también quita su pago reflejado en tu cuenta personal.
+      const mirror = inHousehold() ? personalTx(mirrorId(id)) : null;
+      if (mirror) personalWrite(mirror.id);
       removeTransaction(id);
       showToast("Movimiento eliminado", "info", 5000, {
         label: "Deshacer",
         onClick: () => {
+          if (mirror) personalWrite(mirror.id, mirror);
           if (template) {
             const t = state.transactions.find((x) => x.id === template.id);
             if (t) upsertTransaction({ ...t, skipMonths: (t.skipMonths || []).filter((m) => m !== key) }, false);
@@ -2067,7 +2313,8 @@ function deleteBudgetFromSheet() {
    Categorías propias (Ajustes → Categorías y "Nueva" en la hoja de registro)
    ========================================================================== */
 
-const catSheet = { type: "expense", editing: null, icon: CATEGORY_ICONS[0], color: CATEGORY_COLORS[6], fromTx: false };
+// look: "icon" | "brand" (pestaña elegida); base: editando una de la app (solo el color).
+const catSheet = { type: "expense", editing: null, icon: CATEGORY_ICONS[0], color: NEW_CATEGORY_COLOR, brand: "", look: "icon", base: false, fromTx: false, lookTouched: false };
 let categoriesListType = "expense";
 
 function openCategories() {
@@ -2080,37 +2327,51 @@ function openCategories() {
 function renderCategoriesList() {
   const box = $("categories-list");
   const type = categoriesListType;
-  const own = state.categories[type].filter((c) => !c.hidden);
+  const own = state.categories[type].filter((c) => !c.hidden && !isBaseCategory(c.id, type));
   box.innerHTML = "";
   if (!own.length) {
     box.innerHTML = emptyStateHTML("category", "Sin categorías propias", "Crea las que necesites, por ejemplo “Tarjeta de crédito”.");
   } else {
     box.appendChild(ownCategoriesGroup(own));
   }
-  // Las de la app no se editan, pero se pueden ocultar ("Otros" siempre queda).
+  // Las de la app: se les cambia el color y se pueden ocultar ("Otros" siempre queda).
   const title = document.createElement("h2");
   title.className = "group-title";
   title.textContent = "De la app";
   box.appendChild(title);
   const group = document.createElement("div");
   group.className = "list-group";
-  const hidden = new Map(state.categories[type].filter((c) => c.hidden).map((c) => [c.id, c]));
+  const shown = new Map(categoriesFor(type, state.categories, true).map((c) => [c.id, c]));
   CATEGORIES[type].slice(0, -1).forEach((c) => {
-    const row = document.createElement("label");
+    const mark = baseMark(type, c.id);
+    const cur = shown.get(c.id);
+    const row = document.createElement("div");
     row.className = "list-row";
     row.innerHTML = `
-      <span class="row-icon" style="color:${c.color};background:${c.color}24"><span class="ms">${c.icon}</span></span>
-      <span class="row-main"><span class="row-title">${escapeHtml(c.label)}</span></span>
-      <input type="checkbox" class="switch" aria-label="Mostrar ${escapeHtml(c.label)}" ${hidden.has(c.id) ? "" : "checked"}>`;
+      <button type="button" class="row-link">
+        ${rowIcon(cur)}
+        <span class="row-main"><span class="row-title">${escapeHtml(c.label)}</span></span>
+      </button>
+      <input type="checkbox" class="switch" aria-label="Mostrar ${escapeHtml(c.label)}" ${mark && mark.hidden ? "" : "checked"}>`;
+    row.querySelector(".row-link").onclick = () => openCategoryModal({ ...cur, type }, type);
     row.querySelector("input").onchange = (e) => {
-      if (e.target.checked) removeCategory(hidden.get(c.id));
-      else upsertCategory({ ref: `hide-${type}-${hashString(c.id)}`, id: c.id, type, label: c.label, hidden: true, createdAt: Date.now() });
+      const show = e.target.checked;
+      if (show && mark && !mark.color) removeCategory(mark);
+      else upsertCategory({ ...(mark || newBaseMark(type, c)), hidden: !show });
       haptic();
       renderCategoriesList();
     };
     group.appendChild(row);
   });
   box.appendChild(group);
+}
+
+/** Marcador de una categoría de la app (oculta o con otro color), si existe. */
+function baseMark(type, id) {
+  return state.categories[type].find((c) => c.id === id);
+}
+function newBaseMark(type, c) {
+  return { ref: `hide-${type}-${hashString(c.id)}`, id: c.id, type, label: c.label, hidden: false, color: "", createdAt: Date.now() };
 }
 
 function ownCategoriesGroup(own) {
@@ -2121,7 +2382,7 @@ function ownCategoriesGroup(own) {
     row.type = "button";
     row.className = "list-row";
     row.innerHTML = `
-      <span class="row-icon" style="color:${c.color};background:${c.color}24"><span class="ms">${c.icon}</span></span>
+      ${rowIcon(c)}
       <span class="row-main">
         <span class="row-title">${escapeHtml(c.label)}</span>
         ${c.excluded ? '<span class="row-sub">No suma en totales</span>' : ""}
@@ -2136,15 +2397,23 @@ function ownCategoriesGroup(own) {
 function openCategoryModal(cat = null, type = categoriesListType, fromTx = false) {
   catSheet.editing = cat;
   catSheet.type = cat ? cat.type : type;
+  catSheet.base = !!cat && isBaseCategory(cat.id, catSheet.type);
   catSheet.fromTx = fromTx;
   catSheet.icon = cat ? cat.icon : CATEGORY_ICONS[0];
-  catSheet.color = cat ? cat.color : CATEGORY_COLORS[6];
+  catSheet.color = cat ? cat.color : NEW_CATEGORY_COLOR;
+  catSheet.brand = (cat && cat.brand) || "";
+  catSheet.look = catSheet.brand ? "brand" : "icon";
+  catSheet.lookTouched = !!cat;
   $("category-form").reset();
-  $("category-title").textContent = cat ? "Editar categoría" : "Nueva categoría";
-  $("cat-type-note").textContent = catSheet.type === "income" ? "Categoría de ingreso" : "Categoría de gasto";
+  $("category-title").textContent = catSheet.base ? cat.label : cat ? "Editar categoría" : "Nueva categoría";
+  const kind = catSheet.type === "income" ? "ingreso" : "gasto";
+  $("cat-type-note").textContent = catSheet.base ? `Categoría de ${kind} de la app` : `Categoría de ${kind}`;
   $("cat-name").value = cat ? cat.label : "";
   $("cat-excluded").checked = !!(cat && cat.excluded);
-  $("cat-delete-btn").classList.toggle("hidden", !cat);
+  // De las de la app solo se cambia el color: su nombre e ícono son fijos.
+  ["cat-name-group", "cat-look", "cat-extra"].forEach((id) => $(id).classList.toggle("hidden", catSheet.base));
+  $("cat-delete-btn").classList.toggle("hidden", !cat || catSheet.base);
+  setSegmented($("cat-look-type"), catSheet.look);
   renderCategoryPickers();
   openModal("category-modal", cat ? null : "cat-name");
 }
@@ -2184,9 +2453,61 @@ function renderCategoryPickers() {
     },
     (icon) => {
       catSheet.icon = icon;
+      catSheet.lookTouched = true;
       updateCategoryPreview();
     }
   );
+  renderPicker(
+    $("cat-brands"),
+    BRANDS.map((b) => b.id),
+    catSheet.brand,
+    (b, id) => {
+      const brand = BRAND_BY_ID.get(id);
+      b.className = "pick-brand";
+      b.setAttribute("aria-label", brand.title);
+      b.innerHTML = brandChip(brand, "brand-chip");
+    },
+    (id) => {
+      catSheet.lookTouched = true;
+      pickBrand(BRAND_BY_ID.get(id));
+    }
+  );
+  renderColorPicker();
+}
+
+/** Elegir una marca: la categoría toma su nombre (si no tiene) y su color (si se distingue en pantalla). */
+function pickBrand(brand) {
+  catSheet.brand = brand.id;
+  if (!$("cat-name").value.trim()) $("cat-name").value = brand.title;
+  if (!isLightHex(brand.hex) && brand.hex.toUpperCase() !== "000000") {
+    catSheet.color = `#${brand.hex}`;
+    renderColorPicker();
+  }
+  updateCategoryPreview();
+}
+
+/** Al escribir el nombre de una categoría nueva, si es una marca conocida se propone su logo. */
+function suggestBrand() {
+  if (catSheet.base || catSheet.lookTouched) return;
+  const brand = brandFor($("cat-name").value);
+  if (brand && brand.id !== catSheet.brand) {
+    catSheet.look = "brand";
+    setSegmented($("cat-look-type"), "brand");
+    pickBrand(brand);
+    $("cat-brands").querySelectorAll("button").forEach((x, i) => {
+      const on = BRANDS[i].id === brand.id;
+      x.classList.toggle("active", on);
+      x.setAttribute("aria-checked", String(on));
+    });
+  } else if (!brand && catSheet.look === "brand") {
+    catSheet.look = "icon";
+    catSheet.brand = "";
+    setSegmented($("cat-look-type"), "icon");
+    updateCategoryPreview();
+  }
+}
+
+function renderColorPicker() {
   renderPicker(
     $("cat-colors"),
     CATEGORY_COLORS,
@@ -2204,10 +2525,13 @@ function renderCategoryPickers() {
 }
 
 function updateCategoryPreview() {
-  const preview = $("cat-preview");
-  preview.style.setProperty("--c", catSheet.color);
-  preview.querySelector(".ms").textContent = catSheet.icon;
+  const brand = catSheet.look === "brand" ? BRAND_BY_ID.get(catSheet.brand) : null;
+  $("cat-preview").outerHTML = brand
+    ? brandChip(brand, "cat-icon cat-preview").replace("<span ", '<span id="cat-preview" aria-hidden="true" ')
+    : `<span id="cat-preview" class="cat-icon cat-preview" aria-hidden="true" style="--c:${catSheet.color}"><span class="ms">${catSheet.icon}</span></span>`;
   $("cat-icons").style.setProperty("--c", catSheet.color);
+  $("cat-icons").classList.toggle("hidden", catSheet.look !== "icon");
+  $("cat-brands").classList.toggle("hidden", catSheet.look !== "brand");
 }
 
 function refreshCategoryViews() {
@@ -2223,6 +2547,7 @@ function saveCategory(event) {
     $("cat-name").focus();
     return;
   }
+  if (catSheet.base) return saveBaseCategory();
   const prev = catSheet.editing;
   const same = (s) => s.toLowerCase() === label.toLowerCase();
   if (categoriesFor(catSheet.type, state.categories, true).some((c) => c.ref !== (prev && prev.ref) && (same(c.label) || same(c.id)))) {
@@ -2237,11 +2562,28 @@ function saveCategory(event) {
     label,
     icon: catSheet.icon,
     color: catSheet.color,
+    brand: catSheet.look === "brand" ? catSheet.brand : "",
     excluded: $("cat-excluded").checked,
     createdAt: prev ? prev.createdAt : Date.now()
   };
   if (catSheet.fromTx && !prev) txSheet.category = cat.id;
   upsertCategory(cat);
+  closeModal("category-modal");
+  haptic("success");
+  refreshCategoryViews();
+}
+
+/** Color de una categoría de la app: se guarda en su marcador (el mismo que la oculta). */
+function saveBaseCategory() {
+  const type = catSheet.type;
+  const def = CATEGORIES[type].find((c) => c.id === catSheet.editing.id);
+  const mark = baseMark(type, def.id);
+  const color = catSheet.color.toUpperCase() === def.color.toUpperCase() ? "" : catSheet.color;
+  if (!color && !(mark && mark.hidden)) {
+    if (mark) removeCategory(mark);
+  } else {
+    upsertCategory({ ...(mark || newBaseMark(type, def)), color });
+  }
   closeModal("category-modal");
   haptic("success");
   refreshCategoryViews();
@@ -2323,9 +2665,9 @@ function upcomingItems() {
   accountsFor()
     .filter((a) => a.active && a.kind === "card" && a.dueDay)
     .forEach((a) => {
-      const debt = -accountBalance(a);
+      const pay = cardPayment(a);
       const due = nextDueDate(a.dueDay);
-      if (debt > 0 && due <= until) items.push({ date: due, card: a, amount: debt });
+      if (pay.left > 0 && due <= until) items.push({ date: due, card: a, amount: pay.left, partial: pay.paid > 0 });
     });
   return items.sort((a, b) => (a.date < b.date ? -1 : a.date > b.date ? 1 : 0)).slice(0, 6);
 }
@@ -2354,7 +2696,7 @@ function renderUpcoming(isCurrent) {
         <span class="row-icon" style="color:${it.card.color};background:${it.card.color}24"><span class="ms">credit_card</span></span>
         <span class="row-main">
           <span class="row-title">Pago ${escapeHtml(it.card.name)}</span>
-          <span class="row-sub">${escapeHtml(when)} · fecha límite</span>
+          <span class="row-sub">${escapeHtml(when)} · ${it.partial ? "falta por pagar" : it.card.monthlyPayment ? "cuota del mes" : "fecha límite"}</span>
         </span>
         <span class="row-amount debt">${formatMoney(it.amount)}</span>`;
       row.onclick = () => openAccountModal(it.card);
@@ -2362,15 +2704,14 @@ function renderUpcoming(isCurrent) {
       const t = it.tx;
       const transfer = t.kind === "transfer";
       const cat = getCategoryInfo(t.category, t.type);
-      const color = transfer ? "var(--accent)" : cat.color;
       const title = t.note || (transfer ? `${accountInfo(t.from).name} → ${accountInfo(t.to).name}` : cat.label);
       row.innerHTML = `
-        <span class="row-icon" style="color:${color};background:${transfer ? "var(--accent-tint)" : `${cat.color}24`}"><span class="ms">${transfer ? "swap_horiz" : cat.icon}</span></span>
+        ${transfer ? TRANSFER_ICON : rowIcon(cat, brandFor(t.note) || catBrand(cat))}
         <span class="row-main">
           <span class="row-title">${escapeHtml(title)}</span>
           <span class="row-sub">${escapeHtml(`${when} · ${RECURRING_LABELS[t.recurring].toLowerCase()}`)}</span>
         </span>
-        <span class="row-amount ${transfer ? "excluded" : t.type}">${t.type === "income" && !transfer ? "+" : ""}${formatMoney(t.amount)}</span>`;
+        <span class="row-amount ${transfer ? "excluded" : t.type}">${transfer ? "" : t.type === "income" ? "+" : "−"}${formatMoney(t.amount)}</span>`;
       row.onclick = () => openTransactionModal(t.id);
     }
     box.appendChild(row);
@@ -2419,17 +2760,21 @@ function accountRow(a) {
       amount = debt ? `−${formatMoney(debt)}` : formatMoney(0);
       amountClass = debt ? "debt" : "";
       sub = debt ? (a.dueDay ? dueLabel(a) : "Deuda actual") : "Sin deuda";
-      if (a.creditLimit) {
-        bar = Math.min(1, debt / a.creditLimit);
+      if (a.creditLimit) bar = Math.min(1, debt / a.creditLimit);
+      if (debt && a.monthlyPayment && a.dueDay) {
+        const pay = cardPayment(a);
+        sub = pay.left ? `${sub} · cuota ${formatMoney(pay.left)}` : "Cuota del mes pagada";
+      } else if (a.creditLimit) {
         sub += ` · cupo ${Math.round(bar * 100)}%`;
       }
     } else if (a.kind === "goal") {
       amount = formatMoney(bal);
+      amountClass = bal > 0 ? "income" : bal < 0 ? "debt" : "";
       bar = a.target ? Math.min(1, Math.max(0, bal / a.target)) : null;
       sub = goalSubtitle(a, bal);
     } else {
       amount = formatMoney(bal);
-      amountClass = bal < 0 ? "debt" : "";
+      amountClass = bal > 0 ? "income" : bal < 0 ? "debt" : "";
     }
   }
   row.innerHTML = `
@@ -2471,8 +2816,7 @@ function openAccountModal(a = null, kind = "bank") {
   $("account-form").reset();
   $("account-title").textContent = a ? (a.active ? a.name : `Activar ${a.name}`) : goal ? "Nueva meta" : "Nueva cuenta";
   $("acc-name").value = a ? a.name : "";
-  $("acc-name").disabled = !!accSheet.base;
-  $("acc-name").placeholder = goal ? "Viaje a la playa" : "Visa Bancolombia";
+  $("acc-name").placeholder = accSheet.base ? accSheet.base.name : goal ? "Viaje a la playa" : "Visa Bancolombia";
   $("acc-kind-row").classList.toggle("hidden", !!accSheet.base || goal);
   if (!goal) $("acc-kind").value = accSheet.kind;
 
@@ -2482,6 +2826,7 @@ function openAccountModal(a = null, kind = "bank") {
   $("acc-cutoff").value = (a && a.cutoffDay) || "";
   $("acc-due").value = (a && a.dueDay) || "";
   $("acc-limit").value = a && a.creditLimit ? amountToInput(a.creditLimit) : "";
+  $("acc-payment").value = a && a.monthlyPayment ? amountToInput(a.monthlyPayment) : "";
   $("acc-target").value = a && a.target ? amountToInput(a.target) : "";
   $("acc-deadline").value = (a && a.deadline) || "";
   document.querySelector(".acc-currency").textContent = getCurrencySymbol();
@@ -2515,7 +2860,7 @@ function saveAccount(event) {
   event.preventDefault();
   const prev = accSheet.editing;
   const kind = accSheet.kind;
-  const name = accSheet.base ? accSheet.base.name : $("acc-name").value.trim().replace(/\s+/g, " ");
+  const name = $("acc-name").value.trim().replace(/\s+/g, " ");
   if (!name) {
     showToast("Escribe un nombre", "warning");
     $("acc-name").focus();
@@ -2523,7 +2868,7 @@ function saveAccount(event) {
   }
   const same = (s) => String(s).toLowerCase() === name.toLowerCase();
   const others = [...accountsFor(), ...goalsFor(), OTHER_METHOD].filter((a) => !(prev && a.ref === prev.ref) && a !== accSheet.base && !(accSheet.base && a.id === accSheet.base.id));
-  if (!accSheet.base && others.some((a) => same(a.name) || same(a.id))) {
+  if (others.some((a) => same(a.name) || same(a.id))) {
     showToast("Ya existe una cuenta con ese nombre", "warning");
     return;
   }
@@ -2553,6 +2898,7 @@ function saveAccount(event) {
     cutoffDay: kind === "card" ? $("acc-cutoff").value : null,
     dueDay: kind === "card" ? $("acc-due").value : null,
     creditLimit: kind === "card" && $("acc-limit").value ? parseAmountInput($("acc-limit").value) : null,
+    monthlyPayment: kind === "card" && $("acc-payment").value ? parseAmountInput($("acc-payment").value) : null,
     target,
     deadline: kind === "goal" ? $("acc-deadline").value : null,
     createdAt: prev ? prev.createdAt : now
@@ -3492,8 +3838,8 @@ function refreshScheduledNotifications() {
       accountsFor(accounts)
         .filter((a) => a.active && a.kind === "card" && a.dueDay)
         .forEach((a) => {
-          const debt = -accountBalance(a, transactions);
-          if (debt <= 0) return;
+          const pay = cardPayment(a, transactions);
+          if (pay.left <= 0) return;
           const due = nextDueDate(a.dueDay);
           const slot = 400 + (hashString(a.id) % 20) * 2;
           [
@@ -3508,7 +3854,9 @@ function refreshScheduledNotifications() {
               ...base,
               id,
               title: daysBefore ? `${a.name}: pago en ${daysBefore} días` : `Hoy vence el pago de ${a.name}`,
-              body: `Debes ${formatMoney(debt)}. Regístralo con Transferir cuando pagues.`,
+              body: a.monthlyPayment
+                ? `Te toca pagar ${formatMoney(pay.left)} (debes ${formatMoney(pay.debt)} en total). Regístralo con Transferir cuando pagues.`
+                : `Debes ${formatMoney(pay.debt)}. Regístralo con Transferir cuando pagues.`,
               schedule: { at, allowWhileIdle: true },
               extra: { route: "dashboard" }
             });
@@ -3668,11 +4016,14 @@ function initLock() {
 let widgetTimer = null;
 function syncWidget() {
   const bridge = plugin("WidgetBridge");
-  if (!bridge) return;
+  const pay = PAY();
+  if (!bridge && !pay) return;
   clearTimeout(widgetTimer);
   widgetTimer = setTimeout(() => {
     const ym = monthKey(new Date());
     const data = personalData();
+    if (pay) pay.setContext({ json: JSON.stringify(paymentContext(data)) }).catch(() => {});
+    if (!bridge) return;
     const s = monthStats(ym, 31, data.transactions, data.categories);
     bridge
       .update({
@@ -3689,6 +4040,214 @@ function syncWidget() {
 }
 
 /* ==========================================================================
+   Pagos detectados (Android): avisos de Google Wallet y los bancos → "Por confirmar"
+   El lado nativo (PaymentListenerService) lee y guarda los avisos en el teléfono; aquí se
+   registran los confirmados y se revisan los pendientes. Nada de esto va a la nube.
+   ========================================================================== */
+
+let inbox = [];
+const PAY = () => (isNative ? plugin("PaymentInbox") : undefined);
+
+/** Lo que la tarjeta flotante necesita sin abrir la app: cuentas, categorías, formato del dinero y tu nombre. */
+function paymentContext(data) {
+  const cfg = CURRENCY_CONFIG[state.currency] || CURRENCY_CONFIG.COP;
+  const parts = new Intl.NumberFormat(cfg.locale, { style: "currency", currency: state.currency, minimumFractionDigits: 2 }).formatToParts(1234567.5);
+  const part = (type) => (parts.find((p) => p.type === type) || {}).value;
+  return {
+    accounts: accountsFor(data.accounts)
+      .filter((a) => a.active)
+      .map(({ id, name, kind }) => ({ id, name, kind })),
+    categories: ["expense", "income"].flatMap((type) =>
+      categoriesFor(type, data.categories, true).map((c) => ({ id: c.id, label: c.label, type }))
+    ),
+    money: {
+      symbol: part("currency") || "$",
+      group: part("group") || ".",
+      decimal: part("decimal") || ",",
+      decimals: cfg.fractionDigits,
+      after: parts.findIndex((p) => p.type === "currency") > parts.findIndex((p) => p.type === "integer")
+    },
+    ownName: (state.user && state.user.displayName) || ""
+  };
+}
+
+/** "TIENDA D1 ARMENIA MONT" → "Tienda D1 Armenia Mont". */
+function prettyMerchant(m = "") {
+  if (m !== m.toUpperCase()) return m;
+  return m
+    .split(/\s+/)
+    .map((w) => (w.length <= 2 || /\d/.test(w) ? w : w[0] + w.slice(1).toLowerCase()))
+    .join(" ");
+}
+
+/** Movimiento a partir de un pago detectado (id fijo: no se duplica), o null si falta elegir la cuenta. */
+function inboxToTx(it) {
+  const base = {
+    id: `auto-${it.id}`,
+    amount: roundMoney(Number(it.amount) || 0),
+    date: it.date,
+    note: prettyMerchant(it.merchant),
+    createdAt: it.time || Date.now()
+  };
+  if (!(base.amount > 0) || !/^\d{4}-\d{2}-\d{2}$/.test(it.date || "")) return null;
+  if (it.type === "transfer") {
+    if (!it.from || !it.to || it.from === it.to) return null;
+    return { ...base, kind: "transfer", type: "expense", from: it.from, to: it.to, method: it.from, category: "Transferencia" };
+  }
+  if (!it.account) return null;
+  return { ...base, type: it.type === "income" ? "income" : "expense", category: it.category || "Otros", method: it.account };
+}
+
+/** Registra los pagos confirmados con la app cerrada y trae los pendientes. */
+async function loadInbox() {
+  const pay = PAY();
+  if (!pay) return;
+  const { items = [] } = (await pay.getQueue().catch(() => null)) || {};
+  const done = [];
+  items.forEach((it) => {
+    const tx = it.status === "confirmed" ? inboxToTx(it) : null;
+    if (!tx) return;
+    // Los pagos detectados son tuyos: van al espacio personal aunque estés viendo el Hogar.
+    if (state.space === "personal") upsertTransaction(tx, false);
+    else personalWrite(tx.id, tx);
+    done.push(it.id);
+  });
+  if (done.length) {
+    await pay.remove({ ids: done }).catch(() => {});
+    commit();
+    showToast(done.length === 1 ? "Pago registrado" : `${done.length} pagos registrados`, "success");
+  }
+  inbox = items.filter((it) => !done.includes(it.id)).sort((a, b) => (b.time || 0) - (a.time || 0));
+  renderInbox();
+}
+
+function renderInbox() {
+  const show = inbox.length > 0 && state.space === "personal";
+  $("inbox-section").classList.toggle("hidden", !show);
+  const box = $("inbox-list");
+  box.innerHTML = "";
+  if (!show) return;
+  inbox.forEach((it) => {
+    const transfer = it.type === "transfer";
+    const cat = transfer ? null : getCategoryInfo(it.category, it.type);
+    const name = (id, fallback) => (id ? accountInfo(id).name : fallback || "?");
+    const account = transfer ? `${name(it.from, "Elegir cuenta")} → ${name(it.to, it.toKey)}` : name(it.account, it.cardKey);
+    const row = document.createElement("div");
+    row.className = "list-row inbox-row";
+    row.innerHTML = `
+      <button type="button" class="inbox-open">
+        ${transfer ? TRANSFER_ICON : rowIcon(cat, brandFor(prettyMerchant(it.merchant)) || catBrand(cat))}
+        <span class="row-main">
+          <span class="row-title">${escapeHtml(prettyMerchant(it.merchant) || "Pago")}</span>
+          <span class="row-sub">${escapeHtml([formatDateFriendly(it.date), account].join(" · "))}</span>
+        </span>
+        <span class="row-amount ${transfer ? "excluded" : it.type}">${transfer ? "" : it.type === "income" ? "+" : "−"}${formatMoney(roundMoney(Number(it.amount) || 0))}</span>
+      </button>
+      <button type="button" class="icon-btn plain inbox-ignore" aria-label="Ignorar"><span class="ms">close</span></button>`;
+    row.querySelector(".inbox-open").onclick = () => openInboxItem(it);
+    row.querySelector(".inbox-ignore").onclick = () => ignoreInboxItem(it);
+    box.appendChild(row);
+  });
+}
+
+/** Abre la hoja de movimiento ya llena con el pago detectado. */
+function openInboxItem(it) {
+  if (state.space !== "personal") switchSpace("personal");
+  const type = it.type === "transfer" ? "transfer" : it.type === "income" ? "income" : "expense";
+  openTransactionModal(null, type, {
+    amount: roundMoney(Number(it.amount) || 0),
+    date: it.date,
+    note: prettyMerchant(it.merchant),
+    category: it.category,
+    method: it.account,
+    from: it.from,
+    to: it.to,
+    inbox: it
+  });
+}
+
+function reviewInboxItem(id) {
+  switchTab("dashboard");
+  if (state.space !== "personal") switchSpace("personal");
+  loadInbox().then(() => {
+    const it = inbox.find((x) => x.id === id);
+    if (it) openInboxItem(it);
+  });
+}
+
+/** Al guardar desde "Por confirmar": sale de la cola y la app aprende la cuenta de la tarjeta y la categoría del comercio. */
+function finishInboxItem(it, tx) {
+  inbox = inbox.filter((x) => x.id !== it.id);
+  renderInbox();
+  const pay = PAY();
+  if (!pay) return;
+  pay.remove({ ids: [it.id] }).catch(() => {});
+  const links = {};
+  if (tx.kind === "transfer") {
+    if (it.toKey) links[it.toKey] = tx.to;
+    if (it.fromKey) links[it.fromKey] = tx.from;
+  } else if (it.cardKey) {
+    links[it.cardKey] = tx.method;
+  }
+  pay.learn({ merchant: tx.kind === "transfer" ? "" : it.merchant, category: tx.category, links }).catch(() => {});
+}
+
+function ignoreInboxItem(it) {
+  const pay = PAY();
+  if (!pay) return;
+  inbox = inbox.filter((x) => x.id !== it.id);
+  renderInbox();
+  haptic();
+  pay.remove({ ids: [it.id] }).catch(() => {});
+  showToast("Pago ignorado", "info", 5000, {
+    label: "Deshacer",
+    onClick: () => pay.restore({ item: it }).then(loadInbox).catch(() => {})
+  });
+}
+
+/** Ajustes → Detectar pagos: interruptor y los dos permisos del sistema. */
+function initPaymentDetect() {
+  const pay = PAY();
+  $("paydetect-group").classList.toggle("hidden", !pay);
+  if (!pay) return;
+  const input = $("paydetect-enabled");
+  input.onchange = async () => {
+    await pay.setEnabled({ enabled: input.checked }).catch(() => {});
+    const st = await refreshPayDetect();
+    if (input.checked && st && !st.listener) {
+      showToast("Busca FinanFlow en la lista y activa el acceso", "info", 5000);
+      pay.openListenerSettings().catch(() => {});
+    }
+  };
+  $("paydetect-listener").onclick = () => pay.openListenerSettings().catch(() => {});
+  $("paydetect-overlay").onclick = () => pay.openOverlaySettings().catch(() => {});
+  pay.addListener("queueChanged", () => loadInbox());
+  syncWidget(); // envía cuentas y categorías para la tarjeta flotante
+  refreshPayDetect();
+  loadInbox();
+}
+
+async function refreshPayDetect() {
+  const pay = PAY();
+  if (!pay) return null;
+  const st = await pay.status().catch(() => null);
+  if (!st) return null;
+  $("paydetect-enabled").checked = !!st.enabled;
+  [
+    ["listener", st.listener, "Necesario para leer los avisos de pago"],
+    ["overlay", st.overlay, "Para la tarjeta al pagar; sin esto llega como notificación"]
+  ].forEach(([key, ok, missing]) => {
+    $(`paydetect-${key}`).classList.toggle("hidden", !st.enabled);
+    $(`paydetect-${key}-sub`).textContent = ok ? "Activado" : missing;
+    $(`paydetect-${key}-sub`).classList.toggle("warn", !ok);
+  });
+  const seen = (st.sources || []).length ? ` Detectadas: ${st.sources.join(", ")}.` : "";
+  $("paydetect-note").textContent =
+    "Lee solo los avisos de Google Wallet, Nu, Rappi, Davivienda y Nequi, y nada sale de tu celular. Ningún pago se registra sin que lo confirmes." + seen;
+  return st;
+}
+
+/* ==========================================================================
    Android: botón Atrás, App Shortcuts / deep links
    ========================================================================== */
 
@@ -3696,6 +4255,7 @@ function handleDeepLink(url) {
   if (!url) return;
   const match = url.match(/finanflow:\/\/action\/([\w-]+)/) || url.match(/[?&]action=([\w-]+)/);
   if (!match) return;
+  if (match[1] === "review") return reviewInboxItem((url.match(/[?&]id=([\w-]+)/) || [])[1]);
   const routes = { "add-expense": "add", "view-balance": "dashboard", "view-history": "history" };
   routeTo(routes[match[1]]);
 }
@@ -3920,7 +4480,7 @@ function exportDataCSV(list = state.transactions, name = `finanflow-${todayISO()
     .map((t) =>
       (t.kind === "transfer"
         ? [t.date, "Transferencia", `${accountInfo(t.from).name} → ${accountInfo(t.to).name}`, t.amount, accountInfo(t.from).name, t.note]
-        : [t.date, t.type === "income" ? "Ingreso" : "Gasto", getCategoryInfo(t.category, t.type).label, t.amount, accountInfo(t.method).name, t.note]
+        : [t.date, t.kind === "household" ? "Pago del Hogar" : t.type === "income" ? "Ingreso" : "Gasto", getCategoryInfo(t.category, t.type).label, t.amount, accountInfo(t.method).name, t.note]
       )
         .map(esc)
         .join(",")
@@ -4038,9 +4598,17 @@ function bindUI() {
   $("transaction-form").addEventListener("submit", saveTransaction);
   $("budget-form").addEventListener("submit", saveBudget);
   $("tx-delete-btn").onclick = deleteFromSheet;
+  $("tx-move-btn").onclick = moveTransaction;
+  $("tx-paidby").onchange = updateSplitLabels;
   $("budget-delete-btn").onclick = deleteBudgetFromSheet;
   $("category-form").addEventListener("submit", saveCategory);
   $("cat-delete-btn").onclick = deleteCategoryFromSheet;
+  $("cat-name").addEventListener("input", suggestBrand);
+  setupSegmented($("cat-look-type"), (look) => {
+    catSheet.look = look;
+    catSheet.lookTouched = true;
+    updateCategoryPreview();
+  });
   $("categories-add-btn").onclick = () => openCategoryModal(null, categoriesListType);
   $("account-form").addEventListener("submit", saveAccount);
   $("range-form").addEventListener("submit", applyRange);
@@ -4147,6 +4715,8 @@ function bindUI() {
     render();
     refreshScheduledNotifications();
     syncWidget();
+    loadInbox();
+    refreshPayDetect();
   });
 }
 
@@ -4163,6 +4733,7 @@ function init() {
   initNative();
   initLock();
   initNotifications();
+  initPaymentDetect();
   handleDeepLink(location.href);
   checkBudgetAlerts();
   syncWidget();

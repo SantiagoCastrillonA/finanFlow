@@ -19,7 +19,8 @@ if (!existsSync("android/keystore.properties")) {
     if (studioJdk) env.JAVA_HOME = studioJdk;
   }
   run("npx cap sync android");
-  const gradlew = process.platform === "win32" ? "gradlew.bat" : "./gradlew";
+  // Con ruta: cmd.exe no siempre busca en la carpeta actual.
+  const gradlew = process.platform === "win32" ? ".\\gradlew.bat" : "./gradlew";
   run(`${gradlew} assembleRelease`, { cwd: "android", env });
 
   const version = JSON.parse(readFileSync("package.json", "utf8")).version;

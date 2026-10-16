@@ -21,4 +21,12 @@
         <!-- Android 12+: fondo índigo para que el ícono de barras se funda con la pantalla de carga -->
         <item name="windowSplashScreenBackground">@color/ic_launcher_background</item>
     </style>
+
+    <!-- Tarjeta flotante de pago detectado: ventana translúcida arriba, sin oscurecer lo de atrás. -->
+    <style name="PaymentPrompt" parent="@android:style/Theme.Translucent.NoTitleBar">
+        <item name="android:windowIsFloating">true</item>
+        <item name="android:backgroundDimEnabled">false</item>
+        <item name="android:windowCloseOnTouchOutside">false</item>
+        <item name="android:windowSoftInputMode">stateAlwaysHidden</item>
+    </style>
 </resources>

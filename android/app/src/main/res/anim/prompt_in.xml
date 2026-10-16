@@ -1,0 +1,8 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- La tarjeta de pago baja desde arriba. -->
+<set xmlns:android="http://schemas.android.com/apk/res/android" android:shareInterpolator="false">
+    <translate android:fromYDelta="-120%" android:toYDelta="0" android:duration="420"
+        android:interpolator="@interpolator/ease_drawer" />
+    <alpha android:fromAlpha="0" android:toAlpha="1" android:duration="200"
+        android:interpolator="@interpolator/ease_out" />
+</set>

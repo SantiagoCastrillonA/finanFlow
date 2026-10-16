@@ -16,10 +16,12 @@ chevron_right
 child_care
 chips
 circle
+close
 cloud
 cloud_done
 cloud_off
 cloud_sync
+contactless
 contrast
 create
 credit_card
@@ -51,6 +53,7 @@ join
 key
 label
 laptop_mac
+layers
 light
 local_cafe
 local_gas_station

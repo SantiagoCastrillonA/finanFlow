@@ -6,7 +6,7 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
   <title>FinanFlow</title>
   <meta name="description" content="Control de gastos personal: rápido, privado y sin conexión.">
-  <meta name="theme-color" content="#000000">
+  <meta name="theme-color" content="#0A1414">
   <meta name="color-scheme" content="dark light">
   <meta name="apple-mobile-web-app-capable" content="yes">
   <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
@@ -76,19 +76,20 @@
         <div id="balance-card" class="card balance-card">
           <span id="balance-label" class="caption">Saldo</span>
           <div id="total-balance" class="balance-amount">$ 0</div>
+          <p id="balance-split" class="balance-split hidden"></p>
           <div class="month-totals">
             <div class="month-total">
               <span class="total-icon income"><span class="ms">arrow_downward</span></span>
               <div>
                 <span class="caption">Ingresos</span>
-                <span id="total-incomes" class="total-value">$ 0</span>
+                <span id="total-incomes" class="total-value income">$ 0</span>
               </div>
             </div>
             <div class="month-total">
               <span class="total-icon expense"><span class="ms">arrow_upward</span></span>
               <div>
                 <span class="caption">Gastos</span>
-                <span id="total-expenses" class="total-value">$ 0</span>
+                <span id="total-expenses" class="total-value expense">$ 0</span>
               </div>
             </div>
           </div>
@@ -107,6 +108,14 @@
         </div>
 
         <div id="budget-alerts" class="alerts hidden"></div>
+
+        <!-- Android: pagos detectados en los avisos de Wallet y los bancos, esperando confirmación -->
+        <div id="inbox-section" class="hidden">
+          <div class="section-header">
+            <h2>Por confirmar</h2>
+          </div>
+          <div id="inbox-list" class="list-group"></div>
+        </div>
 
         <!-- Recurrentes y pagos de tarjeta de los próximos 7 días (solo en el mes actual) -->
         <div id="upcoming-section" class="hidden">
@@ -306,6 +315,35 @@
             antes y el día del pago, solo si tienes deuda.</p>
         </div>
 
+        <!-- Solo en la app de Android: detectar pagos en los avisos de Google Wallet y los bancos -->
+        <div id="paydetect-group" class="hidden">
+          <h2 class="group-title">Detectar pagos</h2>
+          <div class="list-group">
+            <label class="setting-row">
+              <span class="setting-icon" style="background:#5E5CE6"><span class="ms">contactless</span></span>
+              <span class="setting-label">Registrar al pagar</span>
+              <input type="checkbox" id="paydetect-enabled" class="switch">
+            </label>
+            <button type="button" id="paydetect-listener" class="setting-row hidden">
+              <span class="setting-icon" style="background:#FF9F0A"><span class="ms">notifications</span></span>
+              <span class="setting-text">
+                <span class="setting-label">Acceso a notificaciones</span>
+                <span id="paydetect-listener-sub" class="setting-sub"></span>
+              </span>
+              <span class="ms chevron">chevron_right</span>
+            </button>
+            <button type="button" id="paydetect-overlay" class="setting-row hidden">
+              <span class="setting-icon" style="background:#0A84FF"><span class="ms">layers</span></span>
+              <span class="setting-text">
+                <span class="setting-label">Mostrar sobre otras apps</span>
+                <span id="paydetect-overlay-sub" class="setting-sub"></span>
+              </span>
+              <span class="ms chevron">chevron_right</span>
+            </button>
+          </div>
+          <p id="paydetect-note" class="footnote"></p>
+        </div>
+
         <!-- Solo en la app de Android -->
         <div id="security-group" class="hidden">
           <h2 class="group-title">Seguridad</h2>
@@ -379,7 +417,7 @@
           </button>
         </div>
 
-        <p class="app-version">FinanFlow 0.7.0 · Tus datos son tuyos</p>
+        <p class="app-version">FinanFlow 0.10.0 · Tus datos son tuyos</p>
       </section>
     </main>
 
@@ -481,6 +519,14 @@
             <span class="share-input"><input type="number" id="tx-share" min="0" max="100" step="5" inputmode="numeric"
                 value="50"> %</span>
           </label>
+          <!-- Hogar: de cuál de tus cuentas personales salió (baja su saldo sin contarse como gasto personal) -->
+          <label id="tx-paidfrom-row" class="form-row hidden">
+            <span>Salió de</span>
+            <span class="select-inline">
+              <select id="tx-paidfrom"></select>
+              <span class="ms">unfold_more</span>
+            </span>
+          </label>
           <label class="form-row">
             <span>Nota</span>
             <input type="text" id="tx-note" placeholder="Opcional" maxlength="80" enterkeyhint="done">
@@ -502,6 +548,7 @@
           movimiento recurrente.</p>
 
         <button type="submit" class="btn-primary full">Guardar</button>
+        <button type="button" id="tx-move-btn" class="btn-plain full hidden">Mover al Hogar</button>
         <button type="button" id="tx-delete-btn" class="btn-plain destructive full hidden">Eliminar movimiento</button>
       </form>
     </div>
@@ -593,7 +640,7 @@
       <button type="button" id="categories-add-btn" class="btn-tinted full">
         <span class="ms">add</span> Nueva categoría
       </button>
-      <p class="footnote">Las de la app no se editan, pero puedes ocultar las que no uses: tus movimientos viejos las
+      <p class="footnote">Toca una de la app para cambiar su color, u ocúltala si no la usas: tus movimientos viejos la
         siguen mostrando. En el Hogar, las categorías se comparten con tu pareja.</p>
     </div>
   </div>
@@ -726,6 +773,10 @@
             <span>Cupo</span>
             <input type="text" id="acc-limit" inputmode="decimal" placeholder="Opcional" enterkeyhint="done">
           </label>
+          <label class="form-row">
+            <span>Cuota del mes</span>
+            <input type="text" id="acc-payment" inputmode="decimal" placeholder="Opcional" enterkeyhint="done">
+          </label>
         </div>
         <div id="acc-goal-fields" class="list-group form-group hidden">
           <label class="form-row">
@@ -763,22 +814,31 @@
           <span id="cat-preview" class="cat-icon cat-preview" aria-hidden="true"><span class="ms">credit_card</span></span>
           <span id="cat-type-note" class="footnote">Categoría de gasto</span>
         </div>
-        <div class="list-group form-group">
+        <div id="cat-name-group" class="list-group form-group">
           <label class="form-row">
             <span>Nombre</span>
             <input type="text" id="cat-name" placeholder="Tarjeta de crédito" maxlength="24" enterkeyhint="done">
           </label>
         </div>
         <div id="cat-colors" class="color-picker" role="radiogroup" aria-label="Color"></div>
-        <div id="cat-icons" class="icon-picker" role="radiogroup" aria-label="Ícono"></div>
-        <div class="list-group form-group">
-          <label class="form-row">
-            <span>No sumar en totales</span>
-            <input type="checkbox" id="cat-excluded" class="switch">
-          </label>
+        <div id="cat-look">
+          <div id="cat-look-type" class="segmented" aria-label="Ícono o marca">
+            <button data-value="icon">Ícono</button>
+            <button data-value="brand">Marca</button>
+          </div>
+          <div id="cat-icons" class="icon-picker" role="radiogroup" aria-label="Ícono"></div>
+          <div id="cat-brands" class="icon-picker brand-picker hidden" role="radiogroup" aria-label="Marca"></div>
         </div>
-        <p class="footnote">Actívalo para pagos de tarjeta o pasar plata entre tus cuentas: si ya registraste cada
-          compra, el pago no se cuenta dos veces.</p>
+        <div id="cat-extra">
+          <div class="list-group form-group">
+            <label class="form-row">
+              <span>No sumar en totales</span>
+              <input type="checkbox" id="cat-excluded" class="switch">
+            </label>
+          </div>
+          <p class="footnote">Actívalo para pagos de tarjeta o pasar plata entre tus cuentas: si ya registraste cada
+            compra, el pago no se cuenta dos veces.</p>
+        </div>
         <button type="submit" class="btn-primary full">Guardar</button>
         <button type="button" id="cat-delete-btn" class="btn-plain destructive full hidden">Eliminar categoría</button>
       </form>
@@ -890,6 +950,7 @@
   <script src="vendor/firebase/firebase-app-compat.js"></script>
   <script src="vendor/firebase/firebase-firestore-compat.js"></script>
   <script src="vendor/firebase/firebase-auth-compat.js"></script>
+  <script src="vendor/brands.js"></script>
   <script src="app.js"></script>
 </body>
 

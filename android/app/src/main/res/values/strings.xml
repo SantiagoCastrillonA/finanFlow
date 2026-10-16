@@ -17,4 +17,5 @@
     <string name="widget_expense_label">Gastos</string>
     <string name="widget_add">Agregar gasto</string>
     <string name="widget_stale">Abre FinanFlow para actualizar</string>
+    <string name="payment_listener_label">FinanFlow: detectar pagos</string>
 </resources>

@@ -45,6 +45,28 @@
                 android:resource="@xml/widget_balance_info" />
         </receiver>
 
+        <!-- Pagos detectados: lee solo los avisos de Google Wallet y los bancos (ver PaymentParser). -->
+        <service
+            android:name=".PaymentListenerService"
+            android:label="@string/payment_listener_label"
+            android:permission="android.permission.BIND_NOTIFICATION_LISTENER_SERVICE"
+            android:exported="true">
+            <intent-filter>
+                <action android:name="android.service.notification.NotificationListenerService" />
+            </intent-filter>
+        </service>
+
+        <activity
+            android:name=".PaymentPromptActivity"
+            android:theme="@style/PaymentPrompt"
+            android:taskAffinity="com.finanflow.app.payment"
+            android:launchMode="singleTask"
+            android:excludeFromRecents="true"
+            android:configChanges="orientation|screenSize|screenLayout|smallestScreenSize|uiMode"
+            android:exported="false" />
+
+        <receiver android:name=".PaymentActionReceiver" android:exported="false" />
+
         <provider
             android:name="androidx.core.content.FileProvider"
             android:authorities="${applicationId}.fileprovider"
@@ -59,4 +81,6 @@
     <!-- Permissions -->
 
     <uses-permission android:name="android.permission.INTERNET" />
+    <!-- Tarjeta flotante de pago detectado sobre otras apps (el usuario la autoriza en Ajustes). -->
+    <uses-permission android:name="android.permission.SYSTEM_ALERT_WINDOW" />
 </manifest>

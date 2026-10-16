@@ -1,15 +1,31 @@
-# FinanFlow - Control de Gastos Personales
+# FinanFlow
 
-> **Version:** 0.7.0  
-> **Privacidad 100% garantizada** | **Funciona sin conexión** | **Sincronización opcional con Google Cloud**
+**Tu plata, clara y en tu bolsillo.** FinanFlow es una app gratuita para llevar tus gastos, ingresos, cuentas y tarjetas sin complicarte: anotas un gasto en dos toques y en un vistazo sabes cuánto tienes, cuánto debes y cuánto puedes gastar al día lo que queda del mes.
 
-FinanFlow es una aplicación móvil de control de gastos e ingresos personales, con un diseño sobrio inspirado en iOS. Funciona como **PWA** (Progressive Web App) y como **aplicación nativa Android** mediante [Capacitor](https://capacitorjs.com/).
+> **Versión:** 0.10.0 · Android y web (iPhone como app web) · En español · Sin anuncios · Funciona sin conexión
 
----
+<p align="center">
+  <img src="docs/screenshots/inicio.jpg" width="200" alt="Inicio: saldo, disponible y deudas, ingresos y gastos del mes">
+  <img src="docs/screenshots/historial.jpg" width="200" alt="Historial con los logos de Netflix, Spotify, Rappi y DiDi">
+  <img src="docs/screenshots/limites.jpg" width="200" alt="Límites mensuales con el color de cada categoría">
+  <img src="docs/screenshots/categoria.jpg" width="200" alt="Crear una categoría con el logo de una marca">
+</p>
 
-## Qué es FinanFlow
+## Descargar
 
-FinanFlow te permite llevar un registro de tus finanzas de forma **rápida, privada y sin complicaciones**. Todos tus datos se guardan localmente en tu dispositivo y, si lo deseas, puedes sincronizarlos con **Google Cloud (Firebase)** para usarlos en cualquier dispositivo.
+- **Android:** descarga `FinanFlow-<versión>.apk` desde la [última versión](https://github.com/SantiagoCastrillonA/finanFlow/releases/latest), ábrelo en el celular y permite "instalar apps desconocidas" la primera vez. Para actualizar, instala el APK nuevo encima: tus datos se conservan.
+- **iPhone o computador:** abre [finanflow-32cae.web.app](https://finanflow-32cae.web.app). En el iPhone, desde Safari: **Compartir → Agregar a inicio**.
+
+## ¿Para qué sirve?
+
+- **Saber en qué se te va la plata.** Cada gasto queda con su categoría (y el logo de la marca: Netflix, Rappi, Uber, D1…). La dona y el resumen del año muestran dónde más gastas.
+- **No pasarte del presupuesto.** Pones un límite por categoría y la app te avisa al 80% y al 100%; en Inicio ves cuánto puedes gastar al día el resto del mes.
+- **Tener tus cuentas y tarjetas al día.** Efectivo, banco, Nequi y tarjetas de crédito con su saldo o deuda, la cuota del mes y un aviso antes de la fecha de pago.
+- **Registrar sin escribir (Android).** Cuando pagas con Google Wallet, Nu, Rappi, Davivienda o Nequi, aparece una tarjeta con el comercio y el monto: un toque y queda guardado.
+- **Llevar los gastos de la casa en pareja.** Un espacio "Hogar" compartido, separado de tus gastos personales, que dice quién pagó y quién le debe a quién.
+- **Ahorrar para algo.** Metas con cuánto llevas, cuánto falta y cuánto apartar al mes.
+
+**Tus datos son tuyos:** se guardan en tu teléfono. La sincronización con tu cuenta de Google es opcional, y el texto de las notificaciones que lee la app nunca sale del celular.
 
 ---
 
@@ -17,16 +33,19 @@ FinanFlow te permite llevar un registro de tus finanzas de forma **rápida, priv
 
 ### Registro en segundos
 - **Agregar en dos toques:** monto → categoría (cuadrícula con íconos) → Guardar. La app recuerda la última categoría y método usados.
-- **Categorías propias:** crea las tuyas (nombre, ícono y color) desde la casilla **Nueva** o en Ajustes → Categorías. Las marcadas **"No sumar en totales"** (p. ej. el pago de la tarjeta de crédito) no cuentan como gasto ni ingreso.
+- **Categorías propias:** crea las tuyas (nombre, ícono o logo de marca, y color) desde la casilla **Nueva** o en Ajustes → Categorías. Las marcadas **"No sumar en totales"** (p. ej. el pago de la tarjeta de crédito) no cuentan como gasto ni ingreso.
 - **Monto con separador de miles** mientras escribes (`3.200.000`).
 - **Movimientos recurrentes:** repite un ingreso, gasto o transferencia cada mes, cada quincena (15 y fin de mes) o cada semana (salario, arriendo, suscripciones, ahorro) y se crea solo.
 - **Próximos 7 días:** en Inicio, los recurrentes que vienen y los pagos de tarjeta pendientes.
-- **Ocultar categorías** de la app que no uses (Ajustes → Categorías).
+- **Ocultar categorías** de la app que no uses o cambiarles el color (Ajustes → Categorías).
+- **Logos de marcas:** si la nota o el comercio dice Netflix, Spotify, Rappi, Uber, D1, Claro… la fila muestra su logo (77 marcas, guardadas en el teléfono; sin conexión).
+- **Límites con color:** cada tarjeta lleva el color de su categoría; ámbar cerca del límite y rojo al superarlo.
 - **Editar y borrar estilo iOS:** toca un movimiento para editarlo; al borrarlo puedes **Deshacer**.
 
 ### Cuentas, tarjetas y metas
 - **Cuentas y tarjetas** (Ajustes → Cuentas y tarjetas): activa Efectivo, tu banco o tu tarjeta de crédito con su saldo o deuda actual, o crea las tuyas. Cada movimiento indica de qué cuenta salió.
-- **Tarjeta de crédito:** cuánto debes, cupo usado y fecha de pago, con aviso 3 días antes (Android).
+- **Tarjeta de crédito:** cuánto debes, cupo usado y fecha de pago, con aviso 3 días antes (Android). Con **Cuota del mes**, Próximos 7 días y el aviso muestran lo que te toca pagar (y lo que falta si ya abonaste).
+- **Colores claros:** lo disponible en verde y las deudas en rojo, con el desglose "Disponible · Deudas" bajo el saldo. Todas las cuentas, también las de la app, se pueden renombrar.
 - **Transferir:** mover dinero entre cuentas (p. ej. pagar la tarjeta desde el banco). No cuenta como gasto ni ingreso.
 - **Metas de ahorro:** cuánto llevas, cuánto falta y cuánto apartar al mes para llegar a tiempo. Se aporta transfiriendo a la meta; en el Hogar las metas son compartidas.
 
@@ -46,6 +65,13 @@ FinanFlow te permite llevar un registro de tus finanzas de forma **rápida, priv
 - **Alertas de límites** al llegar al 80% y al 100% (una vez por categoría y mes).
 - **Resumen semanal** cada domingo.
 
+### Detectar pagos (Android)
+- **Al pagar con Google Wallet** (o al llegar un aviso de Nu, Rappi, Davivienda o Nequi) baja desde arriba una tarjeta de vidrio con el comercio, el monto y la categoría: **Registrar** o **Ignorar** con un toque.
+- La primera vez con una tarjeta pregunta qué cuenta es y lo recuerda; también aprende la categoría de cada comercio.
+- Pagos de tarjeta y dinero que te envías a ti mismo se registran como **transferencias**. Si dos apps avisan el mismo pago, cuenta uno solo.
+- Lo que no confirmes queda en **Por confirmar** en Inicio. Nada se registra sin tu toque y el texto de los avisos no sale del celular.
+- Se activa en Ajustes → Detectar pagos (permisos "Acceso a notificaciones" y "Mostrar sobre otras apps").
+
 ### Widget y accesos rápidos (Android)
 - **Widget de pantalla de inicio:** saldo, ingresos y gastos del mes, y un botón **+** para agregar un gasto.
 - **App Shortcuts:** mantén presionado el ícono para Agregar gasto, Ver balance o Ver historial.
@@ -53,6 +79,8 @@ FinanFlow te permite llevar un registro de tus finanzas de forma **rápida, priv
 ### Hogar compartido (en pareja)
 - **Personal + Hogar:** tus gastos personales siguen siendo privados; el Hogar es un espacio común que ambos editan. Cambias de espacio con el selector bajo el título.
 - **Quién pagó y división:** cada gasto del Hogar indica quién pagó y cómo se divide (50/50, sin dividir, todo del otro o un porcentaje). El Inicio muestra quién le debe a quién y permite **Saldar cuentas**.
+- **Pagado con tu cuenta:** en un gasto del Hogar que pagaste, elige en **"Salió de"** tu cuenta personal: baja su saldo sin contarse como gasto personal (en tu Historial se ve en gris como "Hogar").
+- **Mover:** al editar un movimiento, **"Mover al Hogar"** o **"Mover a Personal"** lo pasa de espacio sin descuadrar tus cuentas.
 - **Actividad:** la campanita muestra lo que registró, editó o borró tu pareja.
 - **Invitación:** Ajustes → Hogar compartido → Crear un Hogar → compartir el código de 6 caracteres (vale 48 h, un solo uso).
 - Requiere iniciar sesión con Google en ambos teléfonos.
@@ -70,7 +98,7 @@ FinanFlow te permite llevar un registro de tus finanzas de forma **rápida, priv
 
 ---
 
-## Cómo funciona
+## Para desarrolladores
 
 ### 1. Desarrollo web
 ```bash
@@ -177,5 +205,4 @@ MIT - Libre para usar, modificar y distribuir.
 
 ---
 
-**Desarrollado con amor** ❤️  
-*Privacidad 100% garantizada. Tus datos son tuyos.*
+*Tus datos son tuyos.*

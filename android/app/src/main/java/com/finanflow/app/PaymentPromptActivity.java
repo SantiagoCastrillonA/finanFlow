@@ -10,6 +10,7 @@ import android.os.Build;
 import android.os.Bundle;
 import android.os.Handler;
 import android.os.Looper;
+import android.text.TextUtils;
 import android.util.TypedValue;
 import android.view.Gravity;
 import android.view.HapticFeedbackConstants;
@@ -102,7 +103,14 @@ public class PaymentPromptActivity extends Activity {
         bg.setStroke(Math.max(1, dp(0.5f)), dark ? 0x40FFFFFF : 0xBFFFFFFF);
         w.setBackgroundDrawable(bg);
         if (blur) w.setBackgroundBlurRadius(dp(40));
+    }
 
+    /**
+     * Ancho y posición de la tarjeta. Va después de cada setContentView: en una ventana flotante Android
+     * vuelve el tamaño a "lo justo para el contenido" al crear la vista, y la tarjeta quedaba angosta.
+     */
+    private void applyLayout() {
+        Window w = getWindow();
         WindowManager.LayoutParams lp = w.getAttributes();
         int screen = getResources().getDisplayMetrics().widthPixels;
         lp.width = Math.min(screen - dp(16), dp(480)); // en tablet no se estira de lado a lado
@@ -153,6 +161,7 @@ public class PaymentPromptActivity extends Activity {
         TextView merchant = text(PaymentNotifier.merchant(item), 17, primary(), false);
         merchant.setAlpha(0.8f);
         merchant.setSingleLine(true);
+        merchant.setEllipsize(TextUtils.TruncateAt.END);
         root.addView(merchant, margins(0, 12, 0, 0));
 
         TextView amount = text(PaymentNotifier.signedAmount(this, item), 44, amountColor(), true);
@@ -207,6 +216,7 @@ public class PaymentPromptActivity extends Activity {
         root.addView(handle, handleLp);
 
         setContentView(root);
+        applyLayout();
     }
 
     private String question(String field) {
@@ -299,6 +309,7 @@ public class PaymentPromptActivity extends Activity {
         done.addView(label);
         root = done;
         setContentView(done);
+        applyLayout();
     }
 
     /* --- Piezas --- */

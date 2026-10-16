@@ -161,6 +161,7 @@ function cleanAccount(a) {
     cutoffDay: day(a.cutoffDay),
     dueDay: day(a.dueDay),
     creditLimit: money(a.creditLimit) > 0 ? money(a.creditLimit) : null,
+    monthlyPayment: money(a.monthlyPayment) > 0 ? money(a.monthlyPayment) : null,
     target: money(a.target) > 0 ? money(a.target) : null,
     deadline: /^\d{4}-\d{2}$/.test(a.deadline) ? a.deadline : null,
     createdAt: Number(a.createdAt) || 0
@@ -383,7 +384,7 @@ function amountToInput(amount) {
 function accountsFor(accounts = state.accounts) {
   const stored = new Map(accounts.map((a) => [a.id, a]));
   const base = BASE_ACCOUNTS.map((b) =>
-    stored.has(b.id) ? { ...stored.get(b.id), name: b.name, kind: b.kind, base: true, active: true } : { ...b, base: true, active: false }
+    stored.has(b.id) ? { ...stored.get(b.id), kind: b.kind, base: true, active: true } : { ...b, base: true, active: false }
   );
   const own = accounts.filter((a) => a.kind !== "goal" && !BASE_ACCOUNTS.some((b) => b.id === a.id)).map((a) => ({ ...a, active: true }));
   return [...base, ...own];
@@ -440,6 +441,24 @@ function nextDueDate(day, from = new Date()) {
     const date = `${ym}-${pad(Math.min(day, daysInMonth(ym)))}`;
     if (date >= today) return date;
   }
+}
+
+/**
+ * Pago del ciclo de una tarjeta. Con "Cuota del mes", lo que toca pagar es la cuota (o la deuda si
+ * es menor) menos lo transferido a la tarjeta desde la fecha de pago anterior; sin cuota, la deuda.
+ */
+function cardPayment(a, list = state.transactions) {
+  const debt = Math.max(0, -accountBalance(a, list));
+  if (!a.monthlyPayment || !a.dueDay) return { debt, left: debt, paid: 0 };
+  const prevYM = addMonths(nextDueDate(a.dueDay).slice(0, 7), -1);
+  const prevDue = `${prevYM}-${pad(Math.min(a.dueDay, daysInMonth(prevYM)))}`;
+  const today = todayISO();
+  const paid = roundMoney(
+    list
+      .filter((t) => t.kind === "transfer" && t.to === a.id && t.date > prevDue && t.date <= today && countsForAccount(t, a))
+      .reduce((s, t) => s + (Number(t.amount) || 0), 0)
+  );
+  return { debt, paid, left: roundMoney(Math.max(0, Math.min(a.monthlyPayment - paid, debt))) };
 }
 
 /**
@@ -1154,12 +1173,21 @@ function renderDashboard(stats) {
   if (inHousehold()) {
     // El Hogar no es una cuenta con saldo: lo útil es cuánto se ha gastado en común este mes.
     setAnimatedText($("total-balance"), formatMoney(stats.expense));
+    $("total-balance").classList.remove("positive", "negative");
+    renderBalanceSplit([], []);
     $("balance-label").textContent = `Gastos del Hogar · ${monthLabel(state.viewMonth, false).toLowerCase()}`;
   } else {
-    setAnimatedText($("total-balance"), formatMoney(personalBalance(endOfView, isCurrent)));
-    const inAccounts = isCurrent && activeAccounts().length;
-    $("balance-label").textContent = inAccounts
-      ? "Saldo en tus cuentas"
+    const balance = personalBalance(endOfView, isCurrent);
+    setAnimatedText($("total-balance"), formatMoney(balance));
+    $("total-balance").classList.toggle("positive", balance > 0);
+    $("total-balance").classList.toggle("negative", balance < 0);
+    const accounts = isCurrent ? activeAccounts() : [];
+    const cards = accounts.filter((a) => a.kind === "card");
+    renderBalanceSplit(accounts, cards);
+    $("balance-label").textContent = accounts.length
+      ? cards.length === accounts.length
+        ? "Deuda en tarjetas"
+        : "Saldo en tus cuentas"
       : isCurrent
         ? "Saldo"
         : `Saldo al cierre de ${monthLabel(state.viewMonth, false).toLowerCase()}`;
@@ -1177,6 +1205,20 @@ function renderDashboard(stats) {
   renderRecentTransactions();
   // Chart.js mide el canvas al crearse: solo dibujar con la pestaña visible.
   if ($("tab-dashboard").classList.contains("active")) renderCharts(stats);
+}
+
+/** "Disponible $X · Deudas −$Y" bajo el saldo, cuando sigues tarjetas y también otras cuentas. */
+function renderBalanceSplit(accounts, cards) {
+  const el = $("balance-split");
+  const show = cards.length > 0 && cards.length < accounts.length;
+  el.classList.toggle("hidden", !show);
+  if (!show) return;
+  const sum = (list) => roundMoney(list.reduce((s, a) => s + accountBalance(a), 0));
+  const available = sum(accounts.filter((a) => a.kind !== "card"));
+  const debt = -sum(cards);
+  el.innerHTML =
+    `<span class="${available < 0 ? "negative" : "positive"}">Disponible ${formatMoney(available)}</span>` +
+    `<span class="${debt > 0 ? "negative" : ""}">Deudas ${debt > 0 ? "−" : ""}${formatMoney(Math.abs(debt))}</span>`;
 }
 
 function renderComparison(stats, isCurrent) {
@@ -2323,9 +2365,9 @@ function upcomingItems() {
   accountsFor()
     .filter((a) => a.active && a.kind === "card" && a.dueDay)
     .forEach((a) => {
-      const debt = -accountBalance(a);
+      const pay = cardPayment(a);
       const due = nextDueDate(a.dueDay);
-      if (debt > 0 && due <= until) items.push({ date: due, card: a, amount: debt });
+      if (pay.left > 0 && due <= until) items.push({ date: due, card: a, amount: pay.left, partial: pay.paid > 0 });
     });
   return items.sort((a, b) => (a.date < b.date ? -1 : a.date > b.date ? 1 : 0)).slice(0, 6);
 }
@@ -2354,7 +2396,7 @@ function renderUpcoming(isCurrent) {
         <span class="row-icon" style="color:${it.card.color};background:${it.card.color}24"><span class="ms">credit_card</span></span>
         <span class="row-main">
           <span class="row-title">Pago ${escapeHtml(it.card.name)}</span>
-          <span class="row-sub">${escapeHtml(when)} · fecha límite</span>
+          <span class="row-sub">${escapeHtml(when)} · ${it.partial ? "falta por pagar" : it.card.monthlyPayment ? "cuota del mes" : "fecha límite"}</span>
         </span>
         <span class="row-amount debt">${formatMoney(it.amount)}</span>`;
       row.onclick = () => openAccountModal(it.card);
@@ -2419,17 +2461,21 @@ function accountRow(a) {
       amount = debt ? `−${formatMoney(debt)}` : formatMoney(0);
       amountClass = debt ? "debt" : "";
       sub = debt ? (a.dueDay ? dueLabel(a) : "Deuda actual") : "Sin deuda";
-      if (a.creditLimit) {
-        bar = Math.min(1, debt / a.creditLimit);
+      if (a.creditLimit) bar = Math.min(1, debt / a.creditLimit);
+      if (debt && a.monthlyPayment && a.dueDay) {
+        const pay = cardPayment(a);
+        sub = pay.left ? `${sub} · cuota ${formatMoney(pay.left)}` : "Cuota del mes pagada";
+      } else if (a.creditLimit) {
         sub += ` · cupo ${Math.round(bar * 100)}%`;
       }
     } else if (a.kind === "goal") {
       amount = formatMoney(bal);
+      amountClass = bal > 0 ? "income" : bal < 0 ? "debt" : "";
       bar = a.target ? Math.min(1, Math.max(0, bal / a.target)) : null;
       sub = goalSubtitle(a, bal);
     } else {
       amount = formatMoney(bal);
-      amountClass = bal < 0 ? "debt" : "";
+      amountClass = bal > 0 ? "income" : bal < 0 ? "debt" : "";
     }
   }
   row.innerHTML = `
@@ -2471,8 +2517,7 @@ function openAccountModal(a = null, kind = "bank") {
   $("account-form").reset();
   $("account-title").textContent = a ? (a.active ? a.name : `Activar ${a.name}`) : goal ? "Nueva meta" : "Nueva cuenta";
   $("acc-name").value = a ? a.name : "";
-  $("acc-name").disabled = !!accSheet.base;
-  $("acc-name").placeholder = goal ? "Viaje a la playa" : "Visa Bancolombia";
+  $("acc-name").placeholder = accSheet.base ? accSheet.base.name : goal ? "Viaje a la playa" : "Visa Bancolombia";
   $("acc-kind-row").classList.toggle("hidden", !!accSheet.base || goal);
   if (!goal) $("acc-kind").value = accSheet.kind;
 
@@ -2482,6 +2527,7 @@ function openAccountModal(a = null, kind = "bank") {
   $("acc-cutoff").value = (a && a.cutoffDay) || "";
   $("acc-due").value = (a && a.dueDay) || "";
   $("acc-limit").value = a && a.creditLimit ? amountToInput(a.creditLimit) : "";
+  $("acc-payment").value = a && a.monthlyPayment ? amountToInput(a.monthlyPayment) : "";
   $("acc-target").value = a && a.target ? amountToInput(a.target) : "";
   $("acc-deadline").value = (a && a.deadline) || "";
   document.querySelector(".acc-currency").textContent = getCurrencySymbol();
@@ -2515,7 +2561,7 @@ function saveAccount(event) {
   event.preventDefault();
   const prev = accSheet.editing;
   const kind = accSheet.kind;
-  const name = accSheet.base ? accSheet.base.name : $("acc-name").value.trim().replace(/\s+/g, " ");
+  const name = $("acc-name").value.trim().replace(/\s+/g, " ");
   if (!name) {
     showToast("Escribe un nombre", "warning");
     $("acc-name").focus();
@@ -2523,7 +2569,7 @@ function saveAccount(event) {
   }
   const same = (s) => String(s).toLowerCase() === name.toLowerCase();
   const others = [...accountsFor(), ...goalsFor(), OTHER_METHOD].filter((a) => !(prev && a.ref === prev.ref) && a !== accSheet.base && !(accSheet.base && a.id === accSheet.base.id));
-  if (!accSheet.base && others.some((a) => same(a.name) || same(a.id))) {
+  if (others.some((a) => same(a.name) || same(a.id))) {
     showToast("Ya existe una cuenta con ese nombre", "warning");
     return;
   }
@@ -2553,6 +2599,7 @@ function saveAccount(event) {
     cutoffDay: kind === "card" ? $("acc-cutoff").value : null,
     dueDay: kind === "card" ? $("acc-due").value : null,
     creditLimit: kind === "card" && $("acc-limit").value ? parseAmountInput($("acc-limit").value) : null,
+    monthlyPayment: kind === "card" && $("acc-payment").value ? parseAmountInput($("acc-payment").value) : null,
     target,
     deadline: kind === "goal" ? $("acc-deadline").value : null,
     createdAt: prev ? prev.createdAt : now
@@ -3492,8 +3539,8 @@ function refreshScheduledNotifications() {
       accountsFor(accounts)
         .filter((a) => a.active && a.kind === "card" && a.dueDay)
         .forEach((a) => {
-          const debt = -accountBalance(a, transactions);
-          if (debt <= 0) return;
+          const pay = cardPayment(a, transactions);
+          if (pay.left <= 0) return;
           const due = nextDueDate(a.dueDay);
           const slot = 400 + (hashString(a.id) % 20) * 2;
           [
@@ -3508,7 +3555,9 @@ function refreshScheduledNotifications() {
               ...base,
               id,
               title: daysBefore ? `${a.name}: pago en ${daysBefore} días` : `Hoy vence el pago de ${a.name}`,
-              body: `Debes ${formatMoney(debt)}. Regístralo con Transferir cuando pagues.`,
+              body: a.monthlyPayment
+                ? `Te toca pagar ${formatMoney(pay.left)} (debes ${formatMoney(pay.debt)} en total). Regístralo con Transferir cuando pagues.`
+                : `Debes ${formatMoney(pay.debt)}. Regístralo con Transferir cuando pagues.`,
               schedule: { at, allowWhileIdle: true },
               extra: { route: "dashboard" }
             });

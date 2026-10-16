@@ -734,6 +734,28 @@ a {
   overflow-wrap: anywhere;
 }
 
+.balance-amount.positive,
+.balance-split .positive,
+.total-value.income {
+  color: var(--income);
+}
+
+.balance-amount.negative,
+.balance-split .negative,
+.total-value.expense {
+  color: var(--expense);
+}
+
+.balance-split {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 4px 14px;
+  margin: -12px 0 18px;
+  font-size: 14px;
+  font-weight: 600;
+  font-variant-numeric: tabular-nums;
+}
+
 .month-totals {
   display: grid;
   grid-template-columns: 1fr 1fr;
@@ -2371,6 +2393,10 @@ a {
   .balance-amount {
     font-size: 32px;
     margin-bottom: 12px;
+  }
+
+  .balance-split {
+    margin: -6px 0 12px;
   }
 
   .chart-wrapper {

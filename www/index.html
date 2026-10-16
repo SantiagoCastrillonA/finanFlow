@@ -76,19 +76,20 @@
         <div id="balance-card" class="card balance-card">
           <span id="balance-label" class="caption">Saldo</span>
           <div id="total-balance" class="balance-amount">$ 0</div>
+          <p id="balance-split" class="balance-split hidden"></p>
           <div class="month-totals">
             <div class="month-total">
               <span class="total-icon income"><span class="ms">arrow_downward</span></span>
               <div>
                 <span class="caption">Ingresos</span>
-                <span id="total-incomes" class="total-value">$ 0</span>
+                <span id="total-incomes" class="total-value income">$ 0</span>
               </div>
             </div>
             <div class="month-total">
               <span class="total-icon expense"><span class="ms">arrow_upward</span></span>
               <div>
                 <span class="caption">Gastos</span>
-                <span id="total-expenses" class="total-value">$ 0</span>
+                <span id="total-expenses" class="total-value expense">$ 0</span>
               </div>
             </div>
           </div>
@@ -379,7 +380,7 @@
           </button>
         </div>
 
-        <p class="app-version">FinanFlow 0.7.0 · Tus datos son tuyos</p>
+        <p class="app-version">FinanFlow 0.7.1 · Tus datos son tuyos</p>
       </section>
     </main>
 
@@ -725,6 +726,10 @@
           <label class="form-row">
             <span>Cupo</span>
             <input type="text" id="acc-limit" inputmode="decimal" placeholder="Opcional" enterkeyhint="done">
+          </label>
+          <label class="form-row">
+            <span>Cuota del mes</span>
+            <input type="text" id="acc-payment" inputmode="decimal" placeholder="Opcional" enterkeyhint="done">
           </label>
         </div>
         <div id="acc-goal-fields" class="list-group form-group hidden">

@@ -9,6 +9,7 @@ public class MainActivity extends BridgeActivity {
     public void onCreate(Bundle savedInstanceState) {
         // Plugins locales: deben registrarse antes de super.onCreate().
         registerPlugin(WidgetBridgePlugin.class);
+        registerPlugin(PaymentInboxPlugin.class);
         super.onCreate(savedInstanceState);
     }
 }

@@ -109,6 +109,14 @@
 
         <div id="budget-alerts" class="alerts hidden"></div>
 
+        <!-- Android: pagos detectados en los avisos de Wallet y los bancos, esperando confirmación -->
+        <div id="inbox-section" class="hidden">
+          <div class="section-header">
+            <h2>Por confirmar</h2>
+          </div>
+          <div id="inbox-list" class="list-group"></div>
+        </div>
+
         <!-- Recurrentes y pagos de tarjeta de los próximos 7 días (solo en el mes actual) -->
         <div id="upcoming-section" class="hidden">
           <div class="section-header">
@@ -307,6 +315,35 @@
             antes y el día del pago, solo si tienes deuda.</p>
         </div>
 
+        <!-- Solo en la app de Android: detectar pagos en los avisos de Google Wallet y los bancos -->
+        <div id="paydetect-group" class="hidden">
+          <h2 class="group-title">Detectar pagos</h2>
+          <div class="list-group">
+            <label class="setting-row">
+              <span class="setting-icon" style="background:#5E5CE6"><span class="ms">contactless</span></span>
+              <span class="setting-label">Registrar al pagar</span>
+              <input type="checkbox" id="paydetect-enabled" class="switch">
+            </label>
+            <button type="button" id="paydetect-listener" class="setting-row hidden">
+              <span class="setting-icon" style="background:#FF9F0A"><span class="ms">notifications</span></span>
+              <span class="setting-text">
+                <span class="setting-label">Acceso a notificaciones</span>
+                <span id="paydetect-listener-sub" class="setting-sub"></span>
+              </span>
+              <span class="ms chevron">chevron_right</span>
+            </button>
+            <button type="button" id="paydetect-overlay" class="setting-row hidden">
+              <span class="setting-icon" style="background:#0A84FF"><span class="ms">layers</span></span>
+              <span class="setting-text">
+                <span class="setting-label">Mostrar sobre otras apps</span>
+                <span id="paydetect-overlay-sub" class="setting-sub"></span>
+              </span>
+              <span class="ms chevron">chevron_right</span>
+            </button>
+          </div>
+          <p id="paydetect-note" class="footnote"></p>
+        </div>
+
         <!-- Solo en la app de Android -->
         <div id="security-group" class="hidden">
           <h2 class="group-title">Seguridad</h2>
@@ -380,7 +417,7 @@
           </button>
         </div>
 
-        <p class="app-version">FinanFlow 0.8.0 · Tus datos son tuyos</p>
+        <p class="app-version">FinanFlow 0.9.0 · Tus datos son tuyos</p>
       </section>
     </main>
 

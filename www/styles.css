@@ -1795,6 +1795,29 @@ a {
   transition-duration: var(--dur-press);
 }
 
+/* Pagos detectados por confirmar */
+.inbox-row {
+  padding-right: 6px;
+}
+
+.inbox-open {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  flex: 1;
+  min-width: 0;
+  text-align: left;
+  color: inherit;
+}
+
+.inbox-ignore {
+  color: var(--text-secondary);
+}
+
+.setting-sub.warn {
+  color: var(--warning);
+}
+
 /* Cuentas, tarjetas y metas */
 .row-amount.debt {
   color: var(--expense);

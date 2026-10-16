@@ -1,6 +1,6 @@
 # FinanFlow - Control de Gastos Personales
 
-> **Version:** 0.8.0  
+> **Version:** 0.9.0  
 > **Privacidad 100% garantizada** | **Funciona sin conexión** | **Sincronización opcional con Google Cloud**
 
 FinanFlow es una aplicación móvil de control de gastos e ingresos personales, con un diseño sobrio inspirado en iOS. Funciona como **PWA** (Progressive Web App) y como **aplicación nativa Android** mediante [Capacitor](https://capacitorjs.com/).
@@ -46,6 +46,13 @@ FinanFlow te permite llevar un registro de tus finanzas de forma **rápida, priv
 - **Recordatorio diario** a la hora que elijas (no suena si ya registraste algo ese día).
 - **Alertas de límites** al llegar al 80% y al 100% (una vez por categoría y mes).
 - **Resumen semanal** cada domingo.
+
+### Detectar pagos (Android)
+- **Al pagar con Google Wallet** (o al llegar un aviso de Nu, Rappi, Davivienda o Nequi) baja desde arriba una tarjeta de vidrio con el comercio, el monto y la categoría: **Registrar** o **Ignorar** con un toque.
+- La primera vez con una tarjeta pregunta qué cuenta es y lo recuerda; también aprende la categoría de cada comercio.
+- Pagos de tarjeta y dinero que te envías a ti mismo se registran como **transferencias**. Si dos apps avisan el mismo pago, cuenta uno solo.
+- Lo que no confirmes queda en **Por confirmar** en Inicio. Nada se registra sin tu toque y el texto de los avisos no sale del celular.
+- Se activa en Ajustes → Detectar pagos (permisos "Acceso a notificaciones" y "Mostrar sobre otras apps").
 
 ### Widget y accesos rápidos (Android)
 - **Widget de pantalla de inicio:** saldo, ingresos y gastos del mes, y un botón **+** para agregar un gasto.

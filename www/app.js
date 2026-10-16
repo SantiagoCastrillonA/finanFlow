@@ -1201,6 +1201,7 @@ function renderDashboard(stats) {
   renderAllowance(stats, isCurrent);
   renderBudgetAlerts(stats);
   renderHouseholdBalance();
+  renderInbox();
   renderUpcoming(isCurrent);
   renderAccountsSection();
   renderGoalsSection();
@@ -1811,7 +1812,18 @@ function openTransactionModal(editId = null, presetType = "expense", preset = {}
   }
   setupSplitFields(tx);
   setupPaidFrom(tx);
-  openModal("transaction-modal", tx ? null : "tx-amount");
+  // Pago detectado: todo viene lleno, solo hay que revisar y guardar.
+  txSheet.inbox = preset.inbox || null;
+  if (preset.amount) $("tx-amount").value = amountToInput(preset.amount);
+  if (preset.date) $("tx-date").value = preset.date;
+  if (preset.note) $("tx-note").value = preset.note;
+  if (preset.method) setSelectValue($("tx-method"), preset.method);
+  if (preset.from) setSelectValue($("tx-from"), preset.from);
+  if (preset.category && txSheet.type !== "transfer" && categoriesFor(txSheet.type, state.categories, true).some((c) => c.id === preset.category)) {
+    txSheet.category = preset.category;
+    renderCategoryGrid();
+  }
+  openModal("transaction-modal", tx || preset.inbox ? null : "tx-amount");
 }
 
 /* --- Hogar: quién pagó y cómo se divide (parte de quien pagó, 0–100 %) --- */
@@ -2052,6 +2064,7 @@ function saveTransaction(event) {
   state.lastUsed[txSheet.type] = transfer ? { from, to } : { category: tx.category, method: tx.method };
   lastChangedId = tx.id;
   upsertTransaction(tx);
+  if (txSheet.inbox) finishInboxItem(txSheet.inbox, tx);
   if (inHousehold()) {
     const from = $("tx-paidfrom-row").classList.contains("hidden") ? "" : $("tx-paidfrom").value;
     syncHouseholdMirror(tx, from);
@@ -3844,11 +3857,14 @@ function initLock() {
 let widgetTimer = null;
 function syncWidget() {
   const bridge = plugin("WidgetBridge");
-  if (!bridge) return;
+  const pay = PAY();
+  if (!bridge && !pay) return;
   clearTimeout(widgetTimer);
   widgetTimer = setTimeout(() => {
     const ym = monthKey(new Date());
     const data = personalData();
+    if (pay) pay.setContext({ json: JSON.stringify(paymentContext(data)) }).catch(() => {});
+    if (!bridge) return;
     const s = monthStats(ym, 31, data.transactions, data.categories);
     bridge
       .update({
@@ -3865,6 +3881,215 @@ function syncWidget() {
 }
 
 /* ==========================================================================
+   Pagos detectados (Android): avisos de Google Wallet y los bancos → "Por confirmar"
+   El lado nativo (PaymentListenerService) lee y guarda los avisos en el teléfono; aquí se
+   registran los confirmados y se revisan los pendientes. Nada de esto va a la nube.
+   ========================================================================== */
+
+let inbox = [];
+const PAY = () => (isNative ? plugin("PaymentInbox") : undefined);
+
+/** Lo que la tarjeta flotante necesita sin abrir la app: cuentas, categorías, formato del dinero y tu nombre. */
+function paymentContext(data) {
+  const cfg = CURRENCY_CONFIG[state.currency] || CURRENCY_CONFIG.COP;
+  const parts = new Intl.NumberFormat(cfg.locale, { style: "currency", currency: state.currency, minimumFractionDigits: 2 }).formatToParts(1234567.5);
+  const part = (type) => (parts.find((p) => p.type === type) || {}).value;
+  return {
+    accounts: accountsFor(data.accounts)
+      .filter((a) => a.active)
+      .map(({ id, name, kind }) => ({ id, name, kind })),
+    categories: ["expense", "income"].flatMap((type) =>
+      categoriesFor(type, data.categories, true).map((c) => ({ id: c.id, label: c.label, type }))
+    ),
+    money: {
+      symbol: part("currency") || "$",
+      group: part("group") || ".",
+      decimal: part("decimal") || ",",
+      decimals: cfg.fractionDigits,
+      after: parts.findIndex((p) => p.type === "currency") > parts.findIndex((p) => p.type === "integer")
+    },
+    ownName: (state.user && state.user.displayName) || ""
+  };
+}
+
+/** "TIENDA D1 ARMENIA MONT" → "Tienda D1 Armenia Mont". */
+function prettyMerchant(m = "") {
+  if (m !== m.toUpperCase()) return m;
+  return m
+    .split(/\s+/)
+    .map((w) => (w.length <= 2 || /\d/.test(w) ? w : w[0] + w.slice(1).toLowerCase()))
+    .join(" ");
+}
+
+/** Movimiento a partir de un pago detectado (id fijo: no se duplica), o null si falta elegir la cuenta. */
+function inboxToTx(it) {
+  const base = {
+    id: `auto-${it.id}`,
+    amount: roundMoney(Number(it.amount) || 0),
+    date: it.date,
+    note: prettyMerchant(it.merchant),
+    createdAt: it.time || Date.now()
+  };
+  if (!(base.amount > 0) || !/^\d{4}-\d{2}-\d{2}$/.test(it.date || "")) return null;
+  if (it.type === "transfer") {
+    if (!it.from || !it.to || it.from === it.to) return null;
+    return { ...base, kind: "transfer", type: "expense", from: it.from, to: it.to, method: it.from, category: "Transferencia" };
+  }
+  if (!it.account) return null;
+  return { ...base, type: it.type === "income" ? "income" : "expense", category: it.category || "Otros", method: it.account };
+}
+
+/** Registra los pagos confirmados con la app cerrada y trae los pendientes. */
+async function loadInbox() {
+  const pay = PAY();
+  if (!pay) return;
+  const { items = [] } = (await pay.getQueue().catch(() => null)) || {};
+  const done = [];
+  items.forEach((it) => {
+    const tx = it.status === "confirmed" ? inboxToTx(it) : null;
+    if (!tx) return;
+    // Los pagos detectados son tuyos: van al espacio personal aunque estés viendo el Hogar.
+    if (state.space === "personal") upsertTransaction(tx, false);
+    else personalWrite(tx.id, tx);
+    done.push(it.id);
+  });
+  if (done.length) {
+    await pay.remove({ ids: done }).catch(() => {});
+    commit();
+    showToast(done.length === 1 ? "Pago registrado" : `${done.length} pagos registrados`, "success");
+  }
+  inbox = items.filter((it) => !done.includes(it.id)).sort((a, b) => (b.time || 0) - (a.time || 0));
+  renderInbox();
+}
+
+function renderInbox() {
+  const show = inbox.length > 0 && state.space === "personal";
+  $("inbox-section").classList.toggle("hidden", !show);
+  const box = $("inbox-list");
+  box.innerHTML = "";
+  if (!show) return;
+  inbox.forEach((it) => {
+    const transfer = it.type === "transfer";
+    const cat = transfer ? null : getCategoryInfo(it.category, it.type);
+    const color = transfer ? "var(--accent)" : cat.color;
+    const name = (id, fallback) => (id ? accountInfo(id).name : fallback || "?");
+    const account = transfer ? `${name(it.from, "Elegir cuenta")} → ${name(it.to, it.toKey)}` : name(it.account, it.cardKey);
+    const row = document.createElement("div");
+    row.className = "list-row inbox-row";
+    row.innerHTML = `
+      <button type="button" class="inbox-open">
+        <span class="row-icon" style="color:${color};background:${transfer ? "var(--accent-tint)" : `${color}24`}"><span class="ms">${transfer ? "swap_horiz" : cat.icon}</span></span>
+        <span class="row-main">
+          <span class="row-title">${escapeHtml(prettyMerchant(it.merchant) || "Pago")}</span>
+          <span class="row-sub">${escapeHtml([formatDateFriendly(it.date), account].join(" · "))}</span>
+        </span>
+        <span class="row-amount ${transfer ? "excluded" : it.type}">${it.type === "income" ? "+" : ""}${formatMoney(roundMoney(Number(it.amount) || 0))}</span>
+      </button>
+      <button type="button" class="icon-btn plain inbox-ignore" aria-label="Ignorar"><span class="ms">close</span></button>`;
+    row.querySelector(".inbox-open").onclick = () => openInboxItem(it);
+    row.querySelector(".inbox-ignore").onclick = () => ignoreInboxItem(it);
+    box.appendChild(row);
+  });
+}
+
+/** Abre la hoja de movimiento ya llena con el pago detectado. */
+function openInboxItem(it) {
+  if (state.space !== "personal") switchSpace("personal");
+  const type = it.type === "transfer" ? "transfer" : it.type === "income" ? "income" : "expense";
+  openTransactionModal(null, type, {
+    amount: roundMoney(Number(it.amount) || 0),
+    date: it.date,
+    note: prettyMerchant(it.merchant),
+    category: it.category,
+    method: it.account,
+    from: it.from,
+    to: it.to,
+    inbox: it
+  });
+}
+
+function reviewInboxItem(id) {
+  switchTab("dashboard");
+  if (state.space !== "personal") switchSpace("personal");
+  loadInbox().then(() => {
+    const it = inbox.find((x) => x.id === id);
+    if (it) openInboxItem(it);
+  });
+}
+
+/** Al guardar desde "Por confirmar": sale de la cola y la app aprende la cuenta de la tarjeta y la categoría del comercio. */
+function finishInboxItem(it, tx) {
+  inbox = inbox.filter((x) => x.id !== it.id);
+  renderInbox();
+  const pay = PAY();
+  if (!pay) return;
+  pay.remove({ ids: [it.id] }).catch(() => {});
+  const links = {};
+  if (tx.kind === "transfer") {
+    if (it.toKey) links[it.toKey] = tx.to;
+    if (it.fromKey) links[it.fromKey] = tx.from;
+  } else if (it.cardKey) {
+    links[it.cardKey] = tx.method;
+  }
+  pay.learn({ merchant: tx.kind === "transfer" ? "" : it.merchant, category: tx.category, links }).catch(() => {});
+}
+
+function ignoreInboxItem(it) {
+  const pay = PAY();
+  if (!pay) return;
+  inbox = inbox.filter((x) => x.id !== it.id);
+  renderInbox();
+  haptic();
+  pay.remove({ ids: [it.id] }).catch(() => {});
+  showToast("Pago ignorado", "info", 5000, {
+    label: "Deshacer",
+    onClick: () => pay.restore({ item: it }).then(loadInbox).catch(() => {})
+  });
+}
+
+/** Ajustes → Detectar pagos: interruptor y los dos permisos del sistema. */
+function initPaymentDetect() {
+  const pay = PAY();
+  $("paydetect-group").classList.toggle("hidden", !pay);
+  if (!pay) return;
+  const input = $("paydetect-enabled");
+  input.onchange = async () => {
+    await pay.setEnabled({ enabled: input.checked }).catch(() => {});
+    const st = await refreshPayDetect();
+    if (input.checked && st && !st.listener) {
+      showToast("Busca FinanFlow en la lista y activa el acceso", "info", 5000);
+      pay.openListenerSettings().catch(() => {});
+    }
+  };
+  $("paydetect-listener").onclick = () => pay.openListenerSettings().catch(() => {});
+  $("paydetect-overlay").onclick = () => pay.openOverlaySettings().catch(() => {});
+  pay.addListener("queueChanged", () => loadInbox());
+  syncWidget(); // envía cuentas y categorías para la tarjeta flotante
+  refreshPayDetect();
+  loadInbox();
+}
+
+async function refreshPayDetect() {
+  const pay = PAY();
+  if (!pay) return null;
+  const st = await pay.status().catch(() => null);
+  if (!st) return null;
+  $("paydetect-enabled").checked = !!st.enabled;
+  [
+    ["listener", st.listener, "Necesario para leer los avisos de pago"],
+    ["overlay", st.overlay, "Para la tarjeta al pagar; sin esto llega como notificación"]
+  ].forEach(([key, ok, missing]) => {
+    $(`paydetect-${key}`).classList.toggle("hidden", !st.enabled);
+    $(`paydetect-${key}-sub`).textContent = ok ? "Activado" : missing;
+    $(`paydetect-${key}-sub`).classList.toggle("warn", !ok);
+  });
+  const seen = (st.sources || []).length ? ` Detectadas: ${st.sources.join(", ")}.` : "";
+  $("paydetect-note").textContent =
+    "Lee solo los avisos de Google Wallet, Nu, Rappi, Davivienda y Nequi, y nada sale de tu celular. Ningún pago se registra sin que lo confirmes." + seen;
+  return st;
+}
+
+/* ==========================================================================
    Android: botón Atrás, App Shortcuts / deep links
    ========================================================================== */
 
@@ -3872,6 +4097,7 @@ function handleDeepLink(url) {
   if (!url) return;
   const match = url.match(/finanflow:\/\/action\/([\w-]+)/) || url.match(/[?&]action=([\w-]+)/);
   if (!match) return;
+  if (match[1] === "review") return reviewInboxItem((url.match(/[?&]id=([\w-]+)/) || [])[1]);
   const routes = { "add-expense": "add", "view-balance": "dashboard", "view-history": "history" };
   routeTo(routes[match[1]]);
 }
@@ -4325,6 +4551,8 @@ function bindUI() {
     render();
     refreshScheduledNotifications();
     syncWidget();
+    loadInbox();
+    refreshPayDetect();
   });
 }
 
@@ -4341,6 +4569,7 @@ function init() {
   initNative();
   initLock();
   initNotifications();
+  initPaymentDetect();
   handleDeepLink(location.href);
   checkBudgetAlerts();
   syncWidget();

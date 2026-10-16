@@ -4306,6 +4306,100 @@ async function refreshPayDetect() {
 }
 
 /* ==========================================================================
+   Android: aviso de versión nueva (último release de GitHub)
+   ========================================================================== */
+
+const RELEASES_API = "https://api.github.com/repos/SantiagoCastrillonA/finanFlow/releases/latest";
+const UPDATE_EVERY_MS = 12 * 60 * 60 * 1000;
+let appVersion = null; // versionName del APK instalado
+
+// finanflow_update (por dispositivo): { checkedAt, latest: { version, url } | null, dismissed }
+function updatePrefs() {
+  try {
+    return JSON.parse(localStorage.getItem("finanflow_update")) || {};
+  } catch {
+    return {};
+  }
+}
+function saveUpdatePrefs(p) {
+  try {
+    localStorage.setItem("finanflow_update", JSON.stringify(p));
+  } catch {}
+}
+
+/** "0.10.3" es más nueva que "0.10.2" (compara cada número). */
+function isNewerVersion(a, b) {
+  const pa = String(a).split(".").map(Number);
+  const pb = String(b).split(".").map(Number);
+  for (let i = 0; i < Math.max(pa.length, pb.length); i++) {
+    const d = (pa[i] || 0) - (pb[i] || 0);
+    if (d) return d > 0;
+  }
+  return false;
+}
+
+/**
+ * Consulta el último release (como mucho cada 12 h; `manual` = ahora, desde Ajustes). Sin conexión o si
+ * GitHub falla no hace nada. Solo pide datos públicos: no se envía nada tuyo.
+ */
+async function checkForUpdate(manual = false) {
+  if (!isNative) return;
+  if (!appVersion) {
+    const info = await plugin("App")?.getInfo().catch(() => null);
+    appVersion = info && info.version;
+    if (!appVersion) return;
+  }
+  const prefs = updatePrefs();
+  if (!manual && Date.now() - (prefs.checkedAt || 0) < UPDATE_EVERY_MS) return renderUpdateCard();
+  let release = null;
+  try {
+    const res = await fetch(RELEASES_API, { headers: { Accept: "application/vnd.github+json" } });
+    if (res.ok) release = await res.json();
+  } catch {}
+  if (!release) {
+    if (manual) showToast("No se pudo consultar. Revisa tu conexión", "warning");
+    return;
+  }
+  const version = String(release.tag_name || "").replace(/^v/, "");
+  const apk = (release.assets || []).find((a) => /\.apk$/i.test(a.name));
+  prefs.checkedAt = Date.now();
+  prefs.latest = isNewerVersion(version, appVersion) ? { version, url: apk ? apk.browser_download_url : release.html_url } : null;
+  if (manual) prefs.dismissed = null; // al buscar a mano se vuelve a mostrar aunque hayas dicho "Ahora no"
+  saveUpdatePrefs(prefs);
+  renderUpdateCard();
+  if (manual) {
+    showToast(prefs.latest ? `Hay una versión nueva: ${version}` : `Tienes la última versión (${appVersion})`, prefs.latest ? "info" : "success");
+  }
+}
+
+function renderUpdateCard() {
+  const { latest, dismissed } = updatePrefs();
+  // Si ya instalaste esa versión (o una más nueva), el aviso guardado deja de valer.
+  const show = !!(latest && appVersion && isNewerVersion(latest.version, appVersion) && dismissed !== latest.version);
+  $("update-card").classList.toggle("hidden", !show);
+  if (show) $("update-title").textContent = `Versión ${latest.version}`;
+}
+
+function initUpdates() {
+  if (!isNative) return;
+  $("update-check").classList.remove("hidden");
+  $("update-check").onclick = () => checkForUpdate(true);
+  // La app de Android abre los enlaces de fuera en el navegador, que descarga el APK.
+  $("update-download").onclick = () => {
+    const { latest } = updatePrefs();
+    if (latest) window.open(latest.url, "_blank");
+  };
+  $("update-later").onclick = () => {
+    const prefs = updatePrefs();
+    if (prefs.latest) prefs.dismissed = prefs.latest.version;
+    saveUpdatePrefs(prefs);
+    renderUpdateCard();
+    haptic();
+  };
+  checkForUpdate();
+}
+
+/* ==========================================================================
    Android: botón Atrás, App Shortcuts / deep links
    ========================================================================== */
 
@@ -4775,6 +4869,7 @@ function bindUI() {
     syncWidget();
     loadInbox();
     refreshPayDetect();
+    checkForUpdate();
   });
 }
 
@@ -4792,6 +4887,7 @@ function init() {
   initLock();
   initNotifications();
   initPaymentDetect();
+  initUpdates();
   handleDeepLink(location.href);
   checkBudgetAlerts();
   syncWidget();

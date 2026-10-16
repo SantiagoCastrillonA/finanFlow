@@ -2,7 +2,7 @@
 
 **Tu plata, clara y en tu bolsillo.** FinanFlow es una app gratuita para llevar tus gastos, ingresos, cuentas y tarjetas sin complicarte: anotas un gasto en dos toques y en un vistazo sabes cuánto tienes, cuánto debes y cuánto puedes gastar al día lo que queda del mes.
 
-> **Versión:** 0.10.2 · Android y web (iPhone como app web) · En español · Sin anuncios · Funciona sin conexión
+> **Versión:** 0.10.3 · Android y web (iPhone como app web) · En español · Sin anuncios · Funciona sin conexión
 
 <p align="center">
   <img src="docs/screenshots/inicio.jpg" width="200" alt="Inicio: saldo, disponible y deudas, ingresos y gastos del mes">
@@ -13,7 +13,7 @@
 
 ## Descargar
 
-- **Android:** descarga `FinanFlow-<versión>.apk` desde la [última versión](https://github.com/SantiagoCastrillonA/finanFlow/releases/latest), ábrelo en el celular y permite "instalar apps desconocidas" la primera vez. Para actualizar, instala el APK nuevo encima: tus datos se conservan.
+- **Android:** descarga `FinanFlow-<versión>.apk` desde la [última versión](https://github.com/SantiagoCastrillonA/finanFlow/releases/latest), ábrelo en el celular y permite "instalar apps desconocidas" la primera vez. Para actualizar, instala el APK nuevo encima: tus datos se conservan. Desde la 0.10.3 la app te avisa en Inicio cuando hay una versión nueva (y en Ajustes puedes **Buscar actualizaciones**).
   - **Si Google Play Protect dice "Se bloqueó la app para proteger tu dispositivo":** pasa porque FinanFlow pide el *acceso a notificaciones* (para detectar tus pagos) y no viene de Play Store. Instálala por cable desde un computador: activa *Opciones de desarrollador → Depuración por USB*, conecta el teléfono y ejecuta `adb install -r FinanFlow-<versión>.apk`. La instalación por USB no se bloquea.
   - Si instalaste FinanFlow desde Android Studio (versión de depuración), no le instales el APK encima: tienen firmas distintas y Android pide desinstalar, lo que borra los datos que no estén respaldados.
 - **iPhone o computador:** abre [finanflow-32cae.web.app](https://finanflow-32cae.web.app). En el iPhone, desde Safari: **Compartir → Agregar a inicio**.

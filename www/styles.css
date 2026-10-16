@@ -250,6 +250,42 @@ a {
   color: var(--warning);
 }
 
+/* Aviso de versión nueva (Android) */
+.update-card {
+  padding-right: 6px;
+}
+
+.update-card .between-icon {
+  background: var(--accent-tint);
+  color: var(--accent);
+}
+
+.update-title {
+  font-size: 16px;
+  font-weight: 600;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.update-card .between-text {
+  gap: 2px;
+}
+
+.update-card .caption {
+  font-size: 13px;
+  line-height: 1.3;
+}
+
+.update-check {
+  display: block;
+  margin: 0 auto 8px;
+}
+
+.update-check.hidden {
+  display: none;
+}
+
 .between-text {
   flex: 1;
   min-width: 0;

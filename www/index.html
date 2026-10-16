@@ -107,6 +107,17 @@
           <button type="button" id="settle-btn" class="btn-tinted small">Saldar</button>
         </div>
 
+        <!-- Android: hay una versión más nueva publicada en GitHub -->
+        <div id="update-card" class="card between-card update-card hidden">
+          <span class="between-icon"><span class="ms">download</span></span>
+          <div class="between-text">
+            <span id="update-title" class="update-title">Versión nueva</span>
+            <span class="caption">Nueva · se instala sin perder datos</span>
+          </div>
+          <button type="button" id="update-download" class="btn-tinted small">Descargar</button>
+          <button type="button" id="update-later" class="icon-btn plain" aria-label="Ahora no"><span class="ms">close</span></button>
+        </div>
+
         <div id="budget-alerts" class="alerts hidden"></div>
 
         <!-- Android: pagos detectados en los avisos de Wallet y los bancos, esperando confirmación -->
@@ -417,7 +428,8 @@
           </button>
         </div>
 
-        <p class="app-version">FinanFlow 0.10.2 · Tus datos son tuyos</p>
+        <p class="app-version">FinanFlow 0.10.3 · Tus datos son tuyos</p>
+        <button type="button" id="update-check" class="btn-plain small update-check hidden">Buscar actualizaciones</button>
       </section>
     </main>
 

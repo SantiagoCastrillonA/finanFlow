@@ -14,6 +14,8 @@
 ## Descargar
 
 - **Android:** descarga `FinanFlow-<versión>.apk` desde la [última versión](https://github.com/SantiagoCastrillonA/finanFlow/releases/latest), ábrelo en el celular y permite "instalar apps desconocidas" la primera vez. Para actualizar, instala el APK nuevo encima: tus datos se conservan.
+  - **Si Google Play Protect dice "Se bloqueó la app para proteger tu dispositivo":** pasa porque FinanFlow pide el *acceso a notificaciones* (para detectar tus pagos) y no viene de Play Store. Instálala por cable desde un computador: activa *Opciones de desarrollador → Depuración por USB*, conecta el teléfono y ejecuta `adb install -r FinanFlow-<versión>.apk`. La instalación por USB no se bloquea.
+  - Si instalaste FinanFlow desde Android Studio (versión de depuración), no le instales el APK encima: tienen firmas distintas y Android pide desinstalar, lo que borra los datos que no estén respaldados.
 - **iPhone o computador:** abre [finanflow-32cae.web.app](https://finanflow-32cae.web.app). En el iPhone, desde Safari: **Compartir → Agregar a inicio**.
 
 ## ¿Para qué sirve?

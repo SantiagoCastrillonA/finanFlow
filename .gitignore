@@ -14,3 +14,6 @@ android/.idea/
 # Sistema
 .DS_Store
 Thumbs.db
+
+# Caché del deploy de Firebase
+.firebase/

@@ -230,6 +230,11 @@
               <span class="ms">unfold_more</span>
             </span>
           </label>
+          <button type="button" class="setting-row" onclick="app.openCategories()">
+            <span class="setting-icon" style="background:#FF9F0A"><span class="ms">category</span></span>
+            <span class="setting-label">Categorías</span>
+            <span class="ms chevron">chevron_right</span>
+          </button>
         </div>
 
         <div id="notify-group" class="hidden">
@@ -319,7 +324,7 @@
           </button>
         </div>
 
-        <p class="app-version">FinanFlow 0.3.0 · Tus datos son tuyos</p>
+        <p class="app-version">FinanFlow 0.4.0 · Tus datos son tuyos</p>
       </section>
     </main>
 
@@ -495,6 +500,66 @@
         <button type="button" class="btn-plain" data-close>Listo</button>
       </div>
       <div id="activity-list" class="activity-list"></div>
+    </div>
+  </div>
+
+  <!-- ================= HOJA: CATEGORÍAS PROPIAS ================= -->
+  <div id="categories-modal" class="modal" aria-hidden="true">
+    <div class="backdrop" data-close></div>
+    <div class="sheet" role="dialog" aria-modal="true" aria-labelledby="categories-title">
+      <div class="sheet-handle" aria-hidden="true"></div>
+      <div class="sheet-header">
+        <span></span>
+        <h2 id="categories-title">Categorías</h2>
+        <button type="button" class="btn-plain" data-close>Listo</button>
+      </div>
+      <div id="categories-type" class="segmented" aria-label="Tipo">
+        <button data-value="expense">Gastos</button>
+        <button data-value="income">Ingresos</button>
+      </div>
+      <div id="categories-list" class="categories-list"></div>
+      <button type="button" id="categories-add-btn" class="btn-tinted full">
+        <span class="ms">add</span> Nueva categoría
+      </button>
+      <p class="footnote">Las categorías que trae la app no se pueden cambiar. En el Hogar, las categorías se comparten
+        con tu pareja.</p>
+    </div>
+  </div>
+
+  <!-- ================= HOJA: NUEVA / EDITAR CATEGORÍA ================= -->
+  <div id="category-modal" class="modal" aria-hidden="true">
+    <div class="backdrop" data-close></div>
+    <div class="sheet" role="dialog" aria-modal="true" aria-labelledby="category-title">
+      <div class="sheet-handle" aria-hidden="true"></div>
+      <div class="sheet-header">
+        <button type="button" class="btn-plain" data-close>Cancelar</button>
+        <h2 id="category-title">Nueva categoría</h2>
+        <button type="submit" form="category-form" class="btn-plain strong">Guardar</button>
+      </div>
+      <form id="category-form" novalidate autocomplete="off">
+        <div class="cat-preview-wrap">
+          <span id="cat-preview" class="cat-icon cat-preview" aria-hidden="true"><span class="ms">credit_card</span></span>
+          <span id="cat-type-note" class="footnote">Categoría de gasto</span>
+        </div>
+        <div class="list-group form-group">
+          <label class="form-row">
+            <span>Nombre</span>
+            <input type="text" id="cat-name" placeholder="Tarjeta de crédito" maxlength="24" enterkeyhint="done">
+          </label>
+        </div>
+        <div id="cat-colors" class="color-picker" role="radiogroup" aria-label="Color"></div>
+        <div id="cat-icons" class="icon-picker" role="radiogroup" aria-label="Ícono"></div>
+        <div class="list-group form-group">
+          <label class="form-row">
+            <span>No sumar en totales</span>
+            <input type="checkbox" id="cat-excluded" class="switch">
+          </label>
+        </div>
+        <p class="footnote">Actívalo para pagos de tarjeta o pasar plata entre tus cuentas: si ya registraste cada
+          compra, el pago no se cuenta dos veces.</p>
+        <button type="submit" class="btn-primary full">Guardar</button>
+        <button type="button" id="cat-delete-btn" class="btn-plain destructive full hidden">Eliminar categoría</button>
+      </form>
     </div>
   </div>
 

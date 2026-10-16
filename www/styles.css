@@ -1651,6 +1651,102 @@ a {
   font-weight: 600;
 }
 
+/* Casilla "Nueva" de la cuadrícula: contorno punteado, sin relleno de color */
+.cat-add .cat-icon {
+  background: none;
+  border: 1.5px dashed var(--separator);
+}
+
+/* Categorías propias */
+.row-amount.excluded {
+  color: var(--text-secondary);
+}
+
+.categories-list {
+  min-height: 120px;
+}
+
+.categories-list .empty-state {
+  padding: 24px 0 8px;
+}
+
+.cat-preview-wrap {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 4px;
+  margin-bottom: 8px;
+}
+
+.cat-preview {
+  width: 64px;
+  height: 64px;
+  background: var(--c);
+  color: #fff;
+}
+
+.cat-preview .ms {
+  font-size: 32px;
+}
+
+.cat-preview-wrap .footnote {
+  margin: 0;
+}
+
+/* 10 colores en dos filas de 5 y 16 íconos en dos de 8: filas parejas en cualquier ancho */
+.color-picker {
+  display: grid;
+  grid-template-columns: repeat(5, 32px);
+  justify-content: center;
+  gap: 12px 20px;
+  margin: 16px 0 14px;
+}
+
+.pick-color {
+  width: 32px;
+  height: 32px;
+  border-radius: 50%;
+  background: var(--c);
+  transition: transform var(--dur-release) var(--ease-out), box-shadow 150ms ease;
+}
+
+.pick-color.active {
+  box-shadow: 0 0 0 2px var(--bg), 0 0 0 4px var(--c);
+}
+
+.icon-picker {
+  display: grid;
+  grid-template-columns: repeat(8, 1fr);
+  gap: 4px;
+  margin-bottom: 16px;
+}
+
+.pick-icon {
+  height: 40px;
+  border-radius: 12px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  color: var(--text-secondary);
+  transition: background-color 150ms ease, color 150ms ease, transform var(--dur-release) var(--ease-out);
+}
+
+.pick-icon .ms {
+  font-size: 22px;
+  font-variation-settings: "FILL" 1;
+}
+
+.pick-icon.active {
+  background: color-mix(in srgb, var(--c) 18%, transparent);
+  color: var(--c);
+}
+
+.pick-color:active,
+.pick-icon:active {
+  transform: scale(0.92);
+  transition-duration: var(--dur-press);
+}
+
 /* Filas de formulario */
 .form-group {
   margin-bottom: 4px;

@@ -42,6 +42,14 @@ const CATEGORIES = {
   ]
 };
 
+// Opciones para las categorías propias (Ajustes → Categorías).
+const CATEGORY_ICONS = [
+  "credit_card", "account_balance", "savings", "receipt_long", "local_grocery_store", "local_cafe",
+  "local_gas_station", "flight", "pets", "child_care", "checkroom", "fitness_center",
+  "medication", "phone_iphone", "sports_esports", "volunteer_activism"
+];
+const CATEGORY_COLORS = ["#FF453A", "#FF9F0A", "#E5B800", "#30D158", "#40C8E0", "#0A84FF", "#5E5CE6", "#BF5AF2", "#FF375F", "#8E8E93"];
+
 const GEMINI_CONFIG = {
   // Alias que Google mantiene apuntando al Flash estable más reciente (evita que el asistente
   // deje de funcionar cuando retiran una versión fija).
@@ -101,10 +109,32 @@ function loadState() {
 
 const saved = loadState() || {};
 
+/** Valida una categoría propia (puede venir de la nube, de la pareja o de un respaldo). */
+function cleanCategory(c) {
+  if (!c || typeof c.ref !== "string" || typeof c.id !== "string" || typeof c.label !== "string" || !c.label.trim()) return null;
+  return {
+    ref: c.ref,
+    id: c.id,
+    type: c.type === "income" ? "income" : "expense",
+    label: c.label.trim().slice(0, 24),
+    icon: CATEGORY_ICONS.includes(c.icon) ? c.icon : "sell",
+    color: /^#[0-9a-f]{6}$/i.test(c.color) ? c.color : "#8E8E93",
+    excluded: !!c.excluded,
+    createdAt: Number(c.createdAt) || 0
+  };
+}
+/** Categorías propias de un espacio: { expense: [...], income: [...] }. */
+function normCategories(c) {
+  const list = (type) =>
+    (Array.isArray(c && c[type]) ? c[type] : []).map((x) => cleanCategory(x && { ...x, type })).filter(Boolean);
+  return { expense: list("expense"), income: list("income") };
+}
+
 const state = {
   currency: saved.currency || "COP",
   transactions: Array.isArray(saved.transactions) ? saved.transactions : [],
   budgets: saved.budgets || {},
+  categories: normCategories(saved.categories),
   activeTab: TAB_TITLES[saved.activeTab] ? saved.activeTab : "dashboard",
   chartType: saved.chartType || "balance",
   lastUsed: saved.lastUsed || { expense: {}, income: {} },
@@ -112,7 +142,7 @@ const state = {
   notified: saved.notified || {},
   viewMonth: monthKey(new Date()),
   filters: { type: "all", category: "all", date: "month", search: "" },
-  // Espacios: "personal" (privado) u "household" (compartido). state.transactions/budgets
+  // Espacios: "personal" (privado) u "household" (compartido). state.transactions/budgets/categories
   // siempre son los del espacio activo; el otro espera en spaceCache.
   space: "personal",
   preferredSpace: saved.space === "household" ? "household" : "personal",
@@ -122,13 +152,15 @@ const state = {
 };
 
 const spaceCache = {
-  personal: { transactions: state.transactions, budgets: state.budgets },
-  household: { transactions: [], budgets: {} }
+  personal: { transactions: state.transactions, budgets: state.budgets, categories: state.categories },
+  household: { transactions: [], budgets: {}, categories: normCategories() }
 };
+
+const activeSpaceData = () => ({ transactions: state.transactions, budgets: state.budgets, categories: state.categories });
 
 /** Datos del espacio personal, esté activo o no (lo único que se guarda en el teléfono). */
 function personalData() {
-  return state.space === "personal" ? { transactions: state.transactions, budgets: state.budgets } : spaceCache.personal;
+  return state.space === "personal" ? activeSpaceData() : spaceCache.personal;
 }
 
 function saveState() {
@@ -140,6 +172,7 @@ function saveState() {
         currency: state.currency,
         transactions: personal.transactions,
         budgets: personal.budgets,
+        categories: personal.categories,
         space: state.preferredSpace,
         activeTab: state.activeTab,
         chartType: state.chartType,
@@ -277,9 +310,16 @@ function amountToInput(amount) {
   );
 }
 
-function getCategoryInfo(catId, type = "expense") {
+/** Categorías base + propias del espacio, con "Otros" siempre al final. */
+function categoriesFor(type, custom = state.categories) {
+  const base = CATEGORIES[type] || [];
+  const own = (custom && custom[type]) || [];
+  return [...base.slice(0, -1), ...own, ...base.slice(-1)];
+}
+// Una categoría borrada sigue mostrando su nombre: su id es el nombre con que se creó.
+function getCategoryInfo(catId, type = "expense", custom = state.categories) {
   return (
-    (CATEGORIES[type] || []).find((c) => c.id === catId) || {
+    categoriesFor(type, custom).find((c) => c.id === catId) || {
       id: catId,
       label: catId,
       icon: "payments",
@@ -322,15 +362,17 @@ function cssVar(name) {
    Cálculos (una pasada por render)
    ========================================================================== */
 
-// Las liquidaciones entre la pareja ("Saldar cuentas") no son ingresos ni gastos.
-const countsAsMoney = (t) => t.kind !== "settlement";
+// No son ingresos ni gastos: las liquidaciones entre la pareja ("Saldar cuentas") y las categorías
+// marcadas "No sumar en totales" (p. ej. pagar la tarjeta, cuyas compras ya se registraron).
+const isExcludedCategory = (t, custom) => !!getCategoryInfo(t.category, t.type, custom).excluded;
+const countsAsMoney = (t, custom) => t.kind !== "settlement" && !isExcludedCategory(t, custom);
 
-function monthStats(ym, untilDay = 31, list = state.transactions) {
+function monthStats(ym, untilDay = 31, list = state.transactions, custom = state.categories) {
   let income = 0;
   let expense = 0;
   const byCat = { expense: {}, income: {} };
   for (const t of list) {
-    if (!countsAsMoney(t) || !isInMonth(t.date, ym) || Number(t.date.slice(8, 10)) > untilDay) continue;
+    if (!countsAsMoney(t, custom) || !isInMonth(t.date, ym) || Number(t.date.slice(8, 10)) > untilDay) continue;
     const a = Number(t.amount) || 0;
     if (t.type === "income") income += a;
     else expense += a;
@@ -340,10 +382,10 @@ function monthStats(ym, untilDay = 31, list = state.transactions) {
 }
 
 /** Saldo acumulado de todas las transacciones con fecha <= dateStr. */
-function balanceUntil(dateStr, list = state.transactions) {
+function balanceUntil(dateStr, list = state.transactions, custom = state.categories) {
   let total = 0;
   for (const t of list) {
-    if (countsAsMoney(t) && t.date <= dateStr) total += t.type === "income" ? Number(t.amount) || 0 : -(Number(t.amount) || 0);
+    if (countsAsMoney(t, custom) && t.date <= dateStr) total += t.type === "income" ? Number(t.amount) || 0 : -(Number(t.amount) || 0);
   }
   return roundMoney(total);
 }
@@ -861,6 +903,7 @@ let budgetsAnimated = false;
 
 function render() {
   const stats = monthStats(state.viewMonth);
+  renderFilterCategories();
   renderDashboard(stats);
   renderTransactionsList();
   renderBudgetsList(stats);
@@ -1054,7 +1097,8 @@ function txRow(t, showDate) {
     inHousehold() && t.paidBy
       ? [paidByLabel(t), t.type === "expense" ? splitLabel(t.payerShare ?? 50) : null]
       : [cat.label, t.method];
-  const sub = [...split, date].filter(Boolean).map(escapeHtml).join(" · ");
+  const excluded = cat.excluded ? "no suma" : null;
+  const sub = [...split, excluded, date].filter(Boolean).map(escapeHtml).join(" · ");
   const authorInfo = inHousehold() && t.createdBy ? (state.household.memberInfo || {})[t.createdBy] : null;
   const author = authorInfo
     ? `<span class="row-author" title="Registró ${escapeHtml(memberName(t.createdBy))}">${escapeHtml((authorInfo.name || "?").charAt(0).toUpperCase())}</span>`
@@ -1065,7 +1109,7 @@ function txRow(t, showDate) {
       <span class="row-title">${escapeHtml(t.note || cat.label)}</span>
       <span class="row-sub">${sub}</span>
     </span>
-    <span class="row-amount ${t.type}">${repeat}${t.type === "income" ? "+" : ""}${formatMoney(t.amount)}</span>`;
+    <span class="row-amount ${cat.excluded ? "excluded" : t.type}">${repeat}${t.type === "income" && !cat.excluded ? "+" : ""}${formatMoney(t.amount)}</span>`;
   el.onclick = () => openTransactionModal(t.id);
   return el;
 }
@@ -1162,8 +1206,9 @@ function renderTransactionsList() {
     return;
   }
 
-  const spent = sumAmounts(filtered.filter((t) => t.type === "expense"));
-  const earned = sumAmounts(filtered.filter((t) => t.type === "income"));
+  const counted = filtered.filter((t) => countsAsMoney(t));
+  const spent = sumAmounts(counted.filter((t) => t.type === "expense"));
+  const earned = sumAmounts(counted.filter((t) => t.type === "income"));
   const parts = [`${filtered.length} ${filtered.length === 1 ? "movimiento" : "movimientos"}`];
   if (earned) parts.push(`+${formatMoney(earned)}`);
   if (spent) parts.push(`−${formatMoney(spent)}`);
@@ -1184,6 +1229,23 @@ function renderTransactionsList() {
     }
     group.appendChild(txRow(t, false));
   });
+}
+
+/** Opciones del filtro de categoría del Historial (cambian con las categorías propias y el espacio). */
+function renderFilterCategories() {
+  const select = $("filter-category");
+  const key = JSON.stringify(state.categories);
+  if (select.dataset.key === key) return;
+  select.dataset.key = key;
+  select.innerHTML = '<option value="all">Todas las categorías</option>';
+  [["Gastos", "expense"], ["Ingresos", "income"]].forEach(([label, type]) => {
+    const og = document.createElement("optgroup");
+    og.label = label;
+    categoriesFor(type).forEach((c) => og.appendChild(new Option(c.label, c.id)));
+    select.appendChild(og);
+  });
+  select.value = state.filters.category;
+  if (select.value !== state.filters.category) state.filters.category = "all";
 }
 
 function clearFilters() {
@@ -1281,7 +1343,7 @@ const txSheet = { type: "expense", category: null, editing: null };
 function renderCategoryGrid() {
   const grid = $("tx-category-grid");
   grid.innerHTML = "";
-  CATEGORIES[txSheet.type].forEach((c) => {
+  categoriesFor(txSheet.type).forEach((c) => {
     const b = document.createElement("button");
     b.type = "button";
     b.className = "cat-btn";
@@ -1290,7 +1352,7 @@ function renderCategoryGrid() {
     b.classList.toggle("active", on);
     b.setAttribute("aria-checked", String(on));
     b.style.setProperty("--c", c.color);
-    b.innerHTML = `<span class="cat-icon"><span class="ms">${c.icon}</span></span><span class="cat-label">${c.label}</span>`;
+    b.innerHTML = `<span class="cat-icon"><span class="ms">${c.icon}</span></span><span class="cat-label">${escapeHtml(c.label)}</span>`;
     b.onclick = () => {
       txSheet.category = c.id;
       grid.querySelectorAll(".cat-btn").forEach((x) => {
@@ -1301,15 +1363,24 @@ function renderCategoryGrid() {
     };
     grid.appendChild(b);
   });
+  // Crear una categoría sin salir del registro: queda seleccionada al guardarla.
+  const add = document.createElement("button");
+  add.type = "button";
+  add.className = "cat-btn cat-add";
+  add.style.setProperty("--c", "var(--text-secondary)");
+  add.innerHTML = '<span class="cat-icon"><span class="ms">add</span></span><span class="cat-label">Nueva</span>';
+  add.onclick = () => openCategoryModal(null, txSheet.type, true);
+  grid.appendChild(add);
 }
 
 function setTxType(type, keepCategory = false) {
   txSheet.type = type;
   setSegmented($("tx-type"), type);
-  const valid = CATEGORIES[type].some((c) => c.id === txSheet.category);
-  if (!keepCategory || !valid) {
+  const cats = categoriesFor(type);
+  // Al editar se respeta la categoría aunque ya no exista (se borró): solo cambia si el usuario elige otra.
+  if (!keepCategory) {
     const last = state.lastUsed[type] || {};
-    txSheet.category = CATEGORIES[type].some((c) => c.id === last.category) ? last.category : CATEGORIES[type][0].id;
+    txSheet.category = cats.some((c) => c.id === last.category) ? last.category : cats[0].id;
     if (!txSheet.editing && last.method) $("tx-method").value = last.method;
   }
   renderCategoryGrid();
@@ -1386,7 +1457,7 @@ function householdBalance() {
     if (!t.paidBy) continue;
     const sign = t.paidBy === me ? 1 : -1;
     if (t.kind === "settlement") net += sign * Number(t.amount);
-    else if (t.type === "expense") net += sign * Number(t.amount) * (1 - (t.payerShare ?? 50) / 100);
+    else if (t.type === "expense" && !isExcludedCategory(t)) net += sign * Number(t.amount) * (1 - (t.payerShare ?? 50) / 100);
   }
   return roundMoney(net);
 }
@@ -1561,7 +1632,7 @@ let budgetEditing = null;
 
 function openBudgetModal(category = null) {
   const select = $("budget-category");
-  const free = CATEGORIES.expense.filter((c) => category === c.id || state.budgets[c.id] === undefined);
+  const free = categoriesFor("expense").filter((c) => category === c.id || (state.budgets[c.id] === undefined && !c.excluded));
   if (!category && !free.length) {
     showToast("Todas las categorías ya tienen límite", "info");
     return;
@@ -1602,6 +1673,189 @@ function deleteBudgetFromSheet() {
     label: "Deshacer",
     onClick: () => upsertBudget(category, limit)
   });
+}
+
+/* ==========================================================================
+   Categorías propias (Ajustes → Categorías y "Nueva" en la hoja de registro)
+   ========================================================================== */
+
+const catSheet = { type: "expense", editing: null, icon: CATEGORY_ICONS[0], color: CATEGORY_COLORS[6], fromTx: false };
+let categoriesListType = "expense";
+
+function openCategories() {
+  categoriesListType = "expense";
+  setSegmented($("categories-type"), categoriesListType);
+  renderCategoriesList();
+  openModal("categories-modal");
+}
+
+function renderCategoriesList() {
+  const box = $("categories-list");
+  const own = state.categories[categoriesListType];
+  box.innerHTML = "";
+  if (!own.length) {
+    box.innerHTML = emptyStateHTML("category", "Sin categorías propias", "Crea las que necesites, por ejemplo “Tarjeta de crédito”.");
+    return;
+  }
+  const group = document.createElement("div");
+  group.className = "list-group";
+  own.forEach((c) => {
+    const row = document.createElement("button");
+    row.type = "button";
+    row.className = "list-row";
+    row.innerHTML = `
+      <span class="row-icon" style="color:${c.color};background:${c.color}24"><span class="ms">${c.icon}</span></span>
+      <span class="row-main">
+        <span class="row-title">${escapeHtml(c.label)}</span>
+        ${c.excluded ? '<span class="row-sub">No suma en totales</span>' : ""}
+      </span>
+      <span class="ms chevron">chevron_right</span>`;
+    row.onclick = () => openCategoryModal(c);
+    group.appendChild(row);
+  });
+  box.appendChild(group);
+}
+
+function openCategoryModal(cat = null, type = categoriesListType, fromTx = false) {
+  catSheet.editing = cat;
+  catSheet.type = cat ? cat.type : type;
+  catSheet.fromTx = fromTx;
+  catSheet.icon = cat ? cat.icon : CATEGORY_ICONS[0];
+  catSheet.color = cat ? cat.color : CATEGORY_COLORS[6];
+  $("category-form").reset();
+  $("category-title").textContent = cat ? "Editar categoría" : "Nueva categoría";
+  $("cat-type-note").textContent = catSheet.type === "income" ? "Categoría de ingreso" : "Categoría de gasto";
+  $("cat-name").value = cat ? cat.label : "";
+  $("cat-excluded").checked = !!(cat && cat.excluded);
+  $("cat-delete-btn").classList.toggle("hidden", !cat);
+  renderCategoryPickers();
+  openModal("category-modal", cat ? null : "cat-name");
+}
+
+/** Opciones de un solo valor (íconos, colores): marcar la elegida sin volver a pintar. */
+function renderPicker(container, values, current, build, onPick) {
+  container.innerHTML = "";
+  values.forEach((v) => {
+    const b = document.createElement("button");
+    b.type = "button";
+    b.setAttribute("role", "radio");
+    build(b, v);
+    b.classList.toggle("active", v === current);
+    b.setAttribute("aria-checked", String(v === current));
+    b.onclick = () => {
+      container.querySelectorAll("button").forEach((x) => {
+        x.classList.toggle("active", x === b);
+        x.setAttribute("aria-checked", String(x === b));
+      });
+      onPick(v);
+      haptic();
+    };
+    container.appendChild(b);
+  });
+}
+
+function renderCategoryPickers() {
+  updateCategoryPreview();
+  renderPicker(
+    $("cat-icons"),
+    CATEGORY_ICONS,
+    catSheet.icon,
+    (b, icon) => {
+      b.className = "pick-icon";
+      b.setAttribute("aria-label", icon);
+      b.innerHTML = `<span class="ms">${icon}</span>`;
+    },
+    (icon) => {
+      catSheet.icon = icon;
+      updateCategoryPreview();
+    }
+  );
+  renderPicker(
+    $("cat-colors"),
+    CATEGORY_COLORS,
+    catSheet.color,
+    (b, color) => {
+      b.className = "pick-color";
+      b.style.setProperty("--c", color);
+      b.setAttribute("aria-label", `Color ${color}`);
+    },
+    (color) => {
+      catSheet.color = color;
+      updateCategoryPreview();
+    }
+  );
+}
+
+function updateCategoryPreview() {
+  const preview = $("cat-preview");
+  preview.style.setProperty("--c", catSheet.color);
+  preview.querySelector(".ms").textContent = catSheet.icon;
+  $("cat-icons").style.setProperty("--c", catSheet.color);
+}
+
+function refreshCategoryViews() {
+  if ($("transaction-modal").classList.contains("open")) renderCategoryGrid();
+  if ($("categories-modal").classList.contains("open")) renderCategoriesList();
+}
+
+function saveCategory(event) {
+  event.preventDefault();
+  const label = $("cat-name").value.trim().replace(/\s+/g, " ");
+  if (!label) {
+    showToast("Escribe un nombre", "warning");
+    $("cat-name").focus();
+    return;
+  }
+  const prev = catSheet.editing;
+  const same = (s) => s.toLowerCase() === label.toLowerCase();
+  if (categoriesFor(catSheet.type).some((c) => c.ref !== (prev && prev.ref) && (same(c.label) || same(c.id)))) {
+    showToast("Ya existe una categoría con ese nombre", "warning");
+    return;
+  }
+  const cat = {
+    ref: prev ? prev.ref : generateId("cat"),
+    // El id no cambia al renombrar: los movimientos ya guardados lo usan.
+    id: prev ? prev.id : label,
+    type: catSheet.type,
+    label,
+    icon: catSheet.icon,
+    color: catSheet.color,
+    excluded: $("cat-excluded").checked,
+    createdAt: prev ? prev.createdAt : Date.now()
+  };
+  if (catSheet.fromTx && !prev) txSheet.category = cat.id;
+  upsertCategory(cat);
+  closeModal("category-modal");
+  haptic("success");
+  refreshCategoryViews();
+}
+
+function deleteCategoryFromSheet() {
+  const cat = catSheet.editing;
+  if (!cat) return;
+  const limit = cat.type === "expense" ? state.budgets[cat.id] : undefined;
+  const remove = () => {
+    closeModal("category-modal");
+    removeCategory(cat);
+    if (limit !== undefined) removeBudget(cat.id);
+    haptic();
+    refreshCategoryViews();
+    showToast(`Categoría ${cat.label} eliminada`, "info", 5000, {
+      label: "Deshacer",
+      onClick: () => {
+        upsertCategory(cat);
+        if (limit !== undefined) upsertBudget(cat.id, limit);
+        refreshCategoryViews();
+      }
+    });
+  };
+  if (limit === undefined) return remove();
+  showConfirmDialog(
+    "¿Eliminar categoría?",
+    `También se eliminará su límite mensual de ${formatMoney(limit)}. Los movimientos que ya tienes conservan el nombre “${cat.label}”.`,
+    remove,
+    "Eliminar"
+  );
 }
 
 /* ==========================================================================
@@ -1721,9 +1975,13 @@ function removeTransaction(id) {
   state.transactions = state.transactions.filter((t) => t.id !== id);
   commit();
 }
+// El id de un límite es el de su categoría; "/" (p. ej. "Hogar/Servicios") no puede ir en un id de Firestore.
+const budgetDocId = (category) => category.replace(/\//g, "%2F");
+const budgetFromDocId = (id) => id.replace(/%2F/g, "/");
+
 function upsertBudget(category, limit) {
   if (isCloud()) {
-    cloudWrite(cloudDoc("budgets", category).set({ limit }));
+    cloudWrite(cloudDoc("budgets", budgetDocId(category)).set({ limit }));
     return;
   }
   state.budgets[category] = limit;
@@ -1731,10 +1989,39 @@ function upsertBudget(category, limit) {
 }
 function removeBudget(category) {
   if (isCloud()) {
-    cloudWrite(cloudDoc("budgets", category).delete());
+    cloudWrite(cloudDoc("budgets", budgetDocId(category)).delete());
     return;
   }
   delete state.budgets[category];
+  commit();
+}
+
+/* Categorías propias: en la nube, un documento por categoría (id = cat.ref). */
+function setLocalCategory(cat, remove = false) {
+  const list = state.categories[cat.type].filter((c) => c.ref !== cat.ref);
+  if (!remove) {
+    const i = state.categories[cat.type].findIndex((c) => c.ref === cat.ref);
+    list.splice(i === -1 ? list.length : i, 0, cat);
+  }
+  state.categories = { ...state.categories, [cat.type]: list };
+}
+function upsertCategory(cat) {
+  // También en la nube se aplica al instante: la hoja de registro necesita la categoría ya.
+  setLocalCategory(cat);
+  if (isCloud()) {
+    cloudWrite(cloudDoc("categories", cat.ref).set(cat));
+    render();
+    return;
+  }
+  commit();
+}
+function removeCategory(cat) {
+  setLocalCategory(cat, true);
+  if (isCloud()) {
+    cloudWrite(cloudDoc("categories", cat.ref).delete());
+    render();
+    return;
+  }
   commit();
 }
 
@@ -1772,9 +2059,10 @@ function handleAuthStateChange(user) {
     unsubscribeFirestore();
     setHousehold(null);
     const local = loadState() || {};
-    spaceCache.personal = { transactions: local.transactions || [], budgets: local.budgets || {} };
+    spaceCache.personal = { transactions: local.transactions || [], budgets: local.budgets || {}, categories: normCategories(local.categories) };
     state.transactions = spaceCache.personal.transactions;
     state.budgets = spaceCache.personal.budgets;
+    state.categories = spaceCache.personal.categories;
   }
   render();
   renderHouseholdSettings();
@@ -1786,6 +2074,11 @@ function receiveSpaceData(key, patch) {
   if ((key === "household") === (state.space === "household")) {
     if (patch.transactions) state.transactions = patch.transactions;
     if (patch.budgets) state.budgets = patch.budgets;
+    if (patch.categories) {
+      state.categories = patch.categories;
+      if ($("transaction-modal").classList.contains("open")) renderCategoryGrid();
+      if ($("categories-modal").classList.contains("open")) renderCategoriesList();
+    }
     commit();
   } else if (key === "personal") {
     saveState(); // el personal siempre queda guardado en el teléfono
@@ -1805,8 +2098,16 @@ function listenSpace(key, ref, onFirstTransactions) {
     }, cloudError),
     ref.collection("budgets").onSnapshot((snap) => {
       const budgets = {};
-      snap.forEach((d) => (budgets[d.id] = d.data().limit));
+      snap.forEach((d) => (budgets[budgetFromDocId(d.id)] = d.data().limit));
       receiveSpaceData(key, { budgets });
+    }, cloudError),
+    ref.collection("categories").onSnapshot((snap) => {
+      const raw = { expense: [], income: [] };
+      snap.docs
+        .map((d) => ({ ...d.data(), ref: d.id }))
+        .sort((a, b) => (a.createdAt || 0) - (b.createdAt || 0))
+        .forEach((c) => raw[c.type] && raw[c.type].push(c));
+      receiveSpaceData(key, { categories: normCategories(raw) });
     }, cloudError)
   ];
   return () => unsubs.forEach((fn) => fn());
@@ -1838,7 +2139,7 @@ function setHousehold(household) {
   if (!household || household.id !== prevId) {
     householdListeners.forEach((fn) => fn());
     householdListeners = [];
-    spaceCache.household = { transactions: [], budgets: {} };
+    spaceCache.household = { transactions: [], budgets: {}, categories: normCategories() };
     state.activity = [];
     if (household) {
       householdListeners.push(
@@ -1874,11 +2175,12 @@ function unsubscribeFirestore() {
 function switchSpace(space, remember = true) {
   if (space === "household" && !state.household) return;
   if (space === state.space) return;
-  spaceCache[state.space] = { transactions: state.transactions, budgets: state.budgets };
+  spaceCache[state.space] = activeSpaceData();
   state.space = space;
   if (remember) state.preferredSpace = space;
   state.transactions = spaceCache[space].transactions;
   state.budgets = spaceCache[space].budgets;
+  state.categories = spaceCache[space].categories;
   state.viewMonth = monthKey(new Date());
   state.filters.category = "all";
   budgetsAnimated = false;
@@ -2195,7 +2497,9 @@ function migrateLocalDataToCloud() {
       const batch = db.batch();
       const userRef = db.collection("users").doc(state.user.uid);
       txs.forEach((t) => batch.set(userRef.collection("transactions").doc(t.id), t));
-      Object.keys(local.budgets || {}).forEach((cat) => batch.set(userRef.collection("budgets").doc(cat), { limit: local.budgets[cat] }));
+      Object.keys(local.budgets || {}).forEach((cat) => batch.set(userRef.collection("budgets").doc(budgetDocId(cat)), { limit: local.budgets[cat] }));
+      const cats = normCategories(local.categories);
+      [...cats.expense, ...cats.income].forEach((c) => batch.set(userRef.collection("categories").doc(c.ref), c));
       batch
         .commit()
         .then(() => {
@@ -2422,6 +2726,13 @@ function refreshScheduledNotifications() {
   }, 300);
 }
 
+/** Número estable a partir de un texto (ids de notificación por categoría, 200–279). */
+function hashString(str) {
+  let h = 0;
+  for (const ch of str) h = (h * 31 + ch.codePointAt(0)) >>> 0;
+  return h;
+}
+
 /** Avisa una sola vez por categoría, umbral (80/100) y mes. */
 function checkBudgetAlerts() {
   const ym = monthKey(new Date());
@@ -2445,7 +2756,7 @@ function checkBudgetAlerts() {
     notifications: fresh.map((u, i) => {
       const label = getCategoryInfo(u.cat).label;
       return {
-        id: 200 + (CATEGORIES.expense.findIndex((c) => c.id === u.cat) + 1) * 2 + (u.threshold === 100 ? 1 : 0),
+        id: 200 + (hashString(u.cat) % 40) * 2 + (u.threshold === 100 ? 1 : 0),
         channelId: "finanflow",
         smallIcon: "ic_stat_finanflow",
         title: u.threshold === 100 ? `Superaste el límite de ${label}` : `${label}: cerca del límite`,
@@ -2481,12 +2792,12 @@ function syncWidget() {
   clearTimeout(widgetTimer);
   widgetTimer = setTimeout(() => {
     const ym = monthKey(new Date());
-    const personal = personalData().transactions;
-    const s = monthStats(ym, 31, personal);
+    const { transactions: personal, categories } = personalData();
+    const s = monthStats(ym, 31, personal, categories);
     bridge
       .update({
         json: JSON.stringify({
-          balance: formatMoney(balanceUntil(todayISO(), personal)),
+          balance: formatMoney(balanceUntil(todayISO(), personal, categories)),
           income: formatMoney(s.income),
           expense: formatMoney(s.expense),
           monthKey: ym,
@@ -2705,7 +3016,11 @@ function exportFile(content, filename, type, successMessage) {
 }
 
 function exportDataJSON() {
-  const data = JSON.stringify({ app: "FinanFlow", currency: state.currency, transactions: state.transactions, budgets: state.budgets }, null, 2);
+  const data = JSON.stringify(
+    { app: "FinanFlow", currency: state.currency, transactions: state.transactions, budgets: state.budgets, categories: state.categories },
+    null,
+    2
+  );
   return exportFile(data, `finanflow-respaldo-${todayISO()}.json`, "application/json", "Respaldo exportado");
 }
 
@@ -2725,7 +3040,8 @@ function isValidBackup(data) {
     data.transactions.every(
       (t) => t && typeof t.id === "string" && (t.type === "income" || t.type === "expense") && Number(t.amount) > 0 && /^\d{4}-\d{2}-\d{2}$/.test(t.date) && typeof t.category === "string"
     ) &&
-    (data.budgets === undefined || (typeof data.budgets === "object" && Object.values(data.budgets).every((v) => Number(v) > 0)))
+    (data.budgets === undefined || (typeof data.budgets === "object" && Object.values(data.budgets).every((v) => Number(v) > 0))) &&
+    (data.categories === undefined || (typeof data.categories === "object" && data.categories !== null))
   );
 }
 
@@ -2752,8 +3068,11 @@ function importDataJSON(event) {
         if (CURRENCY_CONFIG[data.currency]) state.currency = data.currency;
         if (isCloud()) {
           data.transactions.forEach((t) => cloudWrite(cloudDoc("transactions", t.id).set(t)));
-          Object.entries(data.budgets || {}).forEach(([c, l]) => cloudWrite(cloudDoc("budgets", c).set({ limit: Number(l) })));
-        } else {
+          Object.entries(data.budgets || {}).forEach(([c, l]) => cloudWrite(cloudDoc("budgets", budgetDocId(c)).set({ limit: Number(l) })));
+        }
+        const cats = normCategories(data.categories);
+        [...cats.expense, ...cats.income].forEach((c) => (isCloud() ? upsertCategory(c) : setLocalCategory(c)));
+        if (!isCloud()) {
           state.transactions = data.transactions;
           state.budgets = data.budgets || {};
         }
@@ -2774,6 +3093,7 @@ function confirmResetAll() {
     () => {
       state.transactions = [];
       state.budgets = {};
+      state.categories = normCategories();
       state.lastUsed = { expense: {}, income: {} };
       state.notified = {};
       state.viewMonth = monthKey(new Date());
@@ -2795,6 +3115,9 @@ function bindUI() {
   $("budget-form").addEventListener("submit", saveBudget);
   $("tx-delete-btn").onclick = deleteFromSheet;
   $("budget-delete-btn").onclick = deleteBudgetFromSheet;
+  $("category-form").addEventListener("submit", saveCategory);
+  $("cat-delete-btn").onclick = deleteCategoryFromSheet;
+  $("categories-add-btn").onclick = () => openCategoryModal(null, categoriesListType);
   ["tx-amount", "budget-limit"].forEach((id) => {
     $(id).addEventListener("input", (e) => {
       e.target.value = formatAmountInput(e.target.value);
@@ -2830,6 +3153,10 @@ function bindUI() {
     renderTransactionsList();
   });
   setSegmented($("chart-type-toggle"), state.chartType);
+  setupSegmented($("categories-type"), (type) => {
+    categoriesListType = type;
+    renderCategoriesList();
+  });
   setupSegmented($("space-switch"), (space) => {
     haptic();
     switchSpace(space);
@@ -2858,12 +3185,6 @@ function bindUI() {
     renderTransactionsList();
   });
   const filterCat = $("filter-category");
-  [["Gastos", "expense"], ["Ingresos", "income"]].forEach(([label, type]) => {
-    const og = document.createElement("optgroup");
-    og.label = label;
-    CATEGORIES[type].forEach((c) => og.appendChild(new Option(c.label, c.id)));
-    filterCat.appendChild(og);
-  });
   filterCat.onchange = () => {
     state.filters.category = filterCat.value;
     renderTransactionsList();
@@ -2918,6 +3239,7 @@ const app = {
   switchTab,
   openTransactionModal,
   openBudgetModal,
+  openCategories,
   openAI,
   sendAIMessage,
   closeModal,

@@ -56,7 +56,7 @@ final class PaymentNotifier {
         String id = it.optString("id");
         NotificationCompat.Builder b = new NotificationCompat.Builder(c, CHANNEL)
             .setSmallIcon(R.drawable.ic_stat_finanflow)
-            .setColor(0xFF5E5CE6)
+            .setColor(0xFF11A08F)
             .setContentTitle(title(c, it))
             .setContentText(detail(c, it))
             .setContentIntent(PendingIntent.getActivity(c, notificationId(id), reviewIntent(c, id), flags()))

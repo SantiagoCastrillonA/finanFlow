@@ -3,7 +3,7 @@
     <color name="widget_bg">#FFFFFFFF</color>
     <color name="widget_text">#FF000000</color>
     <color name="widget_text_secondary">#993C3C43</color>
-    <color name="widget_accent">#FF5856D6</color>
-    <color name="widget_income">#FF34C759</color>
-    <color name="widget_expense">#FFFF3B30</color>
+    <color name="widget_accent">#FF0E8A7E</color>
+    <color name="widget_income">#FF16A34A</color>
+    <color name="widget_expense">#FF2563EB</color>
 </resources>

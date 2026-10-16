@@ -93,13 +93,15 @@ public class PaymentPromptActivity extends Activity {
         dark = (getResources().getConfiguration().uiMode & Configuration.UI_MODE_NIGHT_MASK) == Configuration.UI_MODE_NIGHT_YES;
         boolean blur = Build.VERSION.SDK_INT >= 31 && getWindowManager().isCrossWindowBlurEnabled();
 
+        // Vidrio esmerilado (como las tarjetas grandes de la app): tinte translúcido de un solo color y
+        // borde de luz. Con desenfoque el tinte es más transparente; sin él, casi sólido para que se lea
+        // sobre cualquier pantalla (Wallet es blanca).
         GradientDrawable bg = new GradientDrawable();
         bg.setCornerRadius(dp(28));
-        // Con desenfoque el fondo es más transparente (vidrio); sin él, casi sólido para que se lea bien.
-        bg.setColor(dark ? (blur ? 0xB82C2C30 : 0xF22C2C30) : (blur ? 0xC7F2F2F7 : 0xF7F2F2F7));
-        bg.setStroke(Math.max(1, dp(0.5f)), dark ? 0x26FFFFFF : 0x14000000);
+        bg.setColor(dark ? (blur ? 0x9E132121 : 0xF2132121) : (blur ? 0xA6FFFFFF : 0xF5FFFFFF));
+        bg.setStroke(Math.max(1, dp(0.5f)), dark ? 0x40FFFFFF : 0xBFFFFFFF);
         w.setBackgroundDrawable(bg);
-        if (blur) w.setBackgroundBlurRadius(dp(36));
+        if (blur) w.setBackgroundBlurRadius(dp(40));
 
         WindowManager.LayoutParams lp = w.getAttributes();
         int screen = getResources().getDisplayMetrics().widthPixels;
@@ -117,11 +119,12 @@ public class PaymentPromptActivity extends Activity {
     private int primary() { return dark ? 0xFFFFFFFF : 0xFF000000; }
     private int secondary() { return dark ? 0x99EBEBF5 : 0x993C3C43; }
     private int fill() { return dark ? 0x1FFFFFFF : 0x0F000000; }
-    private int accent() { return dark ? 0xFF5E5CE6 : 0xFF5856D6; }
+    private int accent() { return dark ? 0xFF11A08F : 0xFF0E8A7E; }
     private int amountColor() {
         String type = item.optString("type");
-        if ("expense".equals(type)) return dark ? 0xFFFF453A : 0xFFFF3B30;
-        if ("income".equals(type)) return dark ? 0xFF30D158 : 0xFF34C759;
+        // Un gasto no es una alarma: azul suave (como en la app); el rojo queda para deudas y límites.
+        if ("expense".equals(type)) return dark ? 0xFF93C5FD : 0xFF2563EB;
+        if ("income".equals(type)) return dark ? 0xFF4ADE80 : 0xFF16A34A;
         return primary();
     }
 
@@ -288,7 +291,7 @@ public class PaymentPromptActivity extends Activity {
         done.setOrientation(LinearLayout.VERTICAL);
         done.setGravity(Gravity.CENTER);
         done.setMinimumHeight(height);
-        TextView check = text("✓", 48, dark ? 0xFF30D158 : 0xFF34C759, true);
+        TextView check = text("✓", 48, dark ? 0xFF4ADE80 : 0xFF16A34A, true);
         check.setGravity(Gravity.CENTER);
         done.addView(check);
         TextView label = text("Registrado", 17, primary(), true);

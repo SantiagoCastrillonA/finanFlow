@@ -572,7 +572,7 @@ function applyThemePref(pref) {
   const theme = pref === "system" ? (darkQuery.matches ? "dark" : "light") : pref;
   const changed = document.documentElement.getAttribute("data-theme") !== theme;
   document.documentElement.setAttribute("data-theme", theme);
-  document.querySelector('meta[name="theme-color"]')?.setAttribute("content", theme === "dark" ? "#000000" : "#F2F2F7");
+  document.querySelector('meta[name="theme-color"]')?.setAttribute("content", theme === "dark" ? "#0A1414" : "#EEF4F3");
   const select = $("settings-theme");
   if (select) select.value = pref;
   if (changed && (charts.category || charts.trend)) resetCharts();
@@ -949,7 +949,7 @@ function renderSummaryChart(months, stats) {
       labels,
       datasets: [
         { label: "Ingresos", data: data[0], backgroundColor: cssVar("--income"), borderRadius: 4, barPercentage: 0.8, categoryPercentage: 0.7 },
-        { label: "Gastos", data: data[1], backgroundColor: cssVar("--expense"), borderRadius: 4, barPercentage: 0.8, categoryPercentage: 0.7 }
+        { label: "Gastos", data: data[1], backgroundColor: cssVar("--spend"), borderRadius: 4, barPercentage: 0.8, categoryPercentage: 0.7 }
       ]
     },
     options: {
@@ -991,7 +991,7 @@ function renderCategoryChart(stats) {
     ids = ["income", "expense"];
     labels = ["Ingresos", "Gastos"];
     data = [stats.income, stats.expense];
-    colors = [cssVar("--income"), cssVar("--expense")];
+    colors = [cssVar("--income"), cssVar("--spend")];
     const net = stats.income - stats.expense;
     center = ["Neto", (net > 0 ? "+" : "") + formatCompact(net)];
   } else {
@@ -1423,7 +1423,7 @@ function txRow(t, showDate) {
       <span class="row-title">${escapeHtml(t.note || cat.label)}</span>
       <span class="row-sub">${sub}</span>
     </span>
-    <span class="row-amount ${cat.excluded ? "excluded" : t.type}">${repeat}${t.type === "income" && !cat.excluded ? "+" : ""}${formatMoney(t.amount)}</span>`;
+    <span class="row-amount ${cat.excluded ? "excluded" : t.type}">${repeat}${cat.excluded ? "" : t.type === "income" ? "+" : "−"}${formatMoney(t.amount)}</span>`;
   el.onclick = () => openTransactionModal(t.id);
   return el;
 }
@@ -2552,7 +2552,7 @@ function renderUpcoming(isCurrent) {
           <span class="row-title">${escapeHtml(title)}</span>
           <span class="row-sub">${escapeHtml(`${when} · ${RECURRING_LABELS[t.recurring].toLowerCase()}`)}</span>
         </span>
-        <span class="row-amount ${transfer ? "excluded" : t.type}">${t.type === "income" && !transfer ? "+" : ""}${formatMoney(t.amount)}</span>`;
+        <span class="row-amount ${transfer ? "excluded" : t.type}">${transfer ? "" : t.type === "income" ? "+" : "−"}${formatMoney(t.amount)}</span>`;
       row.onclick = () => openTransactionModal(t.id);
     }
     box.appendChild(row);
@@ -3983,7 +3983,7 @@ function renderInbox() {
           <span class="row-title">${escapeHtml(prettyMerchant(it.merchant) || "Pago")}</span>
           <span class="row-sub">${escapeHtml([formatDateFriendly(it.date), account].join(" · "))}</span>
         </span>
-        <span class="row-amount ${transfer ? "excluded" : it.type}">${it.type === "income" ? "+" : ""}${formatMoney(roundMoney(Number(it.amount) || 0))}</span>
+        <span class="row-amount ${transfer ? "excluded" : it.type}">${transfer ? "" : it.type === "income" ? "+" : "−"}${formatMoney(roundMoney(Number(it.amount) || 0))}</span>
       </button>
       <button type="button" class="icon-btn plain inbox-ignore" aria-label="Ignorar"><span class="ms">close</span></button>`;
     row.querySelector(".inbox-open").onclick = () => openInboxItem(it);

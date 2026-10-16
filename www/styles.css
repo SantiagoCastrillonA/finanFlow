@@ -5,29 +5,39 @@
 :root,
 [data-theme="dark"] {
   color-scheme: dark;
-  --bg: #000000;
-  --card: #1C1C1E;
-  --elevated: #2C2C2E;
+  --bg: #0A1414;
+  --card: #132121;
+  --elevated: #1B2D2D;
   --fill: rgba(118, 118, 128, 0.24);
   --fill-strong: rgba(118, 118, 128, 0.36);
-  --seg-thumb: #636366;
+  --seg-thumb: #3A4D4D;
   --separator: rgba(84, 84, 88, 0.6);
   --text: #FFFFFF;
   --text-secondary: rgba(235, 235, 245, 0.6);
   --text-tertiary: rgba(235, 235, 245, 0.3);
-  --accent: #5E5CE6;
-  --accent-tint: rgba(94, 92, 230, 0.22);
-  --income: #30D158;
-  --expense: #FF453A;
-  --warning: #FF9F0A;
-  --bar-bg: rgba(22, 22, 24, 0.78);
+  /* Verde azulado: calma y crecimiento. El rojo (--expense) se reserva para alertas: deudas, saldo
+     negativo y límites superados; los gastos normales usan --spend, un azul suave que no alarma. */
+  --accent: #11A08F;
+  --accent-tint: rgba(17, 160, 143, 0.22);
+  --income: #4ADE80;
+  --expense: #FB7185;
+  --spend: #93C5FD;
+  --warning: #FBBF24;
+  --bar-bg: rgba(12, 24, 24, 0.82);
   --backdrop: rgba(0, 0, 0, 0.5);
   --shadow: 0 8px 32px rgba(0, 0, 0, 0.5);
+  /* Vidrio sobre un fondo de un solo color: las tarjetas grandes más claras y con borde de luz, las listas más discretas. */
+  --glass: rgba(255, 255, 255, 0.08);
+  --glass-edge: rgba(255, 255, 255, 0.18);
+  --glass-glint: rgba(255, 255, 255, 0.25);
+  --surface: rgba(255, 255, 255, 0.045);
+  --surface-edge: rgba(255, 255, 255, 0.07);
+  --surface-glint: rgba(255, 255, 255, 0.09);
 }
 
 [data-theme="light"] {
   color-scheme: light;
-  --bg: #F2F2F7;
+  --bg: #EEF4F3;
   --card: #FFFFFF;
   --elevated: #FFFFFF;
   --fill: rgba(118, 118, 128, 0.12);
@@ -37,14 +47,21 @@
   --text: #000000;
   --text-secondary: rgba(60, 60, 67, 0.6);
   --text-tertiary: rgba(60, 60, 67, 0.3);
-  --accent: #5856D6;
-  --accent-tint: rgba(88, 86, 214, 0.14);
-  --income: #34C759;
-  --expense: #FF3B30;
-  --warning: #FF9500;
-  --bar-bg: rgba(249, 249, 249, 0.82);
+  --accent: #0E8A7E;
+  --accent-tint: rgba(14, 138, 126, 0.14);
+  --income: #16A34A;
+  --expense: #E11D48;
+  --spend: #2563EB;
+  --warning: #D97706;
+  --bar-bg: rgba(247, 251, 250, 0.85);
   --backdrop: rgba(0, 0, 0, 0.3);
   --shadow: 0 8px 32px rgba(0, 0, 0, 0.12);
+  --glass: rgba(255, 255, 255, 0.45);
+  --glass-edge: rgba(255, 255, 255, 0.75);
+  --glass-glint: rgba(255, 255, 255, 0.95);
+  --surface: rgba(255, 255, 255, 0.62);
+  --surface-edge: rgba(255, 255, 255, 0.8);
+  --surface-glint: rgba(255, 255, 255, 0.9);
 }
 
 :root {
@@ -507,7 +524,8 @@ a {
 }
 
 .card {
-  background: var(--card);
+  background: var(--glass);
+  box-shadow: inset 0 0 0 0.5px var(--glass-edge), inset 0 1px 0 var(--glass-glint);
   border-radius: var(--radius);
   padding: 16px;
   margin-bottom: 12px;
@@ -741,9 +759,12 @@ a {
 }
 
 .balance-amount.negative,
-.balance-split .negative,
-.total-value.expense {
+.balance-split .negative {
   color: var(--expense);
+}
+
+.total-value.expense {
+  color: var(--spend);
 }
 
 .balance-split {
@@ -789,8 +810,8 @@ a {
 }
 
 .total-icon.expense {
-  color: var(--expense);
-  background: color-mix(in srgb, var(--expense) 18%, transparent);
+  color: var(--spend);
+  background: color-mix(in srgb, var(--spend) 18%, transparent);
 }
 
 .total-value {
@@ -821,7 +842,7 @@ a {
 }
 
 .compare.bad {
-  color: var(--expense);
+  color: var(--warning);
 }
 
 .allowance {
@@ -935,7 +956,8 @@ a {
    ========================================================================== */
 
 .list-group {
-  background: var(--card);
+  background: var(--surface);
+  box-shadow: inset 0 0 0 0.5px var(--surface-edge), inset 0 1px 0 var(--surface-glint);
   border-radius: var(--radius);
   overflow: hidden;
 }
@@ -948,7 +970,7 @@ a {
   width: 100%;
   min-height: 60px;
   padding: 10px 16px;
-  background: var(--card);
+  background: transparent;
   transition: background-color 100ms ease;
 }
 
@@ -975,7 +997,7 @@ a {
 @media (hover: hover) and (pointer: fine) {
   .list-row:hover,
   .setting-row:is(button):hover {
-    background: color-mix(in srgb, var(--fill) 50%, var(--card));
+    background: color-mix(in srgb, var(--fill) 50%, transparent);
   }
 }
 
@@ -1028,6 +1050,10 @@ a {
 
 .row-amount.income {
   color: var(--income);
+}
+
+.row-amount.expense {
+  color: var(--spend);
 }
 
 .row-badge {
@@ -1179,7 +1205,8 @@ a {
   width: 100%;
   padding: 14px 16px;
   border-radius: var(--radius);
-  background: var(--card);
+  background: var(--surface);
+  box-shadow: inset 0 0 0 0.5px var(--surface-edge), inset 0 1px 0 var(--surface-glint);
   transition: background-color 100ms ease;
 }
 
@@ -1258,7 +1285,7 @@ a {
   width: 100%;
   min-height: 48px;
   padding: 6px 16px;
-  background: var(--card);
+  background: transparent;
   font-size: 17px;
   transition: background-color 100ms ease;
 }
@@ -1548,6 +1575,24 @@ a {
 
 [data-theme="dark"] .sheet {
   background: var(--card);
+}
+
+.sheet,
+.dialog {
+  --glass: var(--card);
+  --glass-edge: transparent;
+  --glass-glint: transparent;
+  --surface: var(--card);
+  --surface-edge: transparent;
+  --surface-glint: transparent;
+}
+
+/* Quien pide menos transparencia en el sistema ve tarjetas sólidas. */
+@media (prefers-reduced-transparency: reduce) {
+  :root {
+    --glass: var(--card);
+      --surface: var(--card);
+  }
 }
 
 .modal.open .sheet {

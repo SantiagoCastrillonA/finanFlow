@@ -152,6 +152,7 @@ public final class PaymentStore {
         JSONArray q = queue(c);
         for (int i = 0; i < q.length(); i++) {
             JSONObject old = q.getJSONObject(i);
+            if (old.optBoolean("test")) continue; // un pago real nunca se une con uno de prueba
             if (Math.abs(old.getLong("time") - item.getLong("time")) > SAME_PAYMENT_MS) continue;
             if (Math.abs(old.getDouble("amount") - item.getDouble("amount")) >= 1) continue;
             if (old.getString("source").equals(item.getString("source"))) {

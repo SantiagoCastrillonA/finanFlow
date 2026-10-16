@@ -95,6 +95,7 @@ final class PaymentNotifier {
     }
 
     static String headline(JSONObject it) {
+        if (it.optBoolean("test")) return "Pago de prueba";
         switch (it.optString("type")) {
             case "income": return "Ingreso detectado";
             case "transfer": return "Transferencia detectada";

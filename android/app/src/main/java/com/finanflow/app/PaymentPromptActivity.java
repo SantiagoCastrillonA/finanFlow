@@ -229,7 +229,8 @@ public class PaymentPromptActivity extends Activity {
         try {
             item.put(field, accountId);
         } catch (Exception ignored) {}
-        PaymentStore.setLink(this, PaymentStore.keyFor(item, field), accountId);
+        // Un pago de prueba no deja aprendida su tarjeta: la próxima prueba vuelve a preguntar.
+        if (!item.optBoolean("test")) PaymentStore.setLink(this, PaymentStore.keyFor(item, field), accountId);
         PaymentStore.put(this, item);
         PaymentInboxPlugin.notifyChanged();
         render();

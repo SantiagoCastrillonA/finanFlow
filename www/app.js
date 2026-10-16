@@ -4104,7 +4104,13 @@ async function loadInbox() {
   if (!pay) return;
   const { items = [] } = (await pay.getQueue().catch(() => null)) || {};
   const done = [];
+  const tests = [];
   items.forEach((it) => {
+    // Un pago de prueba confirmado no se registra: solo avisa que la tarjeta funciona.
+    if (it.test) {
+      if (it.status === "confirmed") tests.push(it.id);
+      return;
+    }
     const tx = it.status === "confirmed" ? inboxToTx(it) : null;
     if (!tx) return;
     // Los pagos detectados son tuyos: van al espacio personal aunque estés viendo el Hogar.
@@ -4117,7 +4123,11 @@ async function loadInbox() {
     commit();
     showToast(done.length === 1 ? "Pago registrado" : `${done.length} pagos registrados`, "success");
   }
-  inbox = items.filter((it) => !done.includes(it.id)).sort((a, b) => (b.time || 0) - (a.time || 0));
+  if (tests.length) {
+    await pay.remove({ ids: tests }).catch(() => {});
+    showToast("Prueba completada: la tarjeta de pagos funciona", "success");
+  }
+  inbox = items.filter((it) => !done.includes(it.id) && !tests.includes(it.id)).sort((a, b) => (b.time || 0) - (a.time || 0));
   renderInbox();
 }
 
@@ -4139,7 +4149,7 @@ function renderInbox() {
         ${transfer ? TRANSFER_ICON : rowIcon(cat, brandFor(prettyMerchant(it.merchant)) || catBrand(cat))}
         <span class="row-main">
           <span class="row-title">${escapeHtml(prettyMerchant(it.merchant) || "Pago")}</span>
-          <span class="row-sub">${escapeHtml([formatDateFriendly(it.date), account].join(" · "))}</span>
+          <span class="row-sub">${escapeHtml([it.test ? "Prueba" : null, formatDateFriendly(it.date), account].filter(Boolean).join(" · "))}</span>
         </span>
         <span class="row-amount ${transfer ? "excluded" : it.type}">${transfer ? "" : it.type === "income" ? "+" : "−"}${formatMoney(roundMoney(Number(it.amount) || 0))}</span>
       </button>
@@ -4152,6 +4162,7 @@ function renderInbox() {
 
 /** Abre la hoja de movimiento ya llena con el pago detectado. */
 function openInboxItem(it) {
+  if (it.test) return finishTestItem(it);
   if (state.space !== "personal") switchSpace("personal");
   const type = it.type === "transfer" ? "transfer" : it.type === "income" ? "income" : "expense";
   openTransactionModal(null, type, {
@@ -4192,6 +4203,27 @@ function finishInboxItem(it, tx) {
   pay.learn({ merchant: tx.kind === "transfer" ? "" : it.merchant, category: tx.category, links }).catch(() => {});
 }
 
+/** Abrir un pago de prueba desde "Por confirmar" lo da por terminado, sin crear ningún movimiento. */
+function finishTestItem(it) {
+  inbox = inbox.filter((x) => x.id !== it.id);
+  renderInbox();
+  const pay = PAY();
+  if (pay) pay.remove({ ids: [it.id] }).catch(() => {});
+  haptic("success");
+  showToast("Prueba completada: la tarjeta de pagos funciona", "success");
+}
+
+/** Ajustes → "Probar la tarjeta": muestra la tarjeta como si hubieras pagado con Wallet. */
+async function testPaymentPrompt() {
+  const pay = PAY();
+  if (!pay) return;
+  const st = await refreshPayDetect();
+  if (st && !st.enabled) return showToast("Activa primero “Registrar al pagar”", "warning");
+  if (st && !st.overlay) showToast("Sin “Mostrar sobre otras apps” la prueba llega como notificación", "info", 5000);
+  haptic();
+  pay.test().catch(() => showToast("No se pudo crear el pago de prueba", "warning"));
+}
+
 function ignoreInboxItem(it) {
   const pay = PAY();
   if (!pay) return;
@@ -4221,6 +4253,7 @@ function initPaymentDetect() {
   };
   $("paydetect-listener").onclick = () => pay.openListenerSettings().catch(() => {});
   $("paydetect-overlay").onclick = () => pay.openOverlaySettings().catch(() => {});
+  $("paydetect-test").onclick = testPaymentPrompt;
   pay.addListener("queueChanged", () => loadInbox());
   syncWidget(); // envía cuentas y categorías para la tarjeta flotante
   refreshPayDetect();
@@ -4241,6 +4274,7 @@ async function refreshPayDetect() {
     $(`paydetect-${key}-sub`).textContent = ok ? "Activado" : missing;
     $(`paydetect-${key}-sub`).classList.toggle("warn", !ok);
   });
+  $("paydetect-test").classList.toggle("hidden", !st.enabled);
   const seen = (st.sources || []).length ? ` Detectadas: ${st.sources.join(", ")}.` : "";
   $("paydetect-note").textContent =
     "Lee solo los avisos de Google Wallet, Nu, Rappi, Davivienda y Nequi, y nada sale de tu celular. Ningún pago se registra sin que lo confirmes." + seen;

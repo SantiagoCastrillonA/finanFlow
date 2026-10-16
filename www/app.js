@@ -3086,11 +3086,32 @@ function importDataJSON(event) {
   reader.readAsText(file);
 }
 
+/** Borra el espacio personal en la nube, en lotes (Firestore admite 500 escrituras por lote). */
+async function deletePersonalCloudData() {
+  for (const col of ["transactions", "budgets", "categories"]) {
+    const snap = await userRef().collection(col).get();
+    for (let i = 0; i < snap.docs.length; i += 450) {
+      const batch = db.batch();
+      snap.docs.slice(i, i + 450).forEach((d) => batch.delete(d.ref));
+      await batch.commit();
+    }
+  }
+}
+
 function confirmResetAll() {
+  const cloud = isCloud();
   showConfirmDialog(
     "¿Borrar todos los datos?",
-    "Se eliminarán tus movimientos y límites de este dispositivo. No se puede deshacer.",
+    cloud
+      ? "Se eliminarán tus movimientos, límites y categorías personales de tu cuenta en la nube y de todos tus dispositivos. El Hogar compartido no se toca. No se puede deshacer."
+      : "Se eliminarán tus movimientos, límites y categorías de este dispositivo. No se puede deshacer.",
     () => {
+      if (cloud) {
+        if (state.space !== "personal") switchSpace("personal");
+        deletePersonalCloudData()
+          .then(() => showToast("Datos borrados de la nube", "info"))
+          .catch(cloudError);
+      }
       state.transactions = [];
       state.budgets = {};
       state.categories = normCategories();
@@ -3099,7 +3120,7 @@ function confirmResetAll() {
       state.viewMonth = monthKey(new Date());
       state.filters = { type: "all", category: "all", date: "month", search: "" };
       commit();
-      showToast("Datos borrados", "info");
+      if (!cloud) showToast("Datos borrados", "info");
     },
     "Borrar todo"
   );

@@ -1,6 +1,6 @@
 {
   "name": "finanflow",
-  "version": "0.4.0",
+  "version": "0.4.1",
   "description": "Control de gastos personal para Android (Capacitor) y PWA: rápido, privado y sin conexión.",
   "main": "www/index.html",
   "scripts": {
@@ -8,6 +8,8 @@
     "cap-init": "npx cap init",
     "build-native": "npx cap sync",
     "open-android": "npx cap open android",
+    "vendor": "node scripts/vendor-assets.mjs",
+    "check-icons": "node scripts/vendor-assets.mjs --check",
     "firebase-login": "npx firebase-tools@13 login",
     "deploy": "npx firebase-tools@13 deploy --only hosting,firestore:rules"
   },

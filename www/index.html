@@ -26,9 +26,7 @@
     })();
   </script>
 
-  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-  <link rel="stylesheet"
-    href="https://fonts.googleapis.com/css2?family=Material+Symbols+Rounded:opsz,wght,FILL,GRAD@24,400,0..1,0&display=block">
+  <link rel="preload" href="vendor/fonts/material-symbols-rounded.woff2" as="font" type="font/woff2" crossorigin>
   <link rel="stylesheet" href="styles.css">
   <script src="vendor/chart.umd.min.js"></script>
 </head>
@@ -324,7 +322,7 @@
           </button>
         </div>
 
-        <p class="app-version">FinanFlow 0.4.0 · Tus datos son tuyos</p>
+        <p class="app-version">FinanFlow 0.4.1 · Tus datos son tuyos</p>
       </section>
     </main>
 
@@ -664,10 +662,10 @@
     </div>
   </div>
 
-  <!-- Firebase (opcional: sin conexión la app sigue en modo local) -->
-  <script src="https://www.gstatic.com/firebasejs/10.8.0/firebase-app-compat.js"></script>
-  <script src="https://www.gstatic.com/firebasejs/10.8.0/firebase-firestore-compat.js"></script>
-  <script src="https://www.gstatic.com/firebasejs/10.8.0/firebase-auth-compat.js"></script>
+  <!-- Firebase local (scripts/vendor-assets.mjs): con sesión, la app abre sin conexión con la caché de Firestore -->
+  <script src="vendor/firebase/firebase-app-compat.js"></script>
+  <script src="vendor/firebase/firebase-firestore-compat.js"></script>
+  <script src="vendor/firebase/firebase-auth-compat.js"></script>
   <script src="app.js"></script>
 </body>
 

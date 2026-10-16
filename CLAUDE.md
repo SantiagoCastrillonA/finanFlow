@@ -25,7 +25,7 @@ No hay tests ni linter. `node --check www/app.js` valida la sintaxis. Para proba
 
 ## Arquitectura
 
-**Un solo script: `www/app.js`** (clásico, sin módulos), cargado por `www/index.html` junto a `www/vendor/chart.umd.min.js` (Chart.js 4 local para funcionar offline; si se actualiza, copiarlo de `node_modules/chart.js/dist/`) y Firebase compat por CDN (si no carga, la app sigue en modo local). Los `onclick` inline del HTML llaman a `window.app` (objeto al final de `app.js`).
+**Un solo script: `www/app.js`** (clásico, sin módulos), cargado por `www/index.html` junto a `www/vendor/chart.umd.min.js` (Chart.js 4 local para funcionar offline; si se actualiza, copiarlo de `node_modules/chart.js/dist/`) y Firebase compat 10.8.0 local en `www/vendor/firebase/`. La fuente Material Symbols también es local (`www/vendor/fonts/`), **recortada a los íconos usados**: al usar un ícono nuevo, ejecutar `npm run vendor` (regenera fuente y Firebase); `npm run check-icons` avisa si falta alguno. Nada se carga de CDNs, así la app abre sin conexión. Los `onclick` inline del HTML llaman a `window.app` (objeto al final de `app.js`).
 
 Flujo de datos:
 - `state` global único. `saveState()` persiste en `localStorage` (`finanflow_state`). **Todo cambio de datos pasa por `commit()`** (guardar → `render()` → alertas de límites → reprogramar notificaciones → `syncWidget()`).

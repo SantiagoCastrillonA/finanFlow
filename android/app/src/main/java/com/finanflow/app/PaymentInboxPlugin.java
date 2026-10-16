@@ -121,6 +121,34 @@ public class PaymentInboxPlugin extends Plugin {
         call.resolve();
     }
 
+    /**
+     * Pago de ejemplo (Ajustes → Detectar pagos): pasa por el mismo lector y la misma tarjeta que uno de
+     * Google Wallet. Marcado `test`: no se une con pagos reales, no aprende nada y la app no lo registra.
+     */
+    @PluginMethod
+    public void test(PluginCall call) {
+        Context c = getContext();
+        try {
+            PaymentParser.Result r = PaymentParser.parse("com.google.android.apps.walletnfcrel", "Tienda de prueba",
+                "COP1,000.00 con Tarjeta de prueba ••0000", "");
+            if (r == null) {
+                call.reject("No se pudo leer el pago de prueba");
+                return;
+            }
+            long now = System.currentTimeMillis();
+            JSONObject item = PaymentStore.toItem(c, r, now);
+            item.put("id", "test-" + now);
+            item.put("test", true);
+            item.put("account", ""); // siempre pregunta la cuenta, para probar también esa parte
+            PaymentStore.put(c, item);
+            notifyChanged();
+            PaymentNotifier.present(c, item);
+            call.resolve();
+        } catch (JSONException e) {
+            call.reject("No se pudo crear el pago de prueba");
+        }
+    }
+
     /** Lo que confirmaste en la app: comercio → categoría y tarjeta → cuenta, para la próxima vez. */
     @PluginMethod
     public void learn(PluginCall call) {

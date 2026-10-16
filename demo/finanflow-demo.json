@@ -1,0 +1,2327 @@
+{
+  "app": "FinanFlow",
+  "currency": "COP",
+  "transactions": [
+    {
+      "id": "demo-salario",
+      "createdAt": 1782864060000,
+      "method": "Cuenta Bancaria",
+      "note": "Nómina",
+      "type": "income",
+      "amount": 4200000,
+      "category": "Salario",
+      "date": "2026-07-01",
+      "recurring": "monthly"
+    },
+    {
+      "id": "demo-1",
+      "createdAt": 1782865440000,
+      "method": "Tarjeta Débito",
+      "note": "Almuerzo corrientazo",
+      "type": "expense",
+      "category": "Comida",
+      "amount": 26000,
+      "date": "2026-07-01"
+    },
+    {
+      "id": "demo-2",
+      "createdAt": 1782865500000,
+      "method": "Tarjeta de Crédito",
+      "note": "Uber",
+      "type": "expense",
+      "category": "Transporte",
+      "amount": 25500,
+      "date": "2026-07-01"
+    },
+    {
+      "id": "demo-3",
+      "createdAt": 1782865560000,
+      "method": "Tarjeta de Crédito",
+      "note": "Gasolina",
+      "type": "expense",
+      "category": "Transporte",
+      "amount": 124000,
+      "date": "2026-07-01"
+    },
+    {
+      "id": "demo-201",
+      "createdAt": 1782877440000,
+      "method": "Cuenta Bancaria",
+      "note": "Saldo inicial de la cuenta",
+      "type": "income",
+      "category": "Otros",
+      "amount": 3500000,
+      "date": "2026-07-01"
+    },
+    {
+      "id": "demo-4",
+      "createdAt": 1782865620000,
+      "method": "Tarjeta de Crédito",
+      "note": "Pizza viernes",
+      "type": "expense",
+      "category": "Comida",
+      "amount": 66100,
+      "date": "2026-07-02"
+    },
+    {
+      "id": "demo-5",
+      "createdAt": 1782865680000,
+      "method": "Tarjeta de Crédito",
+      "note": "Artículos de aseo",
+      "type": "expense",
+      "category": "Compras",
+      "amount": 50800,
+      "date": "2026-07-02"
+    },
+    {
+      "id": "demo-gym",
+      "createdAt": 1782864960000,
+      "method": "Tarjeta Débito",
+      "note": "Gimnasio",
+      "type": "expense",
+      "amount": 119000,
+      "category": "Salud",
+      "date": "2026-07-03",
+      "recurring": "monthly"
+    },
+    {
+      "id": "demo-6",
+      "createdAt": 1782865740000,
+      "method": "Tarjeta de Crédito",
+      "note": "Sushi",
+      "type": "expense",
+      "category": "Comida",
+      "amount": 60300,
+      "date": "2026-07-03"
+    },
+    {
+      "id": "demo-7",
+      "createdAt": 1782865800000,
+      "method": "Tarjeta de Crédito",
+      "note": "Taxi",
+      "type": "expense",
+      "category": "Transporte",
+      "amount": 9900,
+      "date": "2026-07-04"
+    },
+    {
+      "id": "demo-8",
+      "createdAt": 1782865860000,
+      "method": "Tarjeta Débito",
+      "note": "Plaza de mercado",
+      "type": "expense",
+      "category": "Comida",
+      "amount": 285000,
+      "date": "2026-07-04"
+    },
+    {
+      "id": "demo-arriendo",
+      "createdAt": 1782864300000,
+      "method": "Cuenta Bancaria",
+      "note": "Arriendo apartamento",
+      "type": "expense",
+      "amount": 1350000,
+      "category": "Hogar/Servicios",
+      "date": "2026-07-05",
+      "recurring": "monthly"
+    },
+    {
+      "id": "demo-9",
+      "createdAt": 1782865920000,
+      "method": "Efectivo",
+      "note": "Almuerzo ejecutivo",
+      "type": "expense",
+      "category": "Comida",
+      "amount": 28900,
+      "date": "2026-07-05"
+    },
+    {
+      "id": "demo-10",
+      "createdAt": 1782865980000,
+      "method": "Efectivo",
+      "note": "Uber",
+      "type": "expense",
+      "category": "Transporte",
+      "amount": 26900,
+      "date": "2026-07-05"
+    },
+    {
+      "id": "demo-11",
+      "createdAt": 1782866040000,
+      "method": "Tarjeta Débito",
+      "note": "Café y pandebono",
+      "type": "expense",
+      "category": "Comida",
+      "amount": 27500,
+      "date": "2026-07-06"
+    },
+    {
+      "id": "demo-12",
+      "createdAt": 1782866100000,
+      "method": "Tarjeta de Crédito",
+      "note": "Uber",
+      "type": "expense",
+      "category": "Transporte",
+      "amount": 25300,
+      "date": "2026-07-06"
+    },
+    {
+      "id": "demo-13",
+      "createdAt": 1782866160000,
+      "method": "Tarjeta de Crédito",
+      "note": "Sushi",
+      "type": "expense",
+      "category": "Comida",
+      "amount": 64300,
+      "date": "2026-07-06"
+    },
+    {
+      "id": "demo-14",
+      "createdAt": 1782866220000,
+      "method": "Efectivo",
+      "note": "Lavandería",
+      "type": "expense",
+      "category": "Otros",
+      "amount": 23600,
+      "date": "2026-07-06"
+    },
+    {
+      "id": "demo-15",
+      "createdAt": 1782866280000,
+      "method": "Efectivo",
+      "note": "Café y pandebono",
+      "type": "expense",
+      "category": "Comida",
+      "amount": 23400,
+      "date": "2026-07-07"
+    },
+    {
+      "id": "demo-16",
+      "createdAt": 1782866340000,
+      "method": "Tarjeta de Crédito",
+      "note": "Domicilio Rappi",
+      "type": "expense",
+      "category": "Comida",
+      "amount": 82900,
+      "date": "2026-07-07"
+    },
+    {
+      "id": "demo-17",
+      "createdAt": 1782866400000,
+      "method": "Efectivo",
+      "note": "Propina",
+      "type": "expense",
+      "category": "Otros",
+      "amount": 19300,
+      "date": "2026-07-07"
+    },
+    {
+      "id": "demo-18",
+      "createdAt": 1782866460000,
+      "method": "Nequi/Daviplata",
+      "note": "Almuerzo ejecutivo",
+      "type": "expense",
+      "category": "Comida",
+      "amount": 17900,
+      "date": "2026-07-08"
+    },
+    {
+      "id": "demo-19",
+      "createdAt": 1782866520000,
+      "method": "Efectivo",
+      "note": "Almuerzo ejecutivo",
+      "type": "expense",
+      "category": "Comida",
+      "amount": 29000,
+      "date": "2026-07-09"
+    },
+    {
+      "id": "demo-20",
+      "createdAt": 1782866580000,
+      "method": "Tarjeta de Crédito",
+      "note": "Uber",
+      "type": "expense",
+      "category": "Transporte",
+      "amount": 26500,
+      "date": "2026-07-09"
+    },
+    {
+      "id": "demo-196",
+      "createdAt": 1782877140000,
+      "method": "Tarjeta de Crédito",
+      "note": "Curso online de inglés",
+      "type": "expense",
+      "category": "Educación",
+      "amount": 189000,
+      "date": "2026-07-10"
+    },
+    {
+      "id": "demo-21",
+      "createdAt": 1782866640000,
+      "method": "Nequi/Daviplata",
+      "note": "Almuerzo corrientazo",
+      "type": "expense",
+      "category": "Comida",
+      "amount": 18900,
+      "date": "2026-07-11"
+    },
+    {
+      "id": "demo-22",
+      "createdAt": 1782866700000,
+      "method": "Tarjeta de Crédito",
+      "note": "Pizza viernes",
+      "type": "expense",
+      "category": "Comida",
+      "amount": 63200,
+      "date": "2026-07-11"
+    },
+    {
+      "id": "demo-23",
+      "createdAt": 1782866760000,
+      "method": "Tarjeta Débito",
+      "note": "Mercado Carulla",
+      "type": "expense",
+      "category": "Comida",
+      "amount": 293000,
+      "date": "2026-07-11"
+    },
+    {
+      "id": "demo-netflix",
+      "createdAt": 1782864540000,
+      "method": "Tarjeta de Crédito",
+      "note": "Netflix",
+      "type": "expense",
+      "amount": 44900,
+      "category": "Suscripciones",
+      "date": "2026-07-12",
+      "recurring": "monthly"
+    },
+    {
+      "id": "demo-24",
+      "createdAt": 1782866820000,
+      "method": "Tarjeta Débito",
+      "note": "Almuerzo ejecutivo",
+      "type": "expense",
+      "category": "Comida",
+      "amount": 27400,
+      "date": "2026-07-12"
+    },
+    {
+      "id": "demo-25",
+      "createdAt": 1782866880000,
+      "method": "Tarjeta de Crédito",
+      "note": "Taxi",
+      "type": "expense",
+      "category": "Transporte",
+      "amount": 26300,
+      "date": "2026-07-12"
+    },
+    {
+      "id": "demo-26",
+      "createdAt": 1782866940000,
+      "method": "Efectivo",
+      "note": "Almuerzo ejecutivo",
+      "type": "expense",
+      "category": "Comida",
+      "amount": 30500,
+      "date": "2026-07-13"
+    },
+    {
+      "id": "demo-27",
+      "createdAt": 1782867000000,
+      "method": "Efectivo",
+      "note": "Taxi",
+      "type": "expense",
+      "category": "Transporte",
+      "amount": 26800,
+      "date": "2026-07-13"
+    },
+    {
+      "id": "demo-28",
+      "createdAt": 1782867060000,
+      "method": "Efectivo",
+      "note": "Almuerzo ejecutivo",
+      "type": "expense",
+      "category": "Comida",
+      "amount": 22600,
+      "date": "2026-07-14"
+    },
+    {
+      "id": "demo-29",
+      "createdAt": 1782867120000,
+      "method": "Tarjeta de Crédito",
+      "note": "Bus",
+      "type": "expense",
+      "category": "Transporte",
+      "amount": 27800,
+      "date": "2026-07-14"
+    },
+    {
+      "id": "demo-internet",
+      "createdAt": 1782865200000,
+      "method": "Cuenta Bancaria",
+      "note": "Internet fibra",
+      "type": "expense",
+      "amount": 98000,
+      "category": "Hogar/Servicios",
+      "date": "2026-07-15",
+      "recurring": "monthly"
+    },
+    {
+      "id": "demo-30",
+      "createdAt": 1782867180000,
+      "method": "Nequi/Daviplata",
+      "note": "Almuerzo corrientazo",
+      "type": "expense",
+      "category": "Comida",
+      "amount": 27100,
+      "date": "2026-07-15"
+    },
+    {
+      "id": "demo-31",
+      "createdAt": 1782867240000,
+      "method": "Tarjeta de Crédito",
+      "note": "Gasolina",
+      "type": "expense",
+      "category": "Transporte",
+      "amount": 148000,
+      "date": "2026-07-15"
+    },
+    {
+      "id": "demo-32",
+      "createdAt": 1782867300000,
+      "method": "Tarjeta Débito",
+      "note": "Café y pandebono",
+      "type": "expense",
+      "category": "Comida",
+      "amount": 26100,
+      "date": "2026-07-17"
+    },
+    {
+      "id": "demo-33",
+      "createdAt": 1782867360000,
+      "method": "Efectivo",
+      "note": "Bus",
+      "type": "expense",
+      "category": "Transporte",
+      "amount": 30300,
+      "date": "2026-07-17"
+    },
+    {
+      "id": "demo-34",
+      "createdAt": 1782867420000,
+      "method": "Tarjeta Débito",
+      "note": "Almuerzo ejecutivo",
+      "type": "expense",
+      "category": "Comida",
+      "amount": 29800,
+      "date": "2026-07-18"
+    },
+    {
+      "id": "demo-35",
+      "createdAt": 1782867480000,
+      "method": "Tarjeta de Crédito",
+      "note": "Bolos",
+      "type": "expense",
+      "category": "Entretenimiento",
+      "amount": 72700,
+      "date": "2026-07-18"
+    },
+    {
+      "id": "demo-36",
+      "createdAt": 1782867540000,
+      "method": "Tarjeta Débito",
+      "note": "Mercado D1",
+      "type": "expense",
+      "category": "Comida",
+      "amount": 219000,
+      "date": "2026-07-18"
+    },
+    {
+      "id": "demo-194",
+      "createdAt": 1782877020000,
+      "method": "Cuenta Bancaria",
+      "note": "Servicios públicos (agua, luz, gas)",
+      "type": "expense",
+      "category": "Hogar/Servicios",
+      "amount": 172000,
+      "date": "2026-07-18"
+    },
+    {
+      "id": "demo-37",
+      "createdAt": 1782867600000,
+      "method": "Efectivo",
+      "note": "Almuerzo corrientazo",
+      "type": "expense",
+      "category": "Comida",
+      "amount": 28900,
+      "date": "2026-07-19"
+    },
+    {
+      "id": "demo-38",
+      "createdAt": 1782867660000,
+      "method": "Tarjeta Débito",
+      "note": "Artículos de aseo",
+      "type": "expense",
+      "category": "Compras",
+      "amount": 237300,
+      "date": "2026-07-19"
+    },
+    {
+      "id": "demo-spotify",
+      "createdAt": 1782864780000,
+      "method": "Tarjeta de Crédito",
+      "note": "Spotify",
+      "type": "expense",
+      "amount": 16900,
+      "category": "Suscripciones",
+      "date": "2026-07-20",
+      "recurring": "monthly"
+    },
+    {
+      "id": "demo-39",
+      "createdAt": 1782867720000,
+      "method": "Nequi/Daviplata",
+      "note": "Almuerzo oficina",
+      "type": "expense",
+      "category": "Comida",
+      "amount": 31100,
+      "date": "2026-07-20"
+    },
+    {
+      "id": "demo-40",
+      "createdAt": 1782867780000,
+      "method": "Tarjeta de Crédito",
+      "note": "Sushi",
+      "type": "expense",
+      "category": "Comida",
+      "amount": 44200,
+      "date": "2026-07-20"
+    },
+    {
+      "id": "demo-41",
+      "createdAt": 1782867840000,
+      "method": "Nequi/Daviplata",
+      "note": "Café y pandebono",
+      "type": "expense",
+      "category": "Comida",
+      "amount": 19500,
+      "date": "2026-07-21"
+    },
+    {
+      "id": "demo-42",
+      "createdAt": 1782867900000,
+      "method": "Efectivo",
+      "note": "Uber",
+      "type": "expense",
+      "category": "Transporte",
+      "amount": 21400,
+      "date": "2026-07-21"
+    },
+    {
+      "id": "demo-43",
+      "createdAt": 1782867960000,
+      "method": "Tarjeta Débito",
+      "note": "Almuerzo corrientazo",
+      "type": "expense",
+      "category": "Comida",
+      "amount": 23300,
+      "date": "2026-07-22"
+    },
+    {
+      "id": "demo-44",
+      "createdAt": 1782868020000,
+      "method": "Tarjeta de Crédito",
+      "note": "Gasolina",
+      "type": "expense",
+      "category": "Transporte",
+      "amount": 115000,
+      "date": "2026-07-22"
+    },
+    {
+      "id": "demo-195",
+      "createdAt": 1782877080000,
+      "method": "Cuenta Bancaria",
+      "note": "Proyecto diseño web",
+      "type": "income",
+      "category": "Freelance",
+      "amount": 1050000,
+      "date": "2026-07-22"
+    },
+    {
+      "id": "demo-45",
+      "createdAt": 1782868080000,
+      "method": "Nequi/Daviplata",
+      "note": "Taxi",
+      "type": "expense",
+      "category": "Transporte",
+      "amount": 31000,
+      "date": "2026-07-23"
+    },
+    {
+      "id": "demo-46",
+      "createdAt": 1782868140000,
+      "method": "Tarjeta de Crédito",
+      "note": "Sushi",
+      "type": "expense",
+      "category": "Comida",
+      "amount": 57900,
+      "date": "2026-07-23"
+    },
+    {
+      "id": "demo-47",
+      "createdAt": 1782868200000,
+      "method": "Efectivo",
+      "note": "Almuerzo corrientazo",
+      "type": "expense",
+      "category": "Comida",
+      "amount": 26200,
+      "date": "2026-07-24"
+    },
+    {
+      "id": "demo-48",
+      "createdAt": 1782868260000,
+      "method": "Efectivo",
+      "note": "Taxi",
+      "type": "expense",
+      "category": "Transporte",
+      "amount": 9100,
+      "date": "2026-07-24"
+    },
+    {
+      "id": "demo-49",
+      "createdAt": 1782868320000,
+      "method": "Nequi/Daviplata",
+      "note": "Almuerzo ejecutivo",
+      "type": "expense",
+      "category": "Comida",
+      "amount": 17300,
+      "date": "2026-07-25"
+    },
+    {
+      "id": "demo-50",
+      "createdAt": 1782868380000,
+      "method": "Tarjeta Débito",
+      "note": "Mercado D1",
+      "type": "expense",
+      "category": "Comida",
+      "amount": 359000,
+      "date": "2026-07-25"
+    },
+    {
+      "id": "demo-51",
+      "createdAt": 1782868440000,
+      "method": "Efectivo",
+      "note": "Vitaminas",
+      "type": "expense",
+      "category": "Salud",
+      "amount": 30200,
+      "date": "2026-07-26"
+    },
+    {
+      "id": "demo-52",
+      "createdAt": 1782868500000,
+      "method": "Tarjeta Débito",
+      "note": "Café y pandebono",
+      "type": "expense",
+      "category": "Comida",
+      "amount": 28800,
+      "date": "2026-07-27"
+    },
+    {
+      "id": "demo-53",
+      "createdAt": 1782868560000,
+      "method": "Tarjeta de Crédito",
+      "note": "DiDi",
+      "type": "expense",
+      "category": "Transporte",
+      "amount": 31100,
+      "date": "2026-07-27"
+    },
+    {
+      "id": "demo-54",
+      "createdAt": 1782868620000,
+      "method": "Tarjeta Débito",
+      "note": "Almuerzo corrientazo",
+      "type": "expense",
+      "category": "Comida",
+      "amount": 18200,
+      "date": "2026-07-28"
+    },
+    {
+      "id": "demo-55",
+      "createdAt": 1782868680000,
+      "method": "Nequi/Daviplata",
+      "note": "Almuerzo corrientazo",
+      "type": "expense",
+      "category": "Comida",
+      "amount": 27400,
+      "date": "2026-07-29"
+    },
+    {
+      "id": "demo-56",
+      "createdAt": 1782868740000,
+      "method": "Nequi/Daviplata",
+      "note": "Bus",
+      "type": "expense",
+      "category": "Transporte",
+      "amount": 16100,
+      "date": "2026-07-29"
+    },
+    {
+      "id": "demo-57",
+      "createdAt": 1782868800000,
+      "method": "Tarjeta Débito",
+      "note": "Almuerzo ejecutivo",
+      "type": "expense",
+      "category": "Comida",
+      "amount": 23600,
+      "date": "2026-07-30"
+    },
+    {
+      "id": "demo-58",
+      "createdAt": 1782868860000,
+      "method": "Nequi/Daviplata",
+      "note": "Uber",
+      "type": "expense",
+      "category": "Transporte",
+      "amount": 16500,
+      "date": "2026-07-30"
+    },
+    {
+      "id": "demo-59",
+      "createdAt": 1782868920000,
+      "method": "Efectivo",
+      "note": "Café y pandebono",
+      "type": "expense",
+      "category": "Comida",
+      "amount": 23200,
+      "date": "2026-07-31"
+    },
+    {
+      "id": "demo-salario-2026-08",
+      "createdAt": 1782864120000,
+      "method": "Cuenta Bancaria",
+      "note": "Nómina",
+      "type": "income",
+      "amount": 4200000,
+      "category": "Salario",
+      "recurringOf": "demo-salario",
+      "date": "2026-08-01"
+    },
+    {
+      "id": "demo-60",
+      "createdAt": 1782868980000,
+      "method": "Tarjeta de Crédito",
+      "note": "DiDi",
+      "type": "expense",
+      "category": "Transporte",
+      "amount": 26300,
+      "date": "2026-08-01"
+    },
+    {
+      "id": "demo-61",
+      "createdAt": 1782869040000,
+      "method": "Tarjeta Débito",
+      "note": "Plaza de mercado",
+      "type": "expense",
+      "category": "Comida",
+      "amount": 359000,
+      "date": "2026-08-01"
+    },
+    {
+      "id": "demo-62",
+      "createdAt": 1782869100000,
+      "method": "Nequi/Daviplata",
+      "note": "Café y pandebono",
+      "type": "expense",
+      "category": "Comida",
+      "amount": 21800,
+      "date": "2026-08-02"
+    },
+    {
+      "id": "demo-63",
+      "createdAt": 1782869160000,
+      "method": "Nequi/Daviplata",
+      "note": "Bus",
+      "type": "expense",
+      "category": "Transporte",
+      "amount": 14500,
+      "date": "2026-08-02"
+    },
+    {
+      "id": "demo-gym-2026-08",
+      "createdAt": 1782865020000,
+      "method": "Tarjeta Débito",
+      "note": "Gimnasio",
+      "type": "expense",
+      "amount": 119000,
+      "category": "Salud",
+      "recurringOf": "demo-gym",
+      "date": "2026-08-03"
+    },
+    {
+      "id": "demo-64",
+      "createdAt": 1782869220000,
+      "method": "Tarjeta Débito",
+      "note": "Café y pandebono",
+      "type": "expense",
+      "category": "Comida",
+      "amount": 23200,
+      "date": "2026-08-03"
+    },
+    {
+      "id": "demo-65",
+      "createdAt": 1782869280000,
+      "method": "Tarjeta de Crédito",
+      "note": "DiDi",
+      "type": "expense",
+      "category": "Transporte",
+      "amount": 21500,
+      "date": "2026-08-03"
+    },
+    {
+      "id": "demo-66",
+      "createdAt": 1782869340000,
+      "method": "Efectivo",
+      "note": "Café y pandebono",
+      "type": "expense",
+      "category": "Comida",
+      "amount": 30600,
+      "date": "2026-08-04"
+    },
+    {
+      "id": "demo-67",
+      "createdAt": 1782869400000,
+      "method": "Tarjeta de Crédito",
+      "note": "DiDi",
+      "type": "expense",
+      "category": "Transporte",
+      "amount": 15900,
+      "date": "2026-08-04"
+    },
+    {
+      "id": "demo-68",
+      "createdAt": 1782869460000,
+      "method": "Tarjeta de Crédito",
+      "note": "Sushi",
+      "type": "expense",
+      "category": "Comida",
+      "amount": 66900,
+      "date": "2026-08-04"
+    },
+    {
+      "id": "demo-arriendo-2026-08",
+      "createdAt": 1782864360000,
+      "method": "Cuenta Bancaria",
+      "note": "Arriendo apartamento",
+      "type": "expense",
+      "amount": 1350000,
+      "category": "Hogar/Servicios",
+      "recurringOf": "demo-arriendo",
+      "date": "2026-08-05"
+    },
+    {
+      "id": "demo-69",
+      "createdAt": 1782869520000,
+      "method": "Tarjeta Débito",
+      "note": "Almuerzo ejecutivo",
+      "type": "expense",
+      "category": "Comida",
+      "amount": 16400,
+      "date": "2026-08-05"
+    },
+    {
+      "id": "demo-70",
+      "createdAt": 1782869580000,
+      "method": "Tarjeta de Crédito",
+      "note": "Gasolina",
+      "type": "expense",
+      "category": "Transporte",
+      "amount": 138000,
+      "date": "2026-08-05"
+    },
+    {
+      "id": "demo-71",
+      "createdAt": 1782869640000,
+      "method": "Tarjeta Débito",
+      "note": "Almuerzo oficina",
+      "type": "expense",
+      "category": "Comida",
+      "amount": 31100,
+      "date": "2026-08-06"
+    },
+    {
+      "id": "demo-72",
+      "createdAt": 1782869700000,
+      "method": "Tarjeta Débito",
+      "note": "Almuerzo oficina",
+      "type": "expense",
+      "category": "Comida",
+      "amount": 29300,
+      "date": "2026-08-07"
+    },
+    {
+      "id": "demo-73",
+      "createdAt": 1782869760000,
+      "method": "Efectivo",
+      "note": "DiDi",
+      "type": "expense",
+      "category": "Transporte",
+      "amount": 22400,
+      "date": "2026-08-07"
+    },
+    {
+      "id": "demo-74",
+      "createdAt": 1782869820000,
+      "method": "Tarjeta Débito",
+      "note": "Mercado D1",
+      "type": "expense",
+      "category": "Comida",
+      "amount": 214000,
+      "date": "2026-08-08"
+    },
+    {
+      "id": "demo-75",
+      "createdAt": 1782869880000,
+      "method": "Nequi/Daviplata",
+      "note": "Almuerzo corrientazo",
+      "type": "expense",
+      "category": "Comida",
+      "amount": 21200,
+      "date": "2026-08-09"
+    },
+    {
+      "id": "demo-76",
+      "createdAt": 1782869940000,
+      "method": "Nequi/Daviplata",
+      "note": "Almuerzo ejecutivo",
+      "type": "expense",
+      "category": "Comida",
+      "amount": 30000,
+      "date": "2026-08-10"
+    },
+    {
+      "id": "demo-77",
+      "createdAt": 1782870000000,
+      "method": "Tarjeta Débito",
+      "note": "Cita médica",
+      "type": "expense",
+      "category": "Salud",
+      "amount": 51300,
+      "date": "2026-08-10"
+    },
+    {
+      "id": "demo-78",
+      "createdAt": 1782870060000,
+      "method": "Tarjeta Débito",
+      "note": "Almuerzo corrientazo",
+      "type": "expense",
+      "category": "Comida",
+      "amount": 24700,
+      "date": "2026-08-11"
+    },
+    {
+      "id": "demo-79",
+      "createdAt": 1782870120000,
+      "method": "Tarjeta de Crédito",
+      "note": "Uber",
+      "type": "expense",
+      "category": "Transporte",
+      "amount": 29500,
+      "date": "2026-08-11"
+    },
+    {
+      "id": "demo-netflix-2026-08",
+      "createdAt": 1782864600000,
+      "method": "Tarjeta de Crédito",
+      "note": "Netflix",
+      "type": "expense",
+      "amount": 44900,
+      "category": "Suscripciones",
+      "recurringOf": "demo-netflix",
+      "date": "2026-08-12"
+    },
+    {
+      "id": "demo-80",
+      "createdAt": 1782870180000,
+      "method": "Nequi/Daviplata",
+      "note": "Almuerzo corrientazo",
+      "type": "expense",
+      "category": "Comida",
+      "amount": 16500,
+      "date": "2026-08-12"
+    },
+    {
+      "id": "demo-81",
+      "createdAt": 1782870240000,
+      "method": "Tarjeta de Crédito",
+      "note": "Gasolina",
+      "type": "expense",
+      "category": "Transporte",
+      "amount": 116000,
+      "date": "2026-08-12"
+    },
+    {
+      "id": "demo-82",
+      "createdAt": 1782870300000,
+      "method": "Tarjeta Débito",
+      "note": "Almuerzo ejecutivo",
+      "type": "expense",
+      "category": "Comida",
+      "amount": 17100,
+      "date": "2026-08-13"
+    },
+    {
+      "id": "demo-83",
+      "createdAt": 1782870360000,
+      "method": "Nequi/Daviplata",
+      "note": "Uber",
+      "type": "expense",
+      "category": "Transporte",
+      "amount": 25000,
+      "date": "2026-08-13"
+    },
+    {
+      "id": "demo-84",
+      "createdAt": 1782870420000,
+      "method": "Efectivo",
+      "note": "Almuerzo ejecutivo",
+      "type": "expense",
+      "category": "Comida",
+      "amount": 29700,
+      "date": "2026-08-14"
+    },
+    {
+      "id": "demo-202",
+      "createdAt": 1782877500000,
+      "method": "Nequi/Daviplata",
+      "note": "Regalo de cumpleaños",
+      "type": "income",
+      "category": "Regalos",
+      "amount": 200000,
+      "date": "2026-08-14"
+    },
+    {
+      "id": "demo-internet-2026-08",
+      "createdAt": 1782865260000,
+      "method": "Cuenta Bancaria",
+      "note": "Internet fibra",
+      "type": "expense",
+      "amount": 98000,
+      "category": "Hogar/Servicios",
+      "recurringOf": "demo-internet",
+      "date": "2026-08-15"
+    },
+    {
+      "id": "demo-85",
+      "createdAt": 1782870480000,
+      "method": "Nequi/Daviplata",
+      "note": "Almuerzo oficina",
+      "type": "expense",
+      "category": "Comida",
+      "amount": 25800,
+      "date": "2026-08-15"
+    },
+    {
+      "id": "demo-86",
+      "createdAt": 1782870540000,
+      "method": "Efectivo",
+      "note": "Lavandería",
+      "type": "expense",
+      "category": "Otros",
+      "amount": 37600,
+      "date": "2026-08-15"
+    },
+    {
+      "id": "demo-87",
+      "createdAt": 1782870600000,
+      "method": "Tarjeta Débito",
+      "note": "Mercado D1",
+      "type": "expense",
+      "category": "Comida",
+      "amount": 332000,
+      "date": "2026-08-15"
+    },
+    {
+      "id": "demo-88",
+      "createdAt": 1782870660000,
+      "method": "Tarjeta Débito",
+      "note": "Almuerzo oficina",
+      "type": "expense",
+      "category": "Comida",
+      "amount": 18600,
+      "date": "2026-08-16"
+    },
+    {
+      "id": "demo-89",
+      "createdAt": 1782870720000,
+      "method": "Nequi/Daviplata",
+      "note": "Uber",
+      "type": "expense",
+      "category": "Transporte",
+      "amount": 10800,
+      "date": "2026-08-16"
+    },
+    {
+      "id": "demo-90",
+      "createdAt": 1782870780000,
+      "method": "Efectivo",
+      "note": "Café y pandebono",
+      "type": "expense",
+      "category": "Comida",
+      "amount": 28100,
+      "date": "2026-08-17"
+    },
+    {
+      "id": "demo-91",
+      "createdAt": 1782870840000,
+      "method": "Nequi/Daviplata",
+      "note": "DiDi",
+      "type": "expense",
+      "category": "Transporte",
+      "amount": 23300,
+      "date": "2026-08-17"
+    },
+    {
+      "id": "demo-92",
+      "createdAt": 1782870900000,
+      "method": "Tarjeta Débito",
+      "note": "Ropa",
+      "type": "expense",
+      "category": "Compras",
+      "amount": 197500,
+      "date": "2026-08-17"
+    },
+    {
+      "id": "demo-93",
+      "createdAt": 1782870960000,
+      "method": "Tarjeta Débito",
+      "note": "Vitaminas",
+      "type": "expense",
+      "category": "Salud",
+      "amount": 92000,
+      "date": "2026-08-17"
+    },
+    {
+      "id": "demo-94",
+      "createdAt": 1782871020000,
+      "method": "Efectivo",
+      "note": "Almuerzo corrientazo",
+      "type": "expense",
+      "category": "Comida",
+      "amount": 20900,
+      "date": "2026-08-18"
+    },
+    {
+      "id": "demo-95",
+      "createdAt": 1782871080000,
+      "method": "Nequi/Daviplata",
+      "note": "Taxi",
+      "type": "expense",
+      "category": "Transporte",
+      "amount": 29000,
+      "date": "2026-08-18"
+    },
+    {
+      "id": "demo-197",
+      "createdAt": 1782877200000,
+      "method": "Cuenta Bancaria",
+      "note": "Servicios públicos (agua, luz, gas)",
+      "type": "expense",
+      "category": "Hogar/Servicios",
+      "amount": 215000,
+      "date": "2026-08-18"
+    },
+    {
+      "id": "demo-96",
+      "createdAt": 1782871140000,
+      "method": "Efectivo",
+      "note": "Café y pandebono",
+      "type": "expense",
+      "category": "Comida",
+      "amount": 25500,
+      "date": "2026-08-19"
+    },
+    {
+      "id": "demo-97",
+      "createdAt": 1782871200000,
+      "method": "Tarjeta de Crédito",
+      "note": "Gasolina",
+      "type": "expense",
+      "category": "Transporte",
+      "amount": 111000,
+      "date": "2026-08-19"
+    },
+    {
+      "id": "demo-spotify-2026-08",
+      "createdAt": 1782864840000,
+      "method": "Tarjeta de Crédito",
+      "note": "Spotify",
+      "type": "expense",
+      "amount": 16900,
+      "category": "Suscripciones",
+      "recurringOf": "demo-spotify",
+      "date": "2026-08-20"
+    },
+    {
+      "id": "demo-98",
+      "createdAt": 1782871260000,
+      "method": "Tarjeta Débito",
+      "note": "Café y pandebono",
+      "type": "expense",
+      "category": "Comida",
+      "amount": 30100,
+      "date": "2026-08-20"
+    },
+    {
+      "id": "demo-99",
+      "createdAt": 1782871320000,
+      "method": "Efectivo",
+      "note": "Almuerzo ejecutivo",
+      "type": "expense",
+      "category": "Comida",
+      "amount": 25400,
+      "date": "2026-08-21"
+    },
+    {
+      "id": "demo-100",
+      "createdAt": 1782871380000,
+      "method": "Efectivo",
+      "note": "Taxi",
+      "type": "expense",
+      "category": "Transporte",
+      "amount": 13300,
+      "date": "2026-08-21"
+    },
+    {
+      "id": "demo-101",
+      "createdAt": 1782871440000,
+      "method": "Efectivo",
+      "note": "Almuerzo corrientazo",
+      "type": "expense",
+      "category": "Comida",
+      "amount": 19100,
+      "date": "2026-08-22"
+    },
+    {
+      "id": "demo-102",
+      "createdAt": 1782871500000,
+      "method": "Efectivo",
+      "note": "Bus",
+      "type": "expense",
+      "category": "Transporte",
+      "amount": 18800,
+      "date": "2026-08-22"
+    },
+    {
+      "id": "demo-103",
+      "createdAt": 1782871560000,
+      "method": "Tarjeta Débito",
+      "note": "Mercado Éxito",
+      "type": "expense",
+      "category": "Comida",
+      "amount": 255000,
+      "date": "2026-08-22"
+    },
+    {
+      "id": "demo-198",
+      "createdAt": 1782877260000,
+      "method": "Cuenta Bancaria",
+      "note": "Proyecto diseño web",
+      "type": "income",
+      "category": "Freelance",
+      "amount": 800000,
+      "date": "2026-08-22"
+    },
+    {
+      "id": "demo-104",
+      "createdAt": 1782871620000,
+      "method": "Tarjeta Débito",
+      "note": "Almuerzo oficina",
+      "type": "expense",
+      "category": "Comida",
+      "amount": 20500,
+      "date": "2026-08-23"
+    },
+    {
+      "id": "demo-105",
+      "createdAt": 1782871680000,
+      "method": "Efectivo",
+      "note": "Vitaminas",
+      "type": "expense",
+      "category": "Salud",
+      "amount": 41000,
+      "date": "2026-08-23"
+    },
+    {
+      "id": "demo-106",
+      "createdAt": 1782871740000,
+      "method": "Nequi/Daviplata",
+      "note": "Almuerzo ejecutivo",
+      "type": "expense",
+      "category": "Comida",
+      "amount": 27800,
+      "date": "2026-08-25"
+    },
+    {
+      "id": "demo-107",
+      "createdAt": 1782871800000,
+      "method": "Tarjeta de Crédito",
+      "note": "Uber",
+      "type": "expense",
+      "category": "Transporte",
+      "amount": 17700,
+      "date": "2026-08-25"
+    },
+    {
+      "id": "demo-108",
+      "createdAt": 1782871860000,
+      "method": "Nequi/Daviplata",
+      "note": "Almuerzo oficina",
+      "type": "expense",
+      "category": "Comida",
+      "amount": 25900,
+      "date": "2026-08-26"
+    },
+    {
+      "id": "demo-109",
+      "createdAt": 1782871920000,
+      "method": "Efectivo",
+      "note": "Café y pandebono",
+      "type": "expense",
+      "category": "Comida",
+      "amount": 20300,
+      "date": "2026-08-27"
+    },
+    {
+      "id": "demo-110",
+      "createdAt": 1782871980000,
+      "method": "Nequi/Daviplata",
+      "note": "Almuerzo oficina",
+      "type": "expense",
+      "category": "Comida",
+      "amount": 20700,
+      "date": "2026-08-28"
+    },
+    {
+      "id": "demo-111",
+      "createdAt": 1782872040000,
+      "method": "Efectivo",
+      "note": "Uber",
+      "type": "expense",
+      "category": "Transporte",
+      "amount": 23800,
+      "date": "2026-08-28"
+    },
+    {
+      "id": "demo-112",
+      "createdAt": 1782872100000,
+      "method": "Tarjeta de Crédito",
+      "note": "Pizza viernes",
+      "type": "expense",
+      "category": "Comida",
+      "amount": 50400,
+      "date": "2026-08-28"
+    },
+    {
+      "id": "demo-113",
+      "createdAt": 1782872160000,
+      "method": "Nequi/Daviplata",
+      "note": "Almuerzo ejecutivo",
+      "type": "expense",
+      "category": "Comida",
+      "amount": 16200,
+      "date": "2026-08-29"
+    },
+    {
+      "id": "demo-114",
+      "createdAt": 1782872220000,
+      "method": "Nequi/Daviplata",
+      "note": "Cine",
+      "type": "expense",
+      "category": "Entretenimiento",
+      "amount": 50800,
+      "date": "2026-08-29"
+    },
+    {
+      "id": "demo-115",
+      "createdAt": 1782872280000,
+      "method": "Tarjeta Débito",
+      "note": "Plaza de mercado",
+      "type": "expense",
+      "category": "Comida",
+      "amount": 325000,
+      "date": "2026-08-29"
+    },
+    {
+      "id": "demo-116",
+      "createdAt": 1782872340000,
+      "method": "Tarjeta Débito",
+      "note": "Almuerzo oficina",
+      "type": "expense",
+      "category": "Comida",
+      "amount": 17000,
+      "date": "2026-08-30"
+    },
+    {
+      "id": "demo-117",
+      "createdAt": 1782872400000,
+      "method": "Tarjeta de Crédito",
+      "note": "DiDi",
+      "type": "expense",
+      "category": "Transporte",
+      "amount": 19100,
+      "date": "2026-08-30"
+    },
+    {
+      "id": "demo-118",
+      "createdAt": 1782872460000,
+      "method": "Tarjeta Débito",
+      "note": "Almuerzo corrientazo",
+      "type": "expense",
+      "category": "Comida",
+      "amount": 23500,
+      "date": "2026-08-31"
+    },
+    {
+      "id": "demo-119",
+      "createdAt": 1782872520000,
+      "method": "Tarjeta de Crédito",
+      "note": "Taxi",
+      "type": "expense",
+      "category": "Transporte",
+      "amount": 18100,
+      "date": "2026-08-31"
+    },
+    {
+      "id": "demo-120",
+      "createdAt": 1782872580000,
+      "method": "Tarjeta de Crédito",
+      "note": "Hamburguesas",
+      "type": "expense",
+      "category": "Comida",
+      "amount": 50300,
+      "date": "2026-08-31"
+    },
+    {
+      "id": "demo-salario-2026-09",
+      "createdAt": 1782864180000,
+      "method": "Cuenta Bancaria",
+      "note": "Nómina",
+      "type": "income",
+      "amount": 4200000,
+      "category": "Salario",
+      "recurringOf": "demo-salario",
+      "date": "2026-09-01"
+    },
+    {
+      "id": "demo-121",
+      "createdAt": 1782872640000,
+      "method": "Efectivo",
+      "note": "DiDi",
+      "type": "expense",
+      "category": "Transporte",
+      "amount": 17300,
+      "date": "2026-09-01"
+    },
+    {
+      "id": "demo-122",
+      "createdAt": 1782872700000,
+      "method": "Nequi/Daviplata",
+      "note": "Almuerzo ejecutivo",
+      "type": "expense",
+      "category": "Comida",
+      "amount": 28100,
+      "date": "2026-09-02"
+    },
+    {
+      "id": "demo-123",
+      "createdAt": 1782872760000,
+      "method": "Tarjeta de Crédito",
+      "note": "Sushi",
+      "type": "expense",
+      "category": "Comida",
+      "amount": 42000,
+      "date": "2026-09-02"
+    },
+    {
+      "id": "demo-124",
+      "createdAt": 1782872820000,
+      "method": "Tarjeta de Crédito",
+      "note": "Gasolina",
+      "type": "expense",
+      "category": "Transporte",
+      "amount": 143000,
+      "date": "2026-09-02"
+    },
+    {
+      "id": "demo-gym-2026-09",
+      "createdAt": 1782865080000,
+      "method": "Tarjeta Débito",
+      "note": "Gimnasio",
+      "type": "expense",
+      "amount": 119000,
+      "category": "Salud",
+      "recurringOf": "demo-gym",
+      "date": "2026-09-03"
+    },
+    {
+      "id": "demo-125",
+      "createdAt": 1782872880000,
+      "method": "Tarjeta de Crédito",
+      "note": "Hamburguesas",
+      "type": "expense",
+      "category": "Comida",
+      "amount": 40500,
+      "date": "2026-09-03"
+    },
+    {
+      "id": "demo-126",
+      "createdAt": 1782872940000,
+      "method": "Tarjeta de Crédito",
+      "note": "Regalo cumpleaños",
+      "type": "expense",
+      "category": "Compras",
+      "amount": 52500,
+      "date": "2026-09-03"
+    },
+    {
+      "id": "demo-127",
+      "createdAt": 1782873000000,
+      "method": "Efectivo",
+      "note": "DiDi",
+      "type": "expense",
+      "category": "Transporte",
+      "amount": 28700,
+      "date": "2026-09-04"
+    },
+    {
+      "id": "demo-arriendo-2026-09",
+      "createdAt": 1782864420000,
+      "method": "Cuenta Bancaria",
+      "note": "Arriendo apartamento",
+      "type": "expense",
+      "amount": 1350000,
+      "category": "Hogar/Servicios",
+      "recurringOf": "demo-arriendo",
+      "date": "2026-09-05"
+    },
+    {
+      "id": "demo-128",
+      "createdAt": 1782873060000,
+      "method": "Tarjeta Débito",
+      "note": "Café y pandebono",
+      "type": "expense",
+      "category": "Comida",
+      "amount": 27700,
+      "date": "2026-09-05"
+    },
+    {
+      "id": "demo-129",
+      "createdAt": 1782873120000,
+      "method": "Tarjeta de Crédito",
+      "note": "Sushi",
+      "type": "expense",
+      "category": "Comida",
+      "amount": 61300,
+      "date": "2026-09-05"
+    },
+    {
+      "id": "demo-130",
+      "createdAt": 1782873180000,
+      "method": "Tarjeta Débito",
+      "note": "Plaza de mercado",
+      "type": "expense",
+      "category": "Comida",
+      "amount": 411000,
+      "date": "2026-09-05"
+    },
+    {
+      "id": "demo-131",
+      "createdAt": 1782873240000,
+      "method": "Nequi/Daviplata",
+      "note": "Almuerzo ejecutivo",
+      "type": "expense",
+      "category": "Comida",
+      "amount": 27100,
+      "date": "2026-09-06"
+    },
+    {
+      "id": "demo-132",
+      "createdAt": 1782873300000,
+      "method": "Tarjeta Débito",
+      "note": "Almuerzo oficina",
+      "type": "expense",
+      "category": "Comida",
+      "amount": 23800,
+      "date": "2026-09-07"
+    },
+    {
+      "id": "demo-133",
+      "createdAt": 1782873360000,
+      "method": "Nequi/Daviplata",
+      "note": "Almuerzo ejecutivo",
+      "type": "expense",
+      "category": "Comida",
+      "amount": 26800,
+      "date": "2026-09-08"
+    },
+    {
+      "id": "demo-134",
+      "createdAt": 1782873420000,
+      "method": "Tarjeta de Crédito",
+      "note": "Sushi",
+      "type": "expense",
+      "category": "Comida",
+      "amount": 43900,
+      "date": "2026-09-08"
+    },
+    {
+      "id": "demo-135",
+      "createdAt": 1782873480000,
+      "method": "Efectivo",
+      "note": "Almuerzo corrientazo",
+      "type": "expense",
+      "category": "Comida",
+      "amount": 23800,
+      "date": "2026-09-09"
+    },
+    {
+      "id": "demo-136",
+      "createdAt": 1782873540000,
+      "method": "Efectivo",
+      "note": "DiDi",
+      "type": "expense",
+      "category": "Transporte",
+      "amount": 25500,
+      "date": "2026-09-09"
+    },
+    {
+      "id": "demo-137",
+      "createdAt": 1782873600000,
+      "method": "Nequi/Daviplata",
+      "note": "Uber",
+      "type": "expense",
+      "category": "Transporte",
+      "amount": 29200,
+      "date": "2026-09-10"
+    },
+    {
+      "id": "demo-138",
+      "createdAt": 1782873660000,
+      "method": "Tarjeta de Crédito",
+      "note": "Domicilio Rappi",
+      "type": "expense",
+      "category": "Comida",
+      "amount": 51600,
+      "date": "2026-09-10"
+    },
+    {
+      "id": "demo-139",
+      "createdAt": 1782873720000,
+      "method": "Tarjeta Débito",
+      "note": "Zapatos",
+      "type": "expense",
+      "category": "Compras",
+      "amount": 231800,
+      "date": "2026-09-10"
+    },
+    {
+      "id": "demo-140",
+      "createdAt": 1782873780000,
+      "method": "Efectivo",
+      "note": "Papelería",
+      "type": "expense",
+      "category": "Otros",
+      "amount": 10300,
+      "date": "2026-09-10"
+    },
+    {
+      "id": "demo-200",
+      "createdAt": 1782877380000,
+      "method": "Tarjeta de Crédito",
+      "note": "Curso online de inglés",
+      "type": "expense",
+      "category": "Educación",
+      "amount": 189000,
+      "date": "2026-09-10"
+    },
+    {
+      "id": "demo-netflix-2026-09",
+      "createdAt": 1782864660000,
+      "method": "Tarjeta de Crédito",
+      "note": "Netflix",
+      "type": "expense",
+      "amount": 44900,
+      "category": "Suscripciones",
+      "recurringOf": "demo-netflix",
+      "date": "2026-09-12"
+    },
+    {
+      "id": "demo-141",
+      "createdAt": 1782873840000,
+      "method": "Tarjeta de Crédito",
+      "note": "Cine",
+      "type": "expense",
+      "category": "Entretenimiento",
+      "amount": 59900,
+      "date": "2026-09-12"
+    },
+    {
+      "id": "demo-142",
+      "createdAt": 1782873900000,
+      "method": "Tarjeta Débito",
+      "note": "Mercado Éxito",
+      "type": "expense",
+      "category": "Comida",
+      "amount": 318000,
+      "date": "2026-09-12"
+    },
+    {
+      "id": "demo-143",
+      "createdAt": 1782873960000,
+      "method": "Nequi/Daviplata",
+      "note": "Almuerzo oficina",
+      "type": "expense",
+      "category": "Comida",
+      "amount": 30800,
+      "date": "2026-09-14"
+    },
+    {
+      "id": "demo-144",
+      "createdAt": 1782874020000,
+      "method": "Efectivo",
+      "note": "Bus",
+      "type": "expense",
+      "category": "Transporte",
+      "amount": 14400,
+      "date": "2026-09-14"
+    },
+    {
+      "id": "demo-145",
+      "createdAt": 1782874080000,
+      "method": "Tarjeta de Crédito",
+      "note": "Accesorios celular",
+      "type": "expense",
+      "category": "Compras",
+      "amount": 129500,
+      "date": "2026-09-14"
+    },
+    {
+      "id": "demo-internet-2026-09",
+      "createdAt": 1782865320000,
+      "method": "Cuenta Bancaria",
+      "note": "Internet fibra",
+      "type": "expense",
+      "amount": 98000,
+      "category": "Hogar/Servicios",
+      "recurringOf": "demo-internet",
+      "date": "2026-09-15"
+    },
+    {
+      "id": "demo-146",
+      "createdAt": 1782874140000,
+      "method": "Efectivo",
+      "note": "Café y pandebono",
+      "type": "expense",
+      "category": "Comida",
+      "amount": 20700,
+      "date": "2026-09-15"
+    },
+    {
+      "id": "demo-147",
+      "createdAt": 1782874200000,
+      "method": "Tarjeta de Crédito",
+      "note": "Taxi",
+      "type": "expense",
+      "category": "Transporte",
+      "amount": 18600,
+      "date": "2026-09-16"
+    },
+    {
+      "id": "demo-148",
+      "createdAt": 1782874260000,
+      "method": "Tarjeta de Crédito",
+      "note": "Salida con amigos",
+      "type": "expense",
+      "category": "Entretenimiento",
+      "amount": 43300,
+      "date": "2026-09-16"
+    },
+    {
+      "id": "demo-149",
+      "createdAt": 1782874320000,
+      "method": "Efectivo",
+      "note": "Almuerzo oficina",
+      "type": "expense",
+      "category": "Comida",
+      "amount": 17200,
+      "date": "2026-09-17"
+    },
+    {
+      "id": "demo-150",
+      "createdAt": 1782874380000,
+      "method": "Tarjeta de Crédito",
+      "note": "Sushi",
+      "type": "expense",
+      "category": "Comida",
+      "amount": 52800,
+      "date": "2026-09-17"
+    },
+    {
+      "id": "demo-151",
+      "createdAt": 1782874440000,
+      "method": "Nequi/Daviplata",
+      "note": "Taxi",
+      "type": "expense",
+      "category": "Transporte",
+      "amount": 14300,
+      "date": "2026-09-18"
+    },
+    {
+      "id": "demo-199",
+      "createdAt": 1782877320000,
+      "method": "Cuenta Bancaria",
+      "note": "Servicios públicos (agua, luz, gas)",
+      "type": "expense",
+      "category": "Hogar/Servicios",
+      "amount": 144000,
+      "date": "2026-09-18"
+    },
+    {
+      "id": "demo-152",
+      "createdAt": 1782874500000,
+      "method": "Tarjeta Débito",
+      "note": "Mercado D1",
+      "type": "expense",
+      "category": "Comida",
+      "amount": 380000,
+      "date": "2026-09-19"
+    },
+    {
+      "id": "demo-spotify-2026-09",
+      "createdAt": 1782864900000,
+      "method": "Tarjeta de Crédito",
+      "note": "Spotify",
+      "type": "expense",
+      "amount": 16900,
+      "category": "Suscripciones",
+      "recurringOf": "demo-spotify",
+      "date": "2026-09-20"
+    },
+    {
+      "id": "demo-153",
+      "createdAt": 1782874560000,
+      "method": "Tarjeta de Crédito",
+      "note": "Pizza viernes",
+      "type": "expense",
+      "category": "Comida",
+      "amount": 65600,
+      "date": "2026-09-20"
+    },
+    {
+      "id": "demo-154",
+      "createdAt": 1782874620000,
+      "method": "Efectivo",
+      "note": "Almuerzo corrientazo",
+      "type": "expense",
+      "category": "Comida",
+      "amount": 19500,
+      "date": "2026-09-21"
+    },
+    {
+      "id": "demo-155",
+      "createdAt": 1782874680000,
+      "method": "Tarjeta de Crédito",
+      "note": "Artículos de aseo",
+      "type": "expense",
+      "category": "Compras",
+      "amount": 132000,
+      "date": "2026-09-21"
+    },
+    {
+      "id": "demo-156",
+      "createdAt": 1782874740000,
+      "method": "Nequi/Daviplata",
+      "note": "Almuerzo ejecutivo",
+      "type": "expense",
+      "category": "Comida",
+      "amount": 29700,
+      "date": "2026-09-22"
+    },
+    {
+      "id": "demo-157",
+      "createdAt": 1782874800000,
+      "method": "Efectivo",
+      "note": "Bus",
+      "type": "expense",
+      "category": "Transporte",
+      "amount": 26000,
+      "date": "2026-09-22"
+    },
+    {
+      "id": "demo-158",
+      "createdAt": 1782874860000,
+      "method": "Tarjeta Débito",
+      "note": "Almuerzo corrientazo",
+      "type": "expense",
+      "category": "Comida",
+      "amount": 18100,
+      "date": "2026-09-23"
+    },
+    {
+      "id": "demo-159",
+      "createdAt": 1782874920000,
+      "method": "Nequi/Daviplata",
+      "note": "Taxi",
+      "type": "expense",
+      "category": "Transporte",
+      "amount": 26600,
+      "date": "2026-09-23"
+    },
+    {
+      "id": "demo-160",
+      "createdAt": 1782874980000,
+      "method": "Tarjeta de Crédito",
+      "note": "Gasolina",
+      "type": "expense",
+      "category": "Transporte",
+      "amount": 117000,
+      "date": "2026-09-23"
+    },
+    {
+      "id": "demo-161",
+      "createdAt": 1782875040000,
+      "method": "Nequi/Daviplata",
+      "note": "Café y pandebono",
+      "type": "expense",
+      "category": "Comida",
+      "amount": 24900,
+      "date": "2026-09-24"
+    },
+    {
+      "id": "demo-162",
+      "createdAt": 1782875100000,
+      "method": "Efectivo",
+      "note": "Almuerzo ejecutivo",
+      "type": "expense",
+      "category": "Comida",
+      "amount": 28200,
+      "date": "2026-09-25"
+    },
+    {
+      "id": "demo-163",
+      "createdAt": 1782875160000,
+      "method": "Efectivo",
+      "note": "Almuerzo oficina",
+      "type": "expense",
+      "category": "Comida",
+      "amount": 17700,
+      "date": "2026-09-26"
+    },
+    {
+      "id": "demo-164",
+      "createdAt": 1782875220000,
+      "method": "Tarjeta Débito",
+      "note": "Plaza de mercado",
+      "type": "expense",
+      "category": "Comida",
+      "amount": 418000,
+      "date": "2026-09-26"
+    },
+    {
+      "id": "demo-165",
+      "createdAt": 1782875280000,
+      "method": "Tarjeta Débito",
+      "note": "Almuerzo oficina",
+      "type": "expense",
+      "category": "Comida",
+      "amount": 22900,
+      "date": "2026-09-27"
+    },
+    {
+      "id": "demo-166",
+      "createdAt": 1782875340000,
+      "method": "Tarjeta Débito",
+      "note": "Café y pandebono",
+      "type": "expense",
+      "category": "Comida",
+      "amount": 29900,
+      "date": "2026-09-28"
+    },
+    {
+      "id": "demo-167",
+      "createdAt": 1782875400000,
+      "method": "Tarjeta de Crédito",
+      "note": "Uber",
+      "type": "expense",
+      "category": "Transporte",
+      "amount": 28700,
+      "date": "2026-09-28"
+    },
+    {
+      "id": "demo-168",
+      "createdAt": 1782875460000,
+      "method": "Tarjeta Débito",
+      "note": "Almuerzo oficina",
+      "type": "expense",
+      "category": "Comida",
+      "amount": 29000,
+      "date": "2026-09-29"
+    },
+    {
+      "id": "demo-169",
+      "createdAt": 1782875520000,
+      "method": "Nequi/Daviplata",
+      "note": "Almuerzo corrientazo",
+      "type": "expense",
+      "category": "Comida",
+      "amount": 29000,
+      "date": "2026-09-30"
+    },
+    {
+      "id": "demo-170",
+      "createdAt": 1782875580000,
+      "method": "Nequi/Daviplata",
+      "note": "Taxi",
+      "type": "expense",
+      "category": "Transporte",
+      "amount": 28900,
+      "date": "2026-09-30"
+    },
+    {
+      "id": "demo-203",
+      "createdAt": 1782877560000,
+      "method": "Cuenta Bancaria",
+      "note": "Rendimientos CDT",
+      "type": "income",
+      "category": "Inversiones",
+      "amount": 85400,
+      "date": "2026-09-30"
+    },
+    {
+      "id": "demo-salario-2026-10",
+      "createdAt": 1782864240000,
+      "method": "Cuenta Bancaria",
+      "note": "Nómina",
+      "type": "income",
+      "amount": 4200000,
+      "category": "Salario",
+      "recurringOf": "demo-salario",
+      "date": "2026-10-01"
+    },
+    {
+      "id": "demo-171",
+      "createdAt": 1782875640000,
+      "method": "Tarjeta de Crédito",
+      "note": "Uber",
+      "type": "expense",
+      "category": "Transporte",
+      "amount": 28500,
+      "date": "2026-10-01"
+    },
+    {
+      "id": "demo-172",
+      "createdAt": 1782875700000,
+      "method": "Nequi/Daviplata",
+      "note": "Café y pandebono",
+      "type": "expense",
+      "category": "Comida",
+      "amount": 18700,
+      "date": "2026-10-02"
+    },
+    {
+      "id": "demo-173",
+      "createdAt": 1782875760000,
+      "method": "Tarjeta de Crédito",
+      "note": "Bus",
+      "type": "expense",
+      "category": "Transporte",
+      "amount": 10900,
+      "date": "2026-10-02"
+    },
+    {
+      "id": "demo-gym-2026-10",
+      "createdAt": 1782865140000,
+      "method": "Tarjeta Débito",
+      "note": "Gimnasio",
+      "type": "expense",
+      "amount": 119000,
+      "category": "Salud",
+      "recurringOf": "demo-gym",
+      "date": "2026-10-03"
+    },
+    {
+      "id": "demo-174",
+      "createdAt": 1782875820000,
+      "method": "Nequi/Daviplata",
+      "note": "Almuerzo oficina",
+      "type": "expense",
+      "category": "Comida",
+      "amount": 20400,
+      "date": "2026-10-03"
+    },
+    {
+      "id": "demo-175",
+      "createdAt": 1782875880000,
+      "method": "Tarjeta de Crédito",
+      "note": "Salida con amigos",
+      "type": "expense",
+      "category": "Entretenimiento",
+      "amount": 42400,
+      "date": "2026-10-03"
+    },
+    {
+      "id": "demo-176",
+      "createdAt": 1782875940000,
+      "method": "Tarjeta Débito",
+      "note": "Mercado Éxito",
+      "type": "expense",
+      "category": "Comida",
+      "amount": 220000,
+      "date": "2026-10-03"
+    },
+    {
+      "id": "demo-177",
+      "createdAt": 1782876000000,
+      "method": "Efectivo",
+      "note": "Almuerzo oficina",
+      "type": "expense",
+      "category": "Comida",
+      "amount": 26000,
+      "date": "2026-10-04"
+    },
+    {
+      "id": "demo-arriendo-2026-10",
+      "createdAt": 1782864480000,
+      "method": "Cuenta Bancaria",
+      "note": "Arriendo apartamento",
+      "type": "expense",
+      "amount": 1350000,
+      "category": "Hogar/Servicios",
+      "recurringOf": "demo-arriendo",
+      "date": "2026-10-05"
+    },
+    {
+      "id": "demo-178",
+      "createdAt": 1782876060000,
+      "method": "Efectivo",
+      "note": "Almuerzo oficina",
+      "type": "expense",
+      "category": "Comida",
+      "amount": 30400,
+      "date": "2026-10-05"
+    },
+    {
+      "id": "demo-179",
+      "createdAt": 1782876120000,
+      "method": "Tarjeta de Crédito",
+      "note": "Pizza viernes",
+      "type": "expense",
+      "category": "Comida",
+      "amount": 82700,
+      "date": "2026-10-05"
+    },
+    {
+      "id": "demo-180",
+      "createdAt": 1782876180000,
+      "method": "Efectivo",
+      "note": "Almuerzo oficina",
+      "type": "expense",
+      "category": "Comida",
+      "amount": 17700,
+      "date": "2026-10-06"
+    },
+    {
+      "id": "demo-181",
+      "createdAt": 1782876240000,
+      "method": "Tarjeta de Crédito",
+      "note": "Gasolina",
+      "type": "expense",
+      "category": "Transporte",
+      "amount": 128000,
+      "date": "2026-10-07"
+    },
+    {
+      "id": "demo-182",
+      "createdAt": 1782876300000,
+      "method": "Tarjeta Débito",
+      "note": "Café y pandebono",
+      "type": "expense",
+      "category": "Comida",
+      "amount": 20000,
+      "date": "2026-10-08"
+    },
+    {
+      "id": "demo-204",
+      "createdAt": 1782877620000,
+      "method": "Efectivo",
+      "note": "Venta de audífonos usados",
+      "type": "income",
+      "category": "Otros",
+      "amount": 150000,
+      "date": "2026-10-08"
+    },
+    {
+      "id": "demo-183",
+      "createdAt": 1782876360000,
+      "method": "Nequi/Daviplata",
+      "note": "DiDi",
+      "type": "expense",
+      "category": "Transporte",
+      "amount": 9200,
+      "date": "2026-10-09"
+    },
+    {
+      "id": "demo-184",
+      "createdAt": 1782876420000,
+      "method": "Nequi/Daviplata",
+      "note": "Almuerzo corrientazo",
+      "type": "expense",
+      "category": "Comida",
+      "amount": 28300,
+      "date": "2026-10-10"
+    },
+    {
+      "id": "demo-185",
+      "createdAt": 1782876480000,
+      "method": "Tarjeta de Crédito",
+      "note": "DiDi",
+      "type": "expense",
+      "category": "Transporte",
+      "amount": 12200,
+      "date": "2026-10-10"
+    },
+    {
+      "id": "demo-186",
+      "createdAt": 1782876540000,
+      "method": "Tarjeta Débito",
+      "note": "Mercado Carulla",
+      "type": "expense",
+      "category": "Comida",
+      "amount": 415000,
+      "date": "2026-10-10"
+    },
+    {
+      "id": "demo-205",
+      "createdAt": 1782877680000,
+      "method": "Tarjeta de Crédito",
+      "note": "Boletas concierto",
+      "type": "expense",
+      "category": "Entretenimiento",
+      "amount": 210000,
+      "date": "2026-10-10"
+    },
+    {
+      "id": "demo-187",
+      "createdAt": 1782876600000,
+      "method": "Tarjeta Débito",
+      "note": "Almuerzo ejecutivo",
+      "type": "expense",
+      "category": "Comida",
+      "amount": 17100,
+      "date": "2026-10-11"
+    },
+    {
+      "id": "demo-188",
+      "createdAt": 1782876660000,
+      "method": "Nequi/Daviplata",
+      "note": "Bolos",
+      "type": "expense",
+      "category": "Entretenimiento",
+      "amount": 115700,
+      "date": "2026-10-11"
+    },
+    {
+      "id": "demo-netflix-2026-10",
+      "createdAt": 1782864720000,
+      "method": "Tarjeta de Crédito",
+      "note": "Netflix",
+      "type": "expense",
+      "amount": 44900,
+      "category": "Suscripciones",
+      "recurringOf": "demo-netflix",
+      "date": "2026-10-12"
+    },
+    {
+      "id": "demo-189",
+      "createdAt": 1782876720000,
+      "method": "Tarjeta Débito",
+      "note": "Café y pandebono",
+      "type": "expense",
+      "category": "Comida",
+      "amount": 21000,
+      "date": "2026-10-13"
+    },
+    {
+      "id": "demo-190",
+      "createdAt": 1782876780000,
+      "method": "Efectivo",
+      "note": "Bus",
+      "type": "expense",
+      "category": "Transporte",
+      "amount": 30500,
+      "date": "2026-10-13"
+    },
+    {
+      "id": "demo-206",
+      "createdAt": 1782877740000,
+      "method": "Tarjeta de Crédito",
+      "note": "Audífonos nuevos",
+      "type": "expense",
+      "category": "Compras",
+      "amount": 349000,
+      "date": "2026-10-13"
+    },
+    {
+      "id": "demo-191",
+      "createdAt": 1782876840000,
+      "method": "Tarjeta Débito",
+      "note": "Almuerzo ejecutivo",
+      "type": "expense",
+      "category": "Comida",
+      "amount": 23300,
+      "date": "2026-10-14"
+    },
+    {
+      "id": "demo-internet-2026-10",
+      "createdAt": 1782865380000,
+      "method": "Cuenta Bancaria",
+      "note": "Internet fibra",
+      "type": "expense",
+      "amount": 98000,
+      "category": "Hogar/Servicios",
+      "recurringOf": "demo-internet",
+      "date": "2026-10-15"
+    },
+    {
+      "id": "demo-192",
+      "createdAt": 1782876900000,
+      "method": "Nequi/Daviplata",
+      "note": "Almuerzo ejecutivo",
+      "type": "expense",
+      "category": "Comida",
+      "amount": 21400,
+      "date": "2026-10-15"
+    },
+    {
+      "id": "demo-193",
+      "createdAt": 1782876960000,
+      "method": "Efectivo",
+      "note": "DiDi",
+      "type": "expense",
+      "category": "Transporte",
+      "amount": 24500,
+      "date": "2026-10-15"
+    }
+  ],
+  "budgets": {
+    "Comida": 1100000,
+    "Transporte": 450000,
+    "Entretenimiento": 300000,
+    "Compras": 600000,
+    "Suscripciones": 80000,
+    "Salud": 250000
+  }
+}

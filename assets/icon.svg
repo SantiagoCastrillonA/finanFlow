@@ -1,0 +1,7 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 108 108">
+  <!-- FinanFlow · ícono "Barras". Fuente única del diseño (ver plans/009-app-icon-bars.md). -->
+  <rect width="108" height="108" rx="24" fill="#5E5CE6"/>
+  <rect x="31" y="56" width="11" height="22" rx="5.5" fill="#fff" fill-opacity="0.6"/>
+  <rect x="48.5" y="44" width="11" height="34" rx="5.5" fill="#fff" fill-opacity="0.8"/>
+  <rect x="66" y="30" width="11" height="48" rx="5.5" fill="#fff"/>
+</svg>

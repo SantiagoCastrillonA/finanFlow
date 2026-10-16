@@ -1,5 +1,13 @@
 apply plugin: 'com.android.application'
 
+// Llave de firma del APK de release: android/keystore.properties (fuera de git) con
+// storeFile, storePassword, keyAlias y keyPassword. Ver "APK firmado" en el README.
+def keystorePropsFile = rootProject.file("keystore.properties")
+def keystoreProps = new Properties()
+if (keystorePropsFile.exists()) {
+    keystoreProps.load(new FileInputStream(keystorePropsFile))
+}
+
 android {
     namespace "com.finanflow.app"
     compileSdkVersion rootProject.ext.compileSdkVersion
@@ -7,8 +15,9 @@ android {
         applicationId "com.finanflow.app"
         minSdkVersion rootProject.ext.minSdkVersion
         targetSdkVersion rootProject.ext.targetSdkVersion
-        versionCode 1
-        versionName "1.0"
+        // Subir versionCode en cada APK nuevo: Android no instala encima una versión igual o menor.
+        versionCode 7
+        versionName "0.7.0"
         testInstrumentationRunner "androidx.test.runner.AndroidJUnitRunner"
         aaptOptions {
              // Files and dirs to omit from the packaged assets dir, modified to accommodate modern web apps.
@@ -16,8 +25,21 @@ android {
             ignoreAssetsPattern '!.svn:!.git:!.ds_store:!*.scc:.*:!CVS:!thumbs.db:!picasa.ini:!*~'
         }
     }
+    signingConfigs {
+        release {
+            if (keystorePropsFile.exists()) {
+                storeFile file(keystoreProps['storeFile'])
+                storePassword keystoreProps['storePassword']
+                keyAlias keystoreProps['keyAlias']
+                keyPassword keystoreProps['keyPassword']
+            }
+        }
+    }
     buildTypes {
         release {
+            if (keystorePropsFile.exists()) {
+                signingConfig signingConfigs.release
+            }
             minifyEnabled false
             proguardFiles getDefaultProguardFile('proguard-android.txt'), 'proguard-rules.pro'
         }
@@ -44,5 +66,6 @@ try {
         apply plugin: 'com.google.gms.google-services'
     }
 } catch(Exception e) {
-    logger.info("google-services.json not found, google-services plugin not applied. Push Notifications won't work")
+    // Sin este archivo FirebaseAuthentication no puede inicializar Firebase y la app se cierra al abrir.
+    logger.warn("ADVERTENCIA: falta android/app/google-services.json. El login con Google (FirebaseAuthentication) hará que la app se cierre al iniciar. Descárgalo de la consola de Firebase.")
 }

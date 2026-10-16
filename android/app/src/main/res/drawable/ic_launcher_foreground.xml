@@ -1,0 +1,19 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- Ícono "Barras": tres barras redondeadas de altura creciente (zona segura de 66 dp). -->
+<vector xmlns:android="http://schemas.android.com/apk/res/android"
+    android:width="108dp"
+    android:height="108dp"
+    android:viewportWidth="108"
+    android:viewportHeight="108">
+    <path
+        android:fillAlpha="0.6"
+        android:fillColor="#FFFFFFFF"
+        android:pathData="M36.5,56a5.5,5.5 0,0 1,5.5 5.5v11a5.5,5.5 0,0 1,-11 0v-11a5.5,5.5 0,0 1,5.5 -5.5z" />
+    <path
+        android:fillAlpha="0.8"
+        android:fillColor="#FFFFFFFF"
+        android:pathData="M54,44a5.5,5.5 0,0 1,5.5 5.5v23a5.5,5.5 0,0 1,-11 0v-23a5.5,5.5 0,0 1,5.5 -5.5z" />
+    <path
+        android:fillColor="#FFFFFFFF"
+        android:pathData="M71.5,30a5.5,5.5 0,0 1,5.5 5.5v37a5.5,5.5 0,0 1,-11 0v-37a5.5,5.5 0,0 1,5.5 -5.5z" />
+</vector>

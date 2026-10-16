@@ -1,0 +1,79 @@
+rules_version = '2';
+
+// Reglas de seguridad de FinanFlow.
+// - users/{uid}/...      Espacio personal: solo su dueño.
+// - households/{hid}     Hogar compartido: solo sus miembros (máximo 6).
+// - invites/{código}     Invitación de un solo uso para unirse a un Hogar (vence a las 48 h).
+service cloud.firestore {
+  match /databases/{database}/documents {
+
+    function signedIn() {
+      return request.auth != null;
+    }
+
+    function householdDoc(hid) {
+      return get(/databases/$(database)/documents/households/$(hid));
+    }
+
+    match /users/{userId}/{document=**} {
+      allow read, write: if signedIn() && request.auth.uid == userId;
+    }
+
+    match /households/{hid} {
+      function isMember() {
+        return signedIn() && request.auth.uid in resource.data.members;
+      }
+      function onlyChanges(keys) {
+        return request.resource.data.diff(resource.data).affectedKeys().hasOnly(keys);
+      }
+      function inviteFor(code) {
+        return get(/databases/$(database)/documents/invites/$(code));
+      }
+
+      allow read: if isMember();
+
+      // Crear: el creador es el único miembro inicial.
+      allow create: if signedIn()
+        && request.resource.data.members == [request.auth.uid]
+        && request.resource.data.createdBy == request.auth.uid;
+
+      allow update: if
+        // Miembro: renombrar, actualizar perfiles o salir (solo puede quitarse a sí mismo).
+        (isMember()
+          && onlyChanges(['name', 'memberInfo', 'members'])
+          && (request.resource.data.members.toSet() == resource.data.members.toSet()
+              || request.resource.data.members.toSet()
+                   == resource.data.members.toSet().difference([request.auth.uid].toSet())))
+        ||
+        // Unirse: solo agregarse a sí mismo y con una invitación vigente para este Hogar.
+        (signedIn()
+          && !(request.auth.uid in resource.data.members)
+          && resource.data.members.size() < 6
+          && request.resource.data.members.toSet()
+               == resource.data.members.toSet().union([request.auth.uid].toSet())
+          && onlyChanges(['members', 'memberInfo', 'joinCode'])
+          && exists(/databases/$(database)/documents/invites/$(request.resource.data.joinCode))
+          && inviteFor(request.resource.data.joinCode).data.hid == hid
+          && inviteFor(request.resource.data.joinCode).data.expiresAt > request.time);
+
+      allow delete: if false;
+
+      // Movimientos, límites y actividad del Hogar: solo miembros.
+      match /{sub=**} {
+        allow read, write: if signedIn() && request.auth.uid in householdDoc(hid).data.members;
+      }
+    }
+
+    match /invites/{code} {
+      // Se lee por código exacto (6 caracteres, vence en 48 h); nunca se listan.
+      allow get: if signedIn();
+      allow list: if false;
+      allow create: if signedIn()
+        && request.resource.data.createdBy == request.auth.uid
+        && request.auth.uid in householdDoc(request.resource.data.hid).data.members;
+      allow delete: if signedIn()
+        && (resource.data.createdBy == request.auth.uid
+            || request.auth.uid in householdDoc(resource.data.hid).data.members);
+    }
+  }
+}

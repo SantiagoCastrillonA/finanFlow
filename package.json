@@ -1,13 +1,18 @@
 {
   "name": "finanflow",
-  "version": "1.0.0",
-  "description": "Una aplicación móvil premium de control de gastos optimizada para Android PWA y Capacitor.",
+  "version": "0.7.0",
+  "description": "Control de gastos personal para Android (Capacitor) y PWA: rápido, privado y sin conexión.",
   "main": "www/index.html",
   "scripts": {
     "dev": "npx http-server www -p 5173 -o",
     "cap-init": "npx cap init",
     "build-native": "npx cap sync",
-    "open-android": "npx cap open android"
+    "open-android": "npx cap open android",
+    "apk": "node scripts/build-apk.mjs",
+    "vendor": "node scripts/vendor-assets.mjs",
+    "check-icons": "node scripts/vendor-assets.mjs --check",
+    "firebase-login": "npx firebase-tools@13 login",
+    "deploy": "npx firebase-tools@13 deploy --only hosting,firestore:rules"
   },
   "keywords": [
     "pwa",
@@ -20,9 +25,17 @@
   "author": "Antigravity",
   "license": "MIT",
   "dependencies": {
+    "@capacitor-firebase/authentication": "^5.4.1",
     "@capacitor/android": "^5.7.0",
+    "@capacitor/app": "^5.0.8",
     "@capacitor/cli": "^5.7.0",
-    "@capacitor/core": "^5.7.0"
+    "@capacitor/core": "^5.7.0",
+    "@capacitor/filesystem": "^5.2.2",
+    "@capacitor/haptics": "^5.0.8",
+    "@capacitor/local-notifications": "^5.0.8",
+    "@capacitor/share": "^5.0.8",
+    "@capgo/capacitor-native-biometric": "^5.1.1",
+    "chart.js": "^4.5.1"
   },
   "devDependencies": {
     "http-server": "^14.1.1"

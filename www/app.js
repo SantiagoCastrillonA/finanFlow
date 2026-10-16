@@ -4213,7 +4213,7 @@ function finishTestItem(it) {
   showToast("Prueba completada: la tarjeta de pagos funciona", "success");
 }
 
-/** Ajustes → "Probar la tarjeta": muestra la tarjeta como si hubieras pagado con Wallet. */
+/** Muestra la tarjeta como si hubieras pagado con Wallet (sin botón: app.testPaymentPrompt() desde chrome://inspect). */
 async function testPaymentPrompt() {
   const pay = PAY();
   if (!pay) return;
@@ -4253,7 +4253,6 @@ function initPaymentDetect() {
   };
   $("paydetect-listener").onclick = () => pay.openListenerSettings().catch(() => {});
   $("paydetect-overlay").onclick = () => pay.openOverlaySettings().catch(() => {});
-  $("paydetect-test").onclick = testPaymentPrompt;
   pay.addListener("queueChanged", () => loadInbox());
   syncWidget(); // envía cuentas y categorías para la tarjeta flotante
   refreshPayDetect();
@@ -4274,7 +4273,6 @@ async function refreshPayDetect() {
     $(`paydetect-${key}-sub`).textContent = ok ? "Activado" : missing;
     $(`paydetect-${key}-sub`).classList.toggle("warn", !ok);
   });
-  $("paydetect-test").classList.toggle("hidden", !st.enabled);
   const seen = (st.sources || []).length ? ` Detectadas: ${st.sources.join(", ")}.` : "";
   $("paydetect-note").textContent =
     "Lee solo los avisos de Google Wallet, Nu, Rappi, Davivienda y Nequi, y nada sale de tu celular. Ningún pago se registra sin que lo confirmes." + seen;
@@ -4797,7 +4795,8 @@ const app = {
   openSyncSheet,
   retrySync,
   shareInvite,
-  openActivity
+  openActivity,
+  testPaymentPrompt
 };
 window.app = app;
 document.addEventListener("DOMContentLoaded", init);

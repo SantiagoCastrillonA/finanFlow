@@ -94,12 +94,12 @@ public class PaymentPromptActivity extends Activity {
         dark = (getResources().getConfiguration().uiMode & Configuration.UI_MODE_NIGHT_MASK) == Configuration.UI_MODE_NIGHT_YES;
         boolean blur = Build.VERSION.SDK_INT >= 31 && getWindowManager().isCrossWindowBlurEnabled();
 
-        // Vidrio esmerilado (como las tarjetas grandes de la app): tinte translúcido de un solo color y
-        // borde de luz. Con desenfoque el tinte es más transparente; sin él, casi sólido para que se lea
-        // sobre cualquier pantalla (Wallet es blanca).
+        // Vidrio esmerilado (como las tarjetas grandes de la app): tinte de un solo color y borde de luz.
+        // Casi opaco para que el texto de la pantalla de atrás no compita con el monto; con desenfoque
+        // (Android 12+, se apaga con el ahorro de batería) lo de atrás queda como una mancha de color.
         GradientDrawable bg = new GradientDrawable();
         bg.setCornerRadius(dp(28));
-        bg.setColor(dark ? (blur ? 0x9E132121 : 0xF2132121) : (blur ? 0xA6FFFFFF : 0xF5FFFFFF));
+        bg.setColor(dark ? (blur ? 0xEB132121 : 0xFA132121) : (blur ? 0xEBFFFFFF : 0xFAFFFFFF));
         bg.setStroke(Math.max(1, dp(0.5f)), dark ? 0x40FFFFFF : 0xBFFFFFFF);
         w.setBackgroundDrawable(bg);
         if (blur) w.setBackgroundBlurRadius(dp(40));

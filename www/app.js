@@ -1089,8 +1089,8 @@ function renderCategoryChart(stats) {
         plugins: {
           legend: {
             position: "right",
-            onClick: (evt, item, legend) => drillDown(legend.chart.$ids[item.index]),
-            labels: { color: cssVar("--text"), usePointStyle: true, pointStyle: "circle", boxWidth: 8, boxHeight: 8, padding: 12, font: { family: cssVar("--font"), size: 12 } }
+            onClick: (evt, item, legend) => drillDown(item.index === -1 ? "*" : legend.chart.$ids[item.index]),
+            labels: { color: cssVar("--text"), usePointStyle: true, pointStyle: "circle", boxWidth: 8, boxHeight: 8, padding: 12, font: { family: cssVar("--font"), size: 12 }, generateLabels: legendLabels }
           },
           tooltip: {
             callbacks: {
@@ -1115,6 +1115,28 @@ function renderCategoryChart(stats) {
     chart.data.datasets[0].backgroundColor = colors;
     chart.update();
   }
+}
+
+/**
+ * Leyenda de la dona: las LEGEND_MAX categorías más grandes y "+N más" (lleva a todas en el Historial).
+ * Con más, Chart.js abre una segunda columna que no cabe al lado del gráfico. Los datos ya vienen
+ * ordenados de mayor a menor; la dona sigue dibujando todas.
+ */
+const LEGEND_MAX = 6;
+function legendLabels(chart) {
+  const items = Chart.overrides.doughnut.plugins.legend.labels.generateLabels(chart);
+  if (items.length <= LEGEND_MAX + 1) return items;
+  const more = {
+    text: `+${items.length - LEGEND_MAX} más`,
+    fontColor: cssVar("--text-secondary"),
+    fillStyle: "transparent",
+    strokeStyle: "transparent",
+    lineWidth: 0,
+    pointStyle: "circle",
+    hidden: false,
+    index: -1
+  };
+  return [...items.slice(0, LEGEND_MAX), more];
 }
 
 function renderTrendChart() {
@@ -1194,7 +1216,11 @@ function renderTrendChart() {
 function drillDown(id) {
   if (!id) return;
   const f = state.filters;
-  if (state.chartType === "balance") {
+  if (id === "*") {
+    // "+N más" de la leyenda: todas las categorías del tipo que se ve.
+    f.type = state.chartType;
+    f.category = "all";
+  } else if (state.chartType === "balance") {
     f.type = id;
     f.category = "all";
   } else {

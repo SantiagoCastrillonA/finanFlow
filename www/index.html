@@ -380,7 +380,7 @@
           </button>
         </div>
 
-        <p class="app-version">FinanFlow 0.7.1 · Tus datos son tuyos</p>
+        <p class="app-version">FinanFlow 0.8.0 · Tus datos son tuyos</p>
       </section>
     </main>
 
@@ -482,6 +482,14 @@
             <span class="share-input"><input type="number" id="tx-share" min="0" max="100" step="5" inputmode="numeric"
                 value="50"> %</span>
           </label>
+          <!-- Hogar: de cuál de tus cuentas personales salió (baja su saldo sin contarse como gasto personal) -->
+          <label id="tx-paidfrom-row" class="form-row hidden">
+            <span>Salió de</span>
+            <span class="select-inline">
+              <select id="tx-paidfrom"></select>
+              <span class="ms">unfold_more</span>
+            </span>
+          </label>
           <label class="form-row">
             <span>Nota</span>
             <input type="text" id="tx-note" placeholder="Opcional" maxlength="80" enterkeyhint="done">
@@ -503,6 +511,7 @@
           movimiento recurrente.</p>
 
         <button type="submit" class="btn-primary full">Guardar</button>
+        <button type="button" id="tx-move-btn" class="btn-plain full hidden">Mover al Hogar</button>
         <button type="button" id="tx-delete-btn" class="btn-plain destructive full hidden">Eliminar movimiento</button>
       </form>
     </div>

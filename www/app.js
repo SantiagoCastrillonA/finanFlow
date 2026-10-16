@@ -522,7 +522,9 @@ function cssVar(name) {
 // No son ingresos ni gastos: las liquidaciones entre la pareja ("Saldar cuentas"), las transferencias
 // entre cuentas (p. ej. pagar la tarjeta) y las categorías marcadas "No sumar en totales".
 const isExcludedCategory = (t, custom) => !!getCategoryInfo(t.category, t.type, custom).excluded;
-const countsAsMoney = (t, custom) => t.kind !== "settlement" && t.kind !== "transfer" && !isExcludedCategory(t, custom);
+// El reflejo personal de un gasto del Hogar ("household") solo mueve tu cuenta: el gasto se cuenta en el Hogar.
+const countsAsMoney = (t, custom) =>
+  t.kind !== "settlement" && t.kind !== "transfer" && t.kind !== "household" && !isExcludedCategory(t, custom);
 
 function monthStats(ym, untilDay = 31, list = state.transactions, custom = state.categories) {
   let income = 0;
@@ -1373,6 +1375,21 @@ function txRow(t, showDate) {
     return el;
   }
 
+  if (t.kind === "household") {
+    // Pago de un gasto del Hogar con tu cuenta: se ve aquí, pero se edita desde el Hogar.
+    const account = accountInfo(t.method).name;
+    el.innerHTML = `
+      <span class="row-icon" style="color:var(--accent);background:var(--accent-tint)"><span class="ms">home</span></span>
+      <span class="row-main">
+        <span class="row-title">${escapeHtml(t.note || "Gasto del Hogar")}</span>
+        <span class="row-sub">${escapeHtml(["Hogar", account, date].filter(Boolean).join(" · "))}</span>
+      </span>
+      <span class="row-amount excluded">${formatMoney(t.amount)}</span>`;
+    el.onclick = () =>
+      showConfirmDialog("Gasto del Hogar", `Se edita desde el Hogar. ¿Quitar este pago de ${account}?`, () => deleteTransaction(t.id), "Quitar");
+    return el;
+  }
+
   if (t.kind === "transfer") {
     // Dinero que pasa de una cuenta a otra (pagar la tarjeta, ahorrar en una meta): no es gasto ni ingreso.
     const to = accountInfo(t.to);
@@ -1519,7 +1536,7 @@ function renderTransactionsList() {
   const filtered = state.transactions
     .filter((t) => {
       // Las transferencias no son ingresos ni gastos: solo aparecen en "Todos".
-      if (f.type !== "all" && (t.type !== f.type || t.kind === "transfer")) return false;
+      if (f.type !== "all" && (t.type !== f.type || t.kind === "transfer" || t.kind === "household")) return false;
       if (f.category !== "all" && t.category !== f.category) return false;
       if (!matchesDateFilter(t.date, f.date)) return false;
       if (q) {
@@ -1738,7 +1755,7 @@ function setTxType(type, keepCategory = false) {
   setSegmented($("tx-type"), type);
   const transfer = type === "transfer";
   $("tx-category-grid").classList.toggle("hidden", transfer);
-  $("tx-method-row").classList.toggle("hidden", transfer);
+  $("tx-method-row").classList.toggle("hidden", transfer || (inHousehold() && !accountsFor().some((a) => a.active)));
   $("tx-from-row").classList.toggle("hidden", !transfer);
   $("tx-to-row").classList.toggle("hidden", !transfer);
   const last = state.lastUsed[type] || {};
@@ -1766,6 +1783,9 @@ function openTransactionModal(editId = null, presetType = "expense", preset = {}
   $("transaction-form").reset();
   $("modal-title").textContent = tx ? "Editar movimiento" : "Nuevo movimiento";
   $("tx-delete-btn").classList.toggle("hidden", !tx);
+  const movable = !!tx && canMove(tx);
+  $("tx-move-btn").classList.toggle("hidden", !movable);
+  if (movable) $("tx-move-btn").textContent = inHousehold() ? "Mover a Personal" : `Mover a ${state.household.name || "Hogar"}`;
   $("tx-date").value = tx ? tx.date : todayISO();
   $("tx-amount").value = tx ? amountToInput(tx.amount) : "";
   $("tx-note").value = tx ? tx.note || "" : "";
@@ -1790,6 +1810,7 @@ function openTransactionModal(editId = null, presetType = "expense", preset = {}
     if ($("tx-from").value === preset.to) $("tx-from").selectedIndex = 0;
   }
   setupSplitFields(tx);
+  setupPaidFrom(tx);
   openModal("transaction-modal", tx ? null : "tx-amount");
 }
 
@@ -1817,6 +1838,7 @@ function updateSplitLabels() {
   // Una transferencia no es un gasto común: no lleva quién pagó ni división.
   const income = txSheet.type === "income";
   const transfer = txSheet.type === "transfer";
+  updatePaidFromRow();
   $("tx-paidby-label").textContent = income ? "Recibió" : "Pagó";
   if (!inHousehold() || !partnerUid()) return;
   $("tx-paidby-row").classList.toggle("hidden", transfer);
@@ -1831,6 +1853,102 @@ function readSplitFields() {
   const v = $("tx-split").value;
   const share = v === "custom" ? Math.min(100, Math.max(0, Number($("tx-share").value) || 0)) : Number(v);
   return { paidBy, payerShare: share };
+}
+
+/* --- Hogar: gastos pagados con tus cuentas personales y mover entre espacios --- */
+
+const mirrorId = (id) => `hogar-${id}`;
+const isMine = (t) => !t.paidBy || (state.user && t.paidBy === state.user.uid);
+const personalTx = (id) => personalData().transactions.find((t) => t.id === id);
+
+/** Escribe (o borra, sin tx) en tu espacio personal aunque estés viendo el Hogar, que solo existe con la nube. */
+function personalWrite(id, tx = null) {
+  if (!isCloud()) return;
+  const ref = userRef().collection("transactions").doc(id);
+  cloudWrite(tx ? ref.set(tx) : ref.delete());
+}
+
+/**
+ * Reflejo personal de un gasto del Hogar que pagaste desde `account`: baja esa cuenta sin contarse
+ * como gasto personal. Sin cuenta (o si pagó tu pareja), se quita.
+ */
+function syncHouseholdMirror(tx, account) {
+  const id = mirrorId(tx.id);
+  const prev = personalTx(id);
+  if (account && tx.type === "expense" && !tx.kind && isMine(tx)) {
+    personalWrite(id, {
+      id,
+      kind: "household",
+      householdTx: tx.id,
+      type: "expense",
+      amount: tx.amount,
+      date: tx.date,
+      note: tx.note || getCategoryInfo(tx.category, tx.type).label,
+      category: tx.category,
+      method: account,
+      createdAt: prev ? prev.createdAt : tx.createdAt || Date.now()
+    });
+  } else if (prev) {
+    personalWrite(id);
+  }
+}
+
+/** "Salió de": tus cuentas personales activas, con la del reflejo ya elegida al editar. */
+function setupPaidFrom(tx) {
+  const select = $("tx-paidfrom");
+  select.innerHTML = "";
+  if (inHousehold()) {
+    select.appendChild(new Option("No registrar", ""));
+    accountsFor(personalData().accounts)
+      .filter((a) => a.active)
+      .forEach((a) => select.appendChild(new Option(a.name, a.id)));
+    const mirror = tx && personalTx(mirrorId(tx.id));
+    const value = mirror ? mirror.method : tx ? "" : state.lastUsed.paidFrom || "";
+    if (![...select.options].some((o) => o.value === value)) select.appendChild(new Option(value, value));
+    select.value = value;
+  }
+  updatePaidFromRow();
+}
+
+function updatePaidFromRow() {
+  const show =
+    inHousehold() &&
+    txSheet.type === "expense" &&
+    $("tx-paidfrom").options.length > 1 &&
+    (!partnerUid() || $("tx-paidby").value === state.user.uid);
+  $("tx-paidfrom-row").classList.toggle("hidden", !show);
+}
+
+/** Se mueven gastos e ingresos sueltos; no transferencias, pagos entre la pareja, reflejos ni recurrentes. */
+const canMove = (tx) => !!state.household && isCloud() && !tx.kind && !tx.recurring && !tx.recurringOf && (!inHousehold() || isMine(tx));
+
+/** Pasa un movimiento entre Personal y el Hogar sin cambiar el saldo de tus cuentas personales. */
+function moveTransaction() {
+  const tx = txSheet.editing;
+  if (!tx || !canMove(tx)) return;
+  closeModal("transaction-modal");
+  const plain = { ...tx };
+  ["paidBy", "payerShare", "createdBy", "updatedBy"].forEach((k) => delete plain[k]);
+  const toHousehold = !inHousehold();
+  if (toHousehold) {
+    const moved = { ...plain, paidBy: state.user.uid, payerShare: tx.type === "income" ? 100 : 50, createdBy: state.user.uid, updatedBy: state.user.uid };
+    cloudWrite(householdRef().collection("transactions").doc(tx.id).set(moved));
+    logActivity("add", moved);
+    // La cuenta personal con que se pagó queda como "Salió de": el saldo del banco no cambia.
+    const account = accountsFor().find((a) => a.active && a.id === tx.method);
+    syncHouseholdMirror(moved, account ? account.id : "");
+  } else {
+    const mirror = personalTx(mirrorId(tx.id));
+    personalWrite(tx.id, { ...plain, method: mirror ? mirror.method : tx.method });
+    if (mirror) personalWrite(mirror.id);
+  }
+  removeTransaction(tx.id);
+  haptic("success");
+  const target = toHousehold ? "household" : "personal";
+  showToast(toHousehold ? `Movido a ${state.household.name || "Hogar"}` : "Movido a Personal", "success", 5000, {
+    label: "Ver",
+    onClick: () => switchSpace(target)
+  });
 }
 
 /** Cuánto le debe tu pareja a ti (negativo: cuánto le debes tú). */
@@ -1934,6 +2052,11 @@ function saveTransaction(event) {
   state.lastUsed[txSheet.type] = transfer ? { from, to } : { category: tx.category, method: tx.method };
   lastChangedId = tx.id;
   upsertTransaction(tx);
+  if (inHousehold()) {
+    const from = $("tx-paidfrom-row").classList.contains("hidden") ? "" : $("tx-paidfrom").value;
+    syncHouseholdMirror(tx, from);
+    if (from) state.lastUsed.paidFrom = from;
+  }
   if (tx.recurring) materializeRecurring();
   closeModal("transaction-modal");
   haptic("success");
@@ -1965,10 +2088,14 @@ function deleteTransaction(id) {
       if (template) {
         upsertTransaction({ ...template, skipMonths: [...new Set([...(template.skipMonths || []), key])] }, false);
       }
+      // Borrar un gasto del Hogar también quita su pago reflejado en tu cuenta personal.
+      const mirror = inHousehold() ? personalTx(mirrorId(id)) : null;
+      if (mirror) personalWrite(mirror.id);
       removeTransaction(id);
       showToast("Movimiento eliminado", "info", 5000, {
         label: "Deshacer",
         onClick: () => {
+          if (mirror) personalWrite(mirror.id, mirror);
           if (template) {
             const t = state.transactions.find((x) => x.id === template.id);
             if (t) upsertTransaction({ ...t, skipMonths: (t.skipMonths || []).filter((m) => m !== key) }, false);
@@ -3969,7 +4096,7 @@ function exportDataCSV(list = state.transactions, name = `finanflow-${todayISO()
     .map((t) =>
       (t.kind === "transfer"
         ? [t.date, "Transferencia", `${accountInfo(t.from).name} → ${accountInfo(t.to).name}`, t.amount, accountInfo(t.from).name, t.note]
-        : [t.date, t.type === "income" ? "Ingreso" : "Gasto", getCategoryInfo(t.category, t.type).label, t.amount, accountInfo(t.method).name, t.note]
+        : [t.date, t.kind === "household" ? "Pago del Hogar" : t.type === "income" ? "Ingreso" : "Gasto", getCategoryInfo(t.category, t.type).label, t.amount, accountInfo(t.method).name, t.note]
       )
         .map(esc)
         .join(",")
@@ -4087,6 +4214,8 @@ function bindUI() {
   $("transaction-form").addEventListener("submit", saveTransaction);
   $("budget-form").addEventListener("submit", saveBudget);
   $("tx-delete-btn").onclick = deleteFromSheet;
+  $("tx-move-btn").onclick = moveTransaction;
+  $("tx-paidby").onchange = updateSplitLabels;
   $("budget-delete-btn").onclick = deleteBudgetFromSheet;
   $("category-form").addEventListener("submit", saveCategory);
   $("cat-delete-btn").onclick = deleteCategoryFromSheet;

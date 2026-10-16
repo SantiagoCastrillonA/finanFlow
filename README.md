@@ -1,6 +1,6 @@
 # FinanFlow - Control de Gastos Personales
 
-> **Version:** 0.7.1  
+> **Version:** 0.8.0  
 > **Privacidad 100% garantizada** | **Funciona sin conexión** | **Sincronización opcional con Google Cloud**
 
 FinanFlow es una aplicación móvil de control de gastos e ingresos personales, con un diseño sobrio inspirado en iOS. Funciona como **PWA** (Progressive Web App) y como **aplicación nativa Android** mediante [Capacitor](https://capacitorjs.com/).
@@ -54,6 +54,8 @@ FinanFlow te permite llevar un registro de tus finanzas de forma **rápida, priv
 ### Hogar compartido (en pareja)
 - **Personal + Hogar:** tus gastos personales siguen siendo privados; el Hogar es un espacio común que ambos editan. Cambias de espacio con el selector bajo el título.
 - **Quién pagó y división:** cada gasto del Hogar indica quién pagó y cómo se divide (50/50, sin dividir, todo del otro o un porcentaje). El Inicio muestra quién le debe a quién y permite **Saldar cuentas**.
+- **Pagado con tu cuenta:** en un gasto del Hogar que pagaste, elige en **"Salió de"** tu cuenta personal: baja su saldo sin contarse como gasto personal (en tu Historial se ve en gris como "Hogar").
+- **Mover:** al editar un movimiento, **"Mover al Hogar"** o **"Mover a Personal"** lo pasa de espacio sin descuadrar tus cuentas.
 - **Actividad:** la campanita muestra lo que registró, editó o borró tu pareja.
 - **Invitación:** Ajustes → Hogar compartido → Crear un Hogar → compartir el código de 6 caracteres (vale 48 h, un solo uso).
 - Requiere iniciar sesión con Google en ambos teléfonos.

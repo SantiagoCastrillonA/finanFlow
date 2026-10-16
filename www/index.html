@@ -139,6 +139,7 @@
         <div class="card chart-card">
           <div class="card-header">
             <h2 class="card-title">Distribución</h2>
+            <button type="button" class="btn-plain small" onclick="app.openYearSummary()">Resumen del año</button>
           </div>
           <div id="chart-type-toggle" class="segmented" aria-label="Tipo de gráfico">
             <button data-value="balance">Balance</button>
@@ -199,6 +200,7 @@
           <button type="button" class="chip" data-value="today">Hoy</button>
           <button type="button" class="chip" data-value="yesterday">Ayer</button>
           <button type="button" class="chip" data-value="all">Todo</button>
+          <button type="button" id="chip-range" class="chip" data-value="range">Rango…</button>
         </div>
 
         <div class="select-field">
@@ -208,7 +210,12 @@
           <span class="ms">expand_more</span>
         </div>
 
-        <p id="filter-summary" class="footnote"></p>
+        <div class="filter-summary-row">
+          <p id="filter-summary" class="footnote"></p>
+          <button type="button" id="export-filtered-btn" class="btn-plain small hidden">
+            <span class="ms">download</span> CSV
+          </button>
+        </div>
         <div id="all-transactions-list"></div>
       </section>
 
@@ -359,7 +366,7 @@
           </button>
         </div>
 
-        <p class="app-version">FinanFlow 0.6.0 · Tus datos son tuyos</p>
+        <p class="app-version">FinanFlow 0.6.1 · Tus datos son tuyos</p>
       </section>
     </main>
 
@@ -575,6 +582,54 @@
       </button>
       <p class="footnote">Las de la app no se editan, pero puedes ocultar las que no uses: tus movimientos viejos las
         siguen mostrando. En el Hogar, las categorías se comparten con tu pareja.</p>
+    </div>
+  </div>
+
+  <!-- ================= HOJA: RESUMEN DEL AÑO ================= -->
+  <div id="summary-modal" class="modal" aria-hidden="true">
+    <div class="backdrop" data-close></div>
+    <div class="sheet" role="dialog" aria-modal="true" aria-labelledby="summary-title">
+      <div class="sheet-handle" aria-hidden="true"></div>
+      <div class="sheet-header">
+        <span></span>
+        <h2 id="summary-title">Últimos 12 meses</h2>
+        <button type="button" class="btn-plain" data-close>Listo</button>
+      </div>
+      <div class="card chart-card">
+        <div class="chart-wrapper">
+          <canvas id="summaryChart" aria-label="Ingresos y gastos por mes"></canvas>
+        </div>
+      </div>
+      <div id="summary-stats" class="summary-stats"></div>
+      <h2 class="group-title">Donde más gastaste</h2>
+      <div id="summary-top" class="list-group"></div>
+      <p id="summary-growth" class="footnote"></p>
+    </div>
+  </div>
+
+  <!-- ================= HOJA: RANGO DE FECHAS ================= -->
+  <div id="range-modal" class="modal" aria-hidden="true">
+    <div class="backdrop" data-close></div>
+    <div class="sheet" role="dialog" aria-modal="true" aria-labelledby="range-title">
+      <div class="sheet-handle" aria-hidden="true"></div>
+      <div class="sheet-header">
+        <button type="button" class="btn-plain" data-close>Cancelar</button>
+        <h2 id="range-title">Rango de fechas</h2>
+        <button type="submit" form="range-form" class="btn-plain strong">Aplicar</button>
+      </div>
+      <form id="range-form" novalidate>
+        <div class="list-group form-group">
+          <label class="form-row">
+            <span>Desde</span>
+            <input type="date" id="range-from">
+          </label>
+          <label class="form-row">
+            <span>Hasta</span>
+            <input type="date" id="range-to">
+          </label>
+        </div>
+        <button type="submit" class="btn-primary full">Aplicar</button>
+      </form>
     </div>
   </div>
 

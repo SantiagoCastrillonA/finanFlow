@@ -815,7 +815,7 @@ function setSegmented(el, value) {
    Gráficos (Chart.js local). Se actualizan con update() en vez de recrearse.
    ========================================================================== */
 
-const charts = { category: null, trend: null };
+const charts = { category: null, trend: null, summary: null };
 
 const centerTextPlugin = {
   id: "centerText",
@@ -843,9 +843,8 @@ function chartAnimation() {
   return reduceMotion.matches ? false : { duration: 400, easing: "easeOutQuart" };
 }
 function resetCharts() {
-  if (charts.category) charts.category.destroy();
-  if (charts.trend) charts.trend.destroy();
-  charts.category = charts.trend = null;
+  Object.values(charts).forEach((c) => c && c.destroy());
+  charts.category = charts.trend = charts.summary = null;
   if ($("tab-dashboard").classList.contains("active")) renderCharts(monthStats(state.viewMonth));
 }
 function toggleChartEmpty(canvasId, emptyId, empty, text) {
@@ -853,6 +852,100 @@ function toggleChartEmpty(canvasId, emptyId, empty, text) {
   const box = $(emptyId);
   box.classList.toggle("hidden", !empty);
   if (text) box.querySelector("p").textContent = text;
+}
+
+/* --- Resumen de los últimos 12 meses (hoja desde "Resumen del año") --- */
+
+function openYearSummary() {
+  const end = monthKey(new Date());
+  const months = Array.from({ length: 12 }, (_, i) => addMonths(end, i - 11));
+  const stats = months.map((ym) => monthStats(ym));
+  const income = roundMoney(stats.reduce((s, m) => s + m.income, 0));
+  const expense = roundMoney(stats.reduce((s, m) => s + m.expense, 0));
+  const active = stats.filter((m) => m.income || m.expense);
+  const avg = active.length ? roundMoney(expense / active.length) : 0;
+  const peak = stats.reduce((best, m, i) => (m.expense > best.value ? { value: m.expense, i } : best), { value: 0, i: -1 });
+
+  const tile = (label, value, cls = "") => `<div class="stat-tile"><span class="caption">${label}</span><span class="stat-value ${cls}">${value}</span></div>`;
+  $("summary-stats").innerHTML = [
+    tile("Gasto promedio al mes", formatMoney(avg)),
+    tile("Ingresos − gastos", formatMoney(income - expense), income - expense < 0 ? "negative" : "positive"),
+    tile("Mes de más gasto", peak.i >= 0 ? monthLabel(months[peak.i], false) : "—")
+  ].join("");
+
+  // Top 5 categorías de gasto del periodo, con su parte del total.
+  const byCat = {};
+  stats.forEach((m) => Object.entries(m.byCat.expense).forEach(([c, v]) => (byCat[c] = (byCat[c] || 0) + v)));
+  const top = Object.entries(byCat).sort((a, b) => b[1] - a[1]).slice(0, 5);
+  const list = $("summary-top");
+  list.innerHTML = top.length ? "" : '<p class="footnote">Aún no hay gastos en este periodo.</p>';
+  top.forEach(([id, value]) => {
+    const c = getCategoryInfo(id, "expense");
+    const share = expense ? value / expense : 0;
+    const row = document.createElement("div");
+    row.className = "list-row";
+    row.innerHTML = `
+      <span class="row-icon" style="color:${c.color};background:${c.color}24"><span class="ms">${c.icon}</span></span>
+      <span class="row-main">
+        <span class="row-title">${escapeHtml(c.label)}</span>
+        <span class="row-sub">${Math.round(share * 100)}% del gasto</span>
+        <span class="mini-progress"><span style="transform:scaleX(${share});background:${c.color}"></span></span>
+      </span>
+      <span class="row-amount">${formatMoney(value)}</span>`;
+    list.appendChild(row);
+  });
+
+  // La categoría que más subió este mes contra el mismo tramo del mes anterior.
+  const day = new Date().getDate();
+  const now = monthStats(end, day).byCat.expense;
+  const before = monthStats(addMonths(end, -1), day).byCat.expense;
+  const growth = Object.keys(now)
+    .map((c) => [c, now[c] - (before[c] || 0)])
+    .sort((a, b) => b[1] - a[1])[0];
+  $("summary-growth").textContent =
+    growth && growth[1] > 0
+      ? `Lo que más subió este mes: ${getCategoryInfo(growth[0]).label}, ${formatMoney(roundMoney(growth[1]))} más que en ${monthLabel(addMonths(end, -1), false).toLowerCase()} a esta fecha.`
+      : "";
+
+  renderSummaryChart(months, stats);
+  openModal("summary-modal");
+}
+
+function renderSummaryChart(months, stats) {
+  if (typeof Chart === "undefined") return;
+  const labels = months.map((ym) => monthLabel(ym, false).slice(0, 3));
+  const data = [stats.map((m) => m.income), stats.map((m) => m.expense)];
+  if (charts.summary) {
+    charts.summary.data.labels = labels;
+    charts.summary.data.datasets.forEach((d, i) => (d.data = data[i]));
+    charts.summary.update();
+    return;
+  }
+  const tick = { color: cssVar("--text-secondary"), font: { family: cssVar("--font"), size: 11 } };
+  charts.summary = new Chart($("summaryChart"), {
+    type: "bar",
+    data: {
+      labels,
+      datasets: [
+        { label: "Ingresos", data: data[0], backgroundColor: cssVar("--income"), borderRadius: 4, barPercentage: 0.8, categoryPercentage: 0.7 },
+        { label: "Gastos", data: data[1], backgroundColor: cssVar("--expense"), borderRadius: 4, barPercentage: 0.8, categoryPercentage: 0.7 }
+      ]
+    },
+    options: {
+      responsive: true,
+      maintainAspectRatio: false,
+      animation: chartAnimation(),
+      interaction: { intersect: false, mode: "index" },
+      scales: {
+        y: { grid: { color: cssVar("--separator") }, border: { display: false }, ticks: { ...tick, maxTicksLimit: 4, callback: (v) => formatCompact(v) } },
+        x: { grid: { display: false }, border: { display: false }, ticks: { ...tick, maxRotation: 0, autoSkipPadding: 4 } }
+      },
+      plugins: {
+        legend: { labels: { ...tick, color: cssVar("--text"), usePointStyle: true, pointStyle: "circle", boxWidth: 8, boxHeight: 8 } },
+        tooltip: { callbacks: { label: (ctx) => ` ${ctx.dataset.label}: ${formatMoney(ctx.raw)}` } }
+      }
+    }
+  });
 }
 
 function renderCharts(stats) {
@@ -1293,6 +1386,10 @@ function matchesDateFilter(dateStr, filter) {
   const today = todayISO();
   const cur = monthKey(new Date());
   if (filter.startsWith("m:")) return isInMonth(dateStr, filter.slice(2));
+  if (filter.startsWith("r:")) {
+    const [, from, to] = filter.split(":");
+    return dateStr >= from && dateStr <= to;
+  }
   switch (filter) {
     case "today":
       return dateStr === today;
@@ -1327,12 +1424,49 @@ function syncFilterControls() {
     custom.dataset.value = f.date;
     custom.textContent = monthLabel(f.date.slice(2));
   }
+  // El chip de rango muestra las fechas elegidas ("3 oct – 15 oct").
+  const range = $("chip-range");
+  const isRange = f.date.startsWith("r:");
+  if (isRange) {
+    const [, from, to] = f.date.split(":");
+    const short = (d) => parseISO(d).toLocaleDateString("es-CO", { day: "numeric", month: "short" }).replace(" de ", " ").replace(".", "");
+    range.textContent = from === to ? short(from) : `${short(from)} – ${short(to)}`;
+  } else {
+    range.textContent = "Rango…";
+  }
   document.querySelectorAll("#date-filter-chips .chip").forEach((c) => {
-    const on = c.dataset.value === f.date;
+    const on = c === range ? isRange : c.dataset.value === f.date;
     c.classList.toggle("active", on);
     c.setAttribute("aria-pressed", String(on));
   });
 }
+
+function openRangeSheet() {
+  const f = state.filters.date;
+  const [, from, to] = f.startsWith("r:") ? f.split(":") : [];
+  const start = new Date();
+  start.setDate(1);
+  $("range-from").value = from || toISODate(start);
+  $("range-to").value = to || todayISO();
+  openModal("range-modal");
+}
+
+function applyRange(event) {
+  event.preventDefault();
+  let from = $("range-from").value;
+  let to = $("range-to").value;
+  if (!from || !to) {
+    showToast("Elige las dos fechas", "warning");
+    return;
+  }
+  if (from > to) [from, to] = [to, from];
+  state.filters.date = `r:${from}:${to}`;
+  closeModal("range-modal");
+  syncFilterControls();
+  renderTransactionsList();
+}
+
+let lastFiltered = []; // lo que muestra el Historial, para "Exportar CSV" de lo filtrado
 
 function renderTransactionsList() {
   const container = $("all-transactions-list");
@@ -1357,6 +1491,8 @@ function renderTransactionsList() {
     })
     .sort(byDateDesc);
 
+  lastFiltered = filtered;
+  $("export-filtered-btn").classList.toggle("hidden", !filtered.length);
   const summary = $("filter-summary");
   container.innerHTML = "";
   if (!filtered.length) {
@@ -3689,10 +3825,10 @@ function exportDataJSON() {
   return exportFile(data, `finanflow-respaldo-${todayISO()}.json`, "application/json", "Respaldo exportado");
 }
 
-function exportDataCSV() {
+function exportDataCSV(list = state.transactions, name = `finanflow-${todayISO()}`) {
   const esc = (v) => `"${String(v ?? "").replace(/"/g, '""')}"`;
   const header = ["Fecha", "Tipo", "Categoría", "Monto", "Cuenta", "Nota"].join(",");
-  const rows = [...state.transactions]
+  const rows = [...list]
     .sort(byDateDesc)
     .map((t) =>
       (t.kind === "transfer"
@@ -3702,7 +3838,13 @@ function exportDataCSV() {
         .map(esc)
         .join(",")
     );
-  return exportFile("﻿" + [header, ...rows].join("\n"), `finanflow-${todayISO()}.csv`, "text/csv;charset=utf-8", "CSV exportado");
+  return exportFile("﻿" + [header, ...rows].join("\n"), `${name}.csv`, "text/csv;charset=utf-8", "CSV exportado");
+}
+
+/** Exporta lo que muestra el Historial con sus filtros y búsqueda. */
+function exportFilteredCSV() {
+  if (!lastFiltered.length) return;
+  exportDataCSV(lastFiltered, `finanflow-filtrado-${todayISO()}`);
 }
 
 function isValidBackup(data) {
@@ -3814,6 +3956,8 @@ function bindUI() {
   $("cat-delete-btn").onclick = deleteCategoryFromSheet;
   $("categories-add-btn").onclick = () => openCategoryModal(null, categoriesListType);
   $("account-form").addEventListener("submit", saveAccount);
+  $("range-form").addEventListener("submit", applyRange);
+  $("export-filtered-btn").onclick = exportFilteredCSV;
   $("acc-delete-btn").onclick = deleteAccountFromSheet;
   $("acc-contribute-btn").onclick = contributeToGoal;
   $("acc-kind").onchange = updateAccountKindFields;
@@ -3875,6 +4019,7 @@ function bindUI() {
   // Filtros del Historial
   document.querySelectorAll("#date-filter-chips .chip").forEach((chip) => {
     chip.onclick = () => {
+      if (chip.id === "chip-range") return openRangeSheet();
       state.filters.date = chip.dataset.value;
       syncFilterControls();
       renderTransactionsList();
@@ -3942,6 +4087,7 @@ const app = {
   openCategories,
   openAccounts,
   openGoalModal,
+  openYearSummary,
   openAI,
   sendAIMessage,
   closeModal,

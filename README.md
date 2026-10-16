@@ -1,6 +1,6 @@
 # FinanFlow - Control de Gastos Personales
 
-> **Version:** 0.6.0  
+> **Version:** 0.6.1  
 > **Privacidad 100% garantizada** | **Funciona sin conexión** | **Sincronización opcional con Google Cloud**
 
 FinanFlow es una aplicación móvil de control de gastos e ingresos personales, con un diseño sobrio inspirado en iOS. Funciona como **PWA** (Progressive Web App) y como **aplicación nativa Android** mediante [Capacitor](https://capacitorjs.com/).
@@ -35,6 +35,7 @@ FinanFlow te permite llevar un registro de tus finanzas de forma **rápida, priv
 - **Comparativa mensual:** "Gastos 12% menos que en septiembre a esta fecha".
 - **Disponible por día:** cuánto puedes gastar al día el resto del mes según tus límites.
 - **Gráfico de dona** (Balance, Gastos, Ingresos): toca una categoría para ver sus movimientos.
+- **Resumen del año:** ingresos y gastos de los últimos 12 meses, promedio mensual, dónde más gastaste y qué subió este mes.
 - **Tendencia** del saldo de los últimos 7 días.
 
 ### Límites
@@ -65,7 +66,7 @@ FinanFlow te permite llevar un registro de tus finanzas de forma **rápida, priv
 
 ### Sincronización y respaldo
 - **Google Cloud Firebase** (opcional) o **modo local** sin cuenta.
-- **Exportar JSON / CSV** y **restaurar respaldo** (con validación del archivo). En Android el archivo se abre en la hoja de compartir (Drive, correo, WhatsApp…).
+- **Exportar JSON / CSV** (también solo lo filtrado en el Historial, p. ej. un rango de fechas) y **restaurar respaldo** (con validación del archivo). En Android el archivo se abre en la hoja de compartir (Drive, correo, WhatsApp…).
 
 ---
 

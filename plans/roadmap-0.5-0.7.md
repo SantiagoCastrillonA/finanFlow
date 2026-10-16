@@ -1,6 +1,8 @@
 # Hoja de ruta FinanFlow 0.4.1 → 0.7.0
 
-Estado: **propuesto, sin aprobar** (regla de `AGENT.md`: se ejecuta por fases y se confirma antes de cada una).
+Estado: **ejecutado** (aprobado por el usuario el 2026-10-15). Fases A–F implementadas en 0.4.1–0.7.0.
+Pendiente del usuario: crear la llave de firma y registrar su SHA-1 en Firebase (F2), y probar en el Android el bloqueo y los avisos de tarjeta.
+Cambio sobre el plan: con cuentas activas, el Saldo del mes actual en Inicio es la suma de las cuentas (no ingresos − gastos), para que no contradiga los saldos de las cuentas.
 Base: commit `fce6e2f` (rama `feat/v0.2.0`, versión 0.4.0).
 Restricción: **costo $0**. Todo funciona en el plan Spark de Firebase; nada usa Cloud Functions, Storage ni servicios de pago.
 

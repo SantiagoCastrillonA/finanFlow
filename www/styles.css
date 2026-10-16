@@ -1814,6 +1814,35 @@ a {
   -webkit-text-fill-color: var(--text-secondary);
 }
 
+/* Bloqueo con huella o PIN: por encima de todo (hojas, diálogos y toasts) */
+.lock-screen {
+  position: fixed;
+  inset: 0;
+  z-index: 1000;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 16px;
+  padding: 24px;
+  background: var(--bg);
+}
+
+.lock-icon {
+  width: 72px;
+  height: 72px;
+  border-radius: 16px;
+}
+
+.lock-title {
+  font-size: 17px;
+  font-weight: 600;
+}
+
+.lock-screen .btn-primary {
+  min-width: 200px;
+}
+
 /* Historial: resumen de lo filtrado + exportarlo */
 .filter-summary-row {
   display: flex;

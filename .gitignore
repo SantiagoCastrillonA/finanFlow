@@ -17,3 +17,9 @@ Thumbs.db
 
 # Caché del deploy de Firebase
 .firebase/
+
+# Firma del APK (contraseñas y llave: nunca al repo público) y APKs compilados
+android/keystore.properties
+*.jks
+*.keystore
+*.apk

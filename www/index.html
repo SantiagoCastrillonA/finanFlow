@@ -306,6 +306,19 @@
             antes y el día del pago, solo si tienes deuda.</p>
         </div>
 
+        <!-- Solo en la app de Android -->
+        <div id="security-group" class="hidden">
+          <h2 class="group-title">Seguridad</h2>
+          <div class="list-group">
+            <label class="setting-row">
+              <span class="setting-icon" style="background:#30D158"><span class="ms">fingerprint</span></span>
+              <span class="setting-label">Bloquear con huella o PIN</span>
+              <input type="checkbox" id="lock-enabled" class="switch">
+            </label>
+          </div>
+          <p class="footnote">Al abrir FinanFlow y al volver después de un minuto. Usa la huella o el PIN de tu celular.</p>
+        </div>
+
         <h2 class="group-title">FinanBot</h2>
         <div class="list-group">
           <div class="setting-row">
@@ -366,7 +379,7 @@
           </button>
         </div>
 
-        <p class="app-version">FinanFlow 0.6.1 · Tus datos son tuyos</p>
+        <p class="app-version">FinanFlow 0.7.0 · Tus datos son tuyos</p>
       </section>
     </main>
 
@@ -583,6 +596,15 @@
       <p class="footnote">Las de la app no se editan, pero puedes ocultar las que no uses: tus movimientos viejos las
         siguen mostrando. En el Hogar, las categorías se comparten con tu pareja.</p>
     </div>
+  </div>
+
+  <!-- Bloqueo (Android): tapa la app hasta autenticarse con huella o PIN -->
+  <div id="lock-screen" class="lock-screen hidden" aria-hidden="true">
+    <img src="icons/icon-192.png" alt="" class="lock-icon">
+    <p class="lock-title">FinanFlow está bloqueada</p>
+    <button type="button" id="unlock-btn" class="btn-primary">
+      <span class="ms">fingerprint</span> Desbloquear
+    </button>
   </div>
 
   <!-- ================= HOJA: RESUMEN DEL AÑO ================= -->

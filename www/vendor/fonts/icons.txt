@@ -35,6 +35,7 @@ edit
 error
 expand_more
 favorite
+fingerprint
 fitness_center
 flight
 group

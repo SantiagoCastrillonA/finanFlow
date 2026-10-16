@@ -3576,6 +3576,92 @@ function routeTo(route) {
 }
 
 /* ==========================================================================
+   Bloqueo con huella o PIN del celular (solo Android, plugin NativeBiometric)
+   ========================================================================== */
+
+const LOCK_KEY = "finanflow_lock"; // "1": pedir huella/PIN al abrir (preferencia de este dispositivo)
+const LOCK_AFTER_MS = 60000; // al volver tras más de 1 minuto en segundo plano
+const Bio = () => plugin("NativeBiometric");
+// locked: hace falta autenticarse. authing: el diálogo del sistema está abierto (la app pasa a
+// segundo plano mientras se escribe el PIN: eso no debe contar como salir de la app).
+const lock = { locked: false, authing: false, hiddenAt: 0 };
+const BIO_PROMPT = { title: "Desbloquear FinanFlow", subtitle: "Usa tu huella o el PIN del celular", useFallback: true, maxAttempts: 5 };
+
+const lockEnabled = () => isNative && !!Bio() && localStorage.getItem(LOCK_KEY) === "1";
+
+function setLockCover(visible) {
+  $("lock-screen").classList.toggle("hidden", !visible);
+  $("lock-screen").setAttribute("aria-hidden", String(!visible));
+}
+
+async function unlock() {
+  if (lock.authing) return;
+  lock.authing = true;
+  try {
+    await Bio().verifyIdentity(BIO_PROMPT);
+    lock.locked = false;
+    lock.hiddenAt = Date.now(); // el regreso desde la pantalla del PIN no debe volver a bloquear
+    setLockCover(false);
+  } catch (e) {
+    // Cancelado o fallido: sigue bloqueada; el botón "Desbloquear" permite reintentar.
+  } finally {
+    lock.authing = false;
+  }
+}
+
+function initLock() {
+  const B = Bio();
+  $("security-group").classList.toggle("hidden", !(isNative && B));
+  if (!isNative || !B) return;
+  const input = $("lock-enabled");
+  input.checked = lockEnabled();
+  input.onchange = async () => {
+    if (input.checked) {
+      const res = await B.isAvailable({ useFallback: true }).catch(() => ({ isAvailable: false }));
+      if (!res.isAvailable) {
+        input.checked = false;
+        showToast("Configura una huella o un PIN en tu celular primero", "warning", 5000);
+        return;
+      }
+      lock.authing = true;
+      try {
+        await B.verifyIdentity(BIO_PROMPT); // confirmar que funciona antes de activarlo
+        lock.hiddenAt = Date.now();
+      } catch (e) {
+        input.checked = false;
+        return;
+      } finally {
+        lock.authing = false;
+      }
+    }
+    localStorage.setItem(LOCK_KEY, input.checked ? "1" : "0");
+    showToast(input.checked ? "FinanFlow pedirá tu huella o PIN al abrir" : "Bloqueo desactivado", "info");
+  };
+  $("unlock-btn").onclick = unlock;
+
+  if (lockEnabled()) {
+    lock.locked = true;
+    setLockCover(true);
+    unlock();
+  }
+  const App = plugin("App");
+  if (!App) return;
+  App.addListener("appStateChange", ({ isActive }) => {
+    if (!lockEnabled() || lock.authing) return;
+    if (!isActive) {
+      // Tapar el contenido ya (también en la vista de apps recientes).
+      lock.hiddenAt = Date.now();
+      setLockCover(true);
+    } else if (lock.locked || Date.now() - lock.hiddenAt > LOCK_AFTER_MS) {
+      lock.locked = true;
+      unlock();
+    } else {
+      setLockCover(false);
+    }
+  });
+}
+
+/* ==========================================================================
    Widget de Android (puente a SharedPreferences vía plugin local WidgetBridge)
    ========================================================================== */
 
@@ -3618,6 +3704,7 @@ function initNative() {
   const App = plugin("App");
   if (!App) return;
   App.addListener("backButton", () => {
+    if (lock.locked) return App.exitApp();
     if (closeTopModal()) return;
     if (state.activeTab !== "dashboard") switchTab("dashboard");
     else App.exitApp();
@@ -4074,6 +4161,7 @@ function init() {
   switchTab(state.activeTab);
   render();
   initNative();
+  initLock();
   initNotifications();
   handleDeepLink(location.href);
   checkBudgetAlerts();

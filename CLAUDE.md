@@ -18,6 +18,9 @@ npm run dev            # sirve www/ en http://localhost:5173
 npm run build-native   # npx cap sync: copia www/ y registra plugins en android/
 npm run open-android   # abre android/ en Android Studio
 npm run deploy         # publica www/ en Firebase Hosting y firestore.rules (tras npm run firebase-login)
+npm run apk            # APK firmado de release → FinanFlow-<versión>.apk (requiere android/keystore.properties; ver README)
+npm run vendor         # regenera la fuente de íconos recortada y Firebase local (al usar un ícono nuevo)
+npm run check-icons    # avisa si un ícono usado no está en la fuente local
 cd android && ./gradlew assembleDebug   # compila el APK (JDK 17 + Android SDK)
 ```
 
@@ -56,6 +59,8 @@ Nativo (Android, `android/`):
 - Deep links `finanflow://action/{add-expense|view-balance|view-history}` (App Shortcuts en `res/xml/shortcuts.xml` y botón "+" del widget) se procesan en `handleDeepLink` vía `App.getLaunchUrl()` / `appUrlOpen`. En la PWA, `?action=...` (shortcuts del manifest).
 - Widget: `BalanceWidgetProvider.java` lee el resumen (JSON con montos ya formateados) que JS envía con el plugin local `WidgetBridgePlugin.java` (registrado en `MainActivity`), guardado en `SharedPreferences("finanflow_widget")`.
 - Notificaciones locales: ids 100–106 recordatorio (7 avisos sueltos, se reprograman al abrir/guardar), 200–279 alertas de límites (`state.notified` evita repetir), 300 resumen semanal, 400–439 pago de tarjetas. Ícono `ic_stat_finanflow`.
+- Bloqueo con huella/PIN: plugin `@capgo/capacitor-native-biometric` (`plugin("NativeBiometric")`), preferencia por dispositivo en `localStorage` (`finanflow_lock`). `#lock-screen` tapa la app al pasar a segundo plano y pide autenticarse al abrir o tras más de 1 minuto (`initLock`); mientras el diálogo del sistema está abierto (`lock.authing`) se ignoran los cambios de estado de la app.
+- APK de release: firma con `android/keystore.properties` (gitignored; la llave `.jks` va fuera del repo) y `npm run apk`. Subir `versionCode` en `android/app/build.gradle` en cada APK.
 
 Service Worker (`www/sw.js`): red primero y caché como respaldo. Subir `CACHE_NAME` al publicar y mantener la versión alineada en `package.json`, `manifest.json`, `sw.js`, `README.md` y el texto de versión de Ajustes en `index.html`.
 

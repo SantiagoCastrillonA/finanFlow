@@ -1,6 +1,6 @@
 # FinanFlow - Control de Gastos Personales
 
-> **Version:** 0.6.1  
+> **Version:** 0.7.0  
 > **Privacidad 100% garantizada** | **Funciona sin conexión** | **Sincronización opcional con Google Cloud**
 
 FinanFlow es una aplicación móvil de control de gastos e ingresos personales, con un diseño sobrio inspirado en iOS. Funciona como **PWA** (Progressive Web App) y como **aplicación nativa Android** mediante [Capacitor](https://capacitorjs.com/).
@@ -88,6 +88,33 @@ npx cap open android
 En Android Studio, conecta tu celular con **Depuración USB** activada y presiona **Run app** (▶).
 
 ---
+
+### APK firmado (instalar sin Android Studio, gratis)
+Se hace una sola vez:
+
+1. Crear la llave de firma **fuera del proyecto**. Pide una contraseña: guárdala bien.
+   ```bash
+   "C:\Program Files\Android\Android Studio\jbr\bin\keytool" -genkeypair -v -keystore "%USERPROFILE%\finanflow-release.jks" -alias finanflow -keyalg RSA -keysize 2048 -validity 10000
+   ```
+2. Crear `android/keystore.properties` (está en `.gitignore`, nunca se sube):
+   ```properties
+   storeFile=C:/Users/TU_USUARIO/finanflow-release.jks
+   storePassword=tu-contraseña
+   keyAlias=finanflow
+   keyPassword=tu-contraseña
+   ```
+3. Copiar la huella **SHA-1** de la llave:
+   ```bash
+   "C:\Program Files\Android\Android Studio\jbr\bin\keytool" -list -v -keystore "%USERPROFILE%\finanflow-release.jks" -alias finanflow
+   ```
+4. Agregarla en Firebase Console → Configuración del proyecto → app Android → **Agregar huella digital**. Luego descargar de nuevo `google-services.json` en `android/app/`. Sin esto, el login con Google falla en el APK.
+5. **Guardar una copia de la llave** (`finanflow-release.jks`) y de su contraseña, por ejemplo en Drive. Sin ella no se puede actualizar la app instalada.
+
+Cada versión nueva: subir `versionCode` en `android/app/build.gradle` y ejecutar
+```bash
+npm run apk
+```
+Queda `FinanFlow-<versión>.apk` en la carpeta del proyecto. Pásalo al celular e instálalo.
 
 ### 3. Publicar la web (para iPhone) y las reglas de seguridad
 ```bash

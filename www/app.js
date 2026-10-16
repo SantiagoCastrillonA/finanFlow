@@ -137,6 +137,7 @@ function cleanCategory(c) {
     icon: CATEGORY_ICONS.includes(c.icon) ? c.icon : "sell",
     color: /^#[0-9a-f]{6}$/i.test(c.color) ? c.color : "#8E8E93",
     excluded: !!c.excluded,
+    hidden: !!c.hidden,
     createdAt: Number(c.createdAt) || 0
   };
 }
@@ -441,16 +442,22 @@ function nextDueDate(day, from = new Date()) {
   }
 }
 
-/** Categorías base + propias del espacio, con "Otros" siempre al final. */
-function categoriesFor(type, custom = state.categories) {
+/**
+ * Categorías base + propias del espacio, con "Otros" siempre al final. Una base se oculta con un
+ * marcador { id, hidden: true } entre las propias; con includeHidden se incluyen (para mostrar
+ * movimientos viejos y reservar sus nombres).
+ */
+function categoriesFor(type, custom = state.categories, includeHidden = false) {
   const base = CATEGORIES[type] || [];
   const own = (custom && custom[type]) || [];
-  return [...base.slice(0, -1), ...own, ...base.slice(-1)];
+  const hidden = new Set(own.filter((c) => c.hidden).map((c) => c.id));
+  const visibleBase = includeHidden ? base : base.filter((c, i) => i === base.length - 1 || !hidden.has(c.id));
+  return [...visibleBase.slice(0, -1), ...own.filter((c) => !c.hidden), ...visibleBase.slice(-1)];
 }
 // Una categoría borrada sigue mostrando su nombre: su id es el nombre con que se creó.
 function getCategoryInfo(catId, type = "expense", custom = state.categories) {
   return (
-    categoriesFor(type, custom).find((c) => c.id === catId) || {
+    categoriesFor(type, custom, true).find((c) => c.id === catId) || {
       id: catId,
       label: catId,
       icon: "payments",
@@ -1071,6 +1078,7 @@ function renderDashboard(stats) {
   renderAllowance(stats, isCurrent);
   renderBudgetAlerts(stats);
   renderHouseholdBalance();
+  renderUpcoming(isCurrent);
   renderAccountsSection();
   renderGoalsSection();
   renderRecentTransactions();
@@ -1396,7 +1404,7 @@ function renderFilterCategories() {
   [["Gastos", "expense"], ["Ingresos", "income"]].forEach(([label, type]) => {
     const og = document.createElement("optgroup");
     og.label = label;
-    categoriesFor(type).forEach((c) => og.appendChild(new Option(c.label, c.id)));
+    categoriesFor(type, state.categories, true).forEach((c) => og.appendChild(new Option(c.label, c.id)));
     select.appendChild(og);
   });
   select.value = state.filters.category;
@@ -1595,7 +1603,7 @@ function openTransactionModal(editId = null, presetType = "expense", preset = {}
   const isCopy = !!(tx && tx.recurringOf);
   $("tx-recurring-row").classList.toggle("hidden", isCopy);
   $("tx-recurring-hint").classList.toggle("hidden", !isCopy);
-  $("tx-recurring").checked = !!(tx && tx.recurring === "monthly");
+  $("tx-recurring").value = (tx && RECURRING_LABELS[tx.recurring] && tx.recurring) || "";
 
   txSheet.category = tx ? tx.category : null;
   setTxType(isTransfer ? "transfer" : tx ? tx.type : presetType, !!tx);
@@ -1740,7 +1748,8 @@ function saveTransaction(event) {
       : { type: txSheet.type, category: txSheet.category, method: $("tx-method").value, ...readSplitFields() })
   };
   if (!tx.recurringOf) {
-    if ($("tx-recurring").checked) tx.recurring = "monthly";
+    const freq = $("tx-recurring").value;
+    if (freq) tx.recurring = freq;
     else delete tx.recurring;
   }
 
@@ -1773,9 +1782,10 @@ function deleteTransaction(id) {
     () => {
       // Una copia borrada de un recurrente no debe regenerarse.
       const template = tx.recurringOf && state.transactions.find((t) => t.id === tx.recurringOf);
+      // La clave de la copia es lo que sigue al id de la plantilla ("YYYY-MM", "YYYY-MM-q2"…).
+      const key = template ? tx.id.slice(template.id.length + 1) : null;
       if (template) {
-        const ym = tx.date.slice(0, 7);
-        upsertTransaction({ ...template, skipMonths: [...new Set([...(template.skipMonths || []), ym])] }, false);
+        upsertTransaction({ ...template, skipMonths: [...new Set([...(template.skipMonths || []), key])] }, false);
       }
       removeTransaction(id);
       showToast("Movimiento eliminado", "info", 5000, {
@@ -1783,7 +1793,7 @@ function deleteTransaction(id) {
         onClick: () => {
           if (template) {
             const t = state.transactions.find((x) => x.id === template.id);
-            if (t) upsertTransaction({ ...t, skipMonths: (t.skipMonths || []).filter((m) => m !== tx.date.slice(0, 7)) }, false);
+            if (t) upsertTransaction({ ...t, skipMonths: (t.skipMonths || []).filter((m) => m !== key) }, false);
           }
           lastChangedId = tx.id;
           upsertTransaction(tx);
@@ -1795,20 +1805,52 @@ function deleteTransaction(id) {
   );
 }
 
-/** Crea las copias mensuales que falten de cada movimiento recurrente (ids deterministas: idempotente). */
+const RECURRING_LABELS = { monthly: "Cada mes", biweekly: "Cada quincena", weekly: "Cada semana" };
+
+/**
+ * Fechas de las copias de una plantilla recurrente posteriores a ella y hasta `until`, con la clave
+ * que forma su id (`${plantilla}-${key}`): mensual "YYYY-MM", quincenal "YYYY-MM-q1|q2" (día 15 y
+ * último día del mes), semanal "YYYY-MM-DD".
+ */
+function recurringDates(t, until) {
+  const out = [];
+  const start = t.date;
+  if (t.recurring === "weekly") {
+    const d = parseISO(start);
+    for (d.setDate(d.getDate() + 7); toISODate(d) <= until; d.setDate(d.getDate() + 7)) {
+      out.push({ date: toISODate(d), key: toISODate(d) });
+    }
+    return out;
+  }
+  const startDay = Number(start.slice(8, 10));
+  for (let ym = start.slice(0, 7); ym <= until.slice(0, 7); ym = addMonths(ym, 1)) {
+    const slots =
+      t.recurring === "biweekly"
+        ? [["q1", 15], ["q2", daysInMonth(ym)]]
+        : [[null, Math.min(startDay, daysInMonth(ym))]];
+    for (const [q, day] of slots) {
+      const date = `${ym}-${pad(day)}`;
+      // La quincena de la plantilla ya es la plantilla misma.
+      if (q && ym === start.slice(0, 7) && q === (startDay <= 15 ? "q1" : "q2")) continue;
+      if (date <= start || date > until) continue;
+      out.push({ date, key: q ? `${ym}-${q}` : ym });
+    }
+  }
+  return out;
+}
+
+/** Crea las copias que falten de cada movimiento recurrente (ids deterministas: idempotente). */
 function materializeRecurring() {
   const today = todayISO();
-  const currentYM = today.slice(0, 7);
   const existing = new Set(state.transactions.map((t) => t.id));
   const created = [];
   state.transactions.forEach((t) => {
-    if (t.recurring !== "monthly") return;
-    const day = Number(t.date.slice(8, 10));
-    for (let ym = addMonths(t.date.slice(0, 7), 1); ym <= currentYM; ym = addMonths(ym, 1)) {
-      const date = `${ym}-${pad(Math.min(day, daysInMonth(ym)))}`;
-      if (date > today) break;
-      const id = `${t.id}-${ym}`;
-      if (existing.has(id) || (t.skipMonths || []).includes(ym)) continue;
+    if (!RECURRING_LABELS[t.recurring]) return;
+    // skipMonths guarda las claves de las copias borradas a mano (mensual: "YYYY-MM").
+    const skipped = t.skipMonths || [];
+    recurringDates(t, today).forEach(({ date, key }) => {
+      const id = `${t.id}-${key}`;
+      if (existing.has(id) || skipped.includes(key)) return;
       existing.add(id);
       created.push({
         id,
@@ -1818,11 +1860,12 @@ function materializeRecurring() {
         method: t.method,
         note: t.note,
         ...(t.kind === "transfer" ? { kind: t.kind, from: t.from, to: t.to } : {}),
+        ...(t.paidBy ? { paidBy: t.paidBy, payerShare: t.payerShare ?? 50, createdBy: t.createdBy } : {}),
         date,
         recurringOf: t.id,
         createdAt: Date.now()
       });
-    }
+    });
   });
   if (!created.length) return;
   if (isCloud()) {
@@ -1900,12 +1943,41 @@ function openCategories() {
 
 function renderCategoriesList() {
   const box = $("categories-list");
-  const own = state.categories[categoriesListType];
+  const type = categoriesListType;
+  const own = state.categories[type].filter((c) => !c.hidden);
   box.innerHTML = "";
   if (!own.length) {
     box.innerHTML = emptyStateHTML("category", "Sin categorías propias", "Crea las que necesites, por ejemplo “Tarjeta de crédito”.");
-    return;
+  } else {
+    box.appendChild(ownCategoriesGroup(own));
   }
+  // Las de la app no se editan, pero se pueden ocultar ("Otros" siempre queda).
+  const title = document.createElement("h2");
+  title.className = "group-title";
+  title.textContent = "De la app";
+  box.appendChild(title);
+  const group = document.createElement("div");
+  group.className = "list-group";
+  const hidden = new Map(state.categories[type].filter((c) => c.hidden).map((c) => [c.id, c]));
+  CATEGORIES[type].slice(0, -1).forEach((c) => {
+    const row = document.createElement("label");
+    row.className = "list-row";
+    row.innerHTML = `
+      <span class="row-icon" style="color:${c.color};background:${c.color}24"><span class="ms">${c.icon}</span></span>
+      <span class="row-main"><span class="row-title">${escapeHtml(c.label)}</span></span>
+      <input type="checkbox" class="switch" aria-label="Mostrar ${escapeHtml(c.label)}" ${hidden.has(c.id) ? "" : "checked"}>`;
+    row.querySelector("input").onchange = (e) => {
+      if (e.target.checked) removeCategory(hidden.get(c.id));
+      else upsertCategory({ ref: `hide-${type}-${hashString(c.id)}`, id: c.id, type, label: c.label, hidden: true, createdAt: Date.now() });
+      haptic();
+      renderCategoriesList();
+    };
+    group.appendChild(row);
+  });
+  box.appendChild(group);
+}
+
+function ownCategoriesGroup(own) {
   const group = document.createElement("div");
   group.className = "list-group";
   own.forEach((c) => {
@@ -1922,7 +1994,7 @@ function renderCategoriesList() {
     row.onclick = () => openCategoryModal(c);
     group.appendChild(row);
   });
-  box.appendChild(group);
+  return group;
 }
 
 function openCategoryModal(cat = null, type = categoriesListType, fromTx = false) {
@@ -2017,7 +2089,7 @@ function saveCategory(event) {
   }
   const prev = catSheet.editing;
   const same = (s) => s.toLowerCase() === label.toLowerCase();
-  if (categoriesFor(catSheet.type).some((c) => c.ref !== (prev && prev.ref) && (same(c.label) || same(c.id)))) {
+  if (categoriesFor(catSheet.type, state.categories, true).some((c) => c.ref !== (prev && prev.ref) && (same(c.label) || same(c.id)))) {
     showToast("Ya existe una categoría con ese nombre", "warning");
     return;
   }
@@ -2096,6 +2168,77 @@ function renderAccountsList() {
 
 function openGoalModal() {
   openAccountModal(null, "goal");
+}
+
+/** Recurrentes y pagos de tarjeta con deuda de los próximos 7 días (máx. 6, por fecha). */
+function upcomingItems() {
+  const today = todayISO();
+  const end = new Date();
+  end.setDate(end.getDate() + 7);
+  const until = toISODate(end);
+  const items = [];
+  state.transactions.forEach((t) => {
+    if (!RECURRING_LABELS[t.recurring]) return;
+    const skipped = t.skipMonths || [];
+    recurringDates(t, until)
+      .filter((d) => d.date > today && !skipped.includes(d.key))
+      .forEach((d) => items.push({ date: d.date, tx: t }));
+  });
+  accountsFor()
+    .filter((a) => a.active && a.kind === "card" && a.dueDay)
+    .forEach((a) => {
+      const debt = -accountBalance(a);
+      const due = nextDueDate(a.dueDay);
+      if (debt > 0 && due <= until) items.push({ date: due, card: a, amount: debt });
+    });
+  return items.sort((a, b) => (a.date < b.date ? -1 : a.date > b.date ? 1 : 0)).slice(0, 6);
+}
+
+function upcomingDateLabel(dateStr) {
+  const tomorrow = new Date();
+  tomorrow.setDate(tomorrow.getDate() + 1);
+  if (dateStr === todayISO()) return "Hoy";
+  if (dateStr === toISODate(tomorrow)) return "Mañana";
+  const txt = parseISO(dateStr).toLocaleDateString("es-CO", { weekday: "long", day: "numeric" });
+  return txt.charAt(0).toUpperCase() + txt.slice(1);
+}
+
+function renderUpcoming(isCurrent) {
+  const items = isCurrent ? upcomingItems() : [];
+  $("upcoming-section").classList.toggle("hidden", !items.length);
+  const box = $("upcoming-list");
+  box.innerHTML = "";
+  items.forEach((it) => {
+    const row = document.createElement("button");
+    row.type = "button";
+    row.className = "list-row";
+    const when = upcomingDateLabel(it.date);
+    if (it.card) {
+      row.innerHTML = `
+        <span class="row-icon" style="color:${it.card.color};background:${it.card.color}24"><span class="ms">credit_card</span></span>
+        <span class="row-main">
+          <span class="row-title">Pago ${escapeHtml(it.card.name)}</span>
+          <span class="row-sub">${escapeHtml(when)} · fecha límite</span>
+        </span>
+        <span class="row-amount debt">${formatMoney(it.amount)}</span>`;
+      row.onclick = () => openAccountModal(it.card);
+    } else {
+      const t = it.tx;
+      const transfer = t.kind === "transfer";
+      const cat = getCategoryInfo(t.category, t.type);
+      const color = transfer ? "var(--accent)" : cat.color;
+      const title = t.note || (transfer ? `${accountInfo(t.from).name} → ${accountInfo(t.to).name}` : cat.label);
+      row.innerHTML = `
+        <span class="row-icon" style="color:${color};background:${transfer ? "var(--accent-tint)" : `${cat.color}24`}"><span class="ms">${transfer ? "swap_horiz" : cat.icon}</span></span>
+        <span class="row-main">
+          <span class="row-title">${escapeHtml(title)}</span>
+          <span class="row-sub">${escapeHtml(`${when} · ${RECURRING_LABELS[t.recurring].toLowerCase()}`)}</span>
+        </span>
+        <span class="row-amount ${transfer ? "excluded" : t.type}">${t.type === "income" && !transfer ? "+" : ""}${formatMoney(t.amount)}</span>`;
+      row.onclick = () => openTransactionModal(t.id);
+    }
+    box.appendChild(row);
+  });
 }
 
 function renderGoalsSection() {

@@ -48,6 +48,7 @@ input
 insights
 join
 key
+label
 laptop_mac
 light
 local_cafe

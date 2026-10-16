@@ -1797,7 +1797,9 @@ a {
   -webkit-text-fill-color: var(--text-secondary);
 }
 
-#accounts-section {
+#upcoming-section,
+#accounts-section,
+#goals-section {
   margin: 8px 0 16px;
 }
 

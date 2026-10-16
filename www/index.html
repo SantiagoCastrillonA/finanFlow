@@ -108,6 +108,14 @@
 
         <div id="budget-alerts" class="alerts hidden"></div>
 
+        <!-- Recurrentes y pagos de tarjeta de los próximos 7 días (solo en el mes actual) -->
+        <div id="upcoming-section" class="hidden">
+          <div class="section-header">
+            <h2>Próximos 7 días</h2>
+          </div>
+          <div id="upcoming-list" class="list-group"></div>
+        </div>
+
         <!-- Solo con cuentas activadas en Ajustes → Cuentas y tarjetas -->
         <div id="accounts-section" class="hidden">
           <div class="section-header">
@@ -351,7 +359,7 @@
           </button>
         </div>
 
-        <p class="app-version">FinanFlow 0.5.0 · Tus datos son tuyos</p>
+        <p class="app-version">FinanFlow 0.6.0 · Tus datos son tuyos</p>
       </section>
     </main>
 
@@ -458,8 +466,16 @@
             <input type="text" id="tx-note" placeholder="Opcional" maxlength="80" enterkeyhint="done">
           </label>
           <label id="tx-recurring-row" class="form-row">
-            <span>Repetir cada mes</span>
-            <input type="checkbox" id="tx-recurring" class="switch">
+            <span>Repetir</span>
+            <span class="select-inline">
+              <select id="tx-recurring">
+                <option value="">Nunca</option>
+                <option value="monthly">Cada mes</option>
+                <option value="biweekly">Cada quincena (15 y fin de mes)</option>
+                <option value="weekly">Cada semana</option>
+              </select>
+              <span class="ms">unfold_more</span>
+            </span>
           </label>
         </div>
         <p id="tx-recurring-hint" class="footnote hidden"><span class="ms">repeat</span> Creado automáticamente por un
@@ -557,8 +573,8 @@
       <button type="button" id="categories-add-btn" class="btn-tinted full">
         <span class="ms">add</span> Nueva categoría
       </button>
-      <p class="footnote">Las categorías que trae la app no se pueden cambiar. En el Hogar, las categorías se comparten
-        con tu pareja.</p>
+      <p class="footnote">Las de la app no se editan, pero puedes ocultar las que no uses: tus movimientos viejos las
+        siguen mostrando. En el Hogar, las categorías se comparten con tu pareja.</p>
     </div>
   </div>
 

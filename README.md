@@ -1,15 +1,31 @@
-# FinanFlow - Control de Gastos Personales
+# FinanFlow
 
-> **Version:** 0.10.0  
-> **Privacidad 100% garantizada** | **Funciona sin conexión** | **Sincronización opcional con Google Cloud**
+**Tu plata, clara y en tu bolsillo.** FinanFlow es una app gratuita para llevar tus gastos, ingresos, cuentas y tarjetas sin complicarte: anotas un gasto en dos toques y en un vistazo sabes cuánto tienes, cuánto debes y cuánto puedes gastar al día lo que queda del mes.
 
-FinanFlow es una aplicación móvil de control de gastos e ingresos personales, con un diseño sobrio inspirado en iOS. Funciona como **PWA** (Progressive Web App) y como **aplicación nativa Android** mediante [Capacitor](https://capacitorjs.com/).
+> **Versión:** 0.10.0 · Android y web (iPhone como app web) · En español · Sin anuncios · Funciona sin conexión
 
----
+<p align="center">
+  <img src="docs/screenshots/inicio.jpg" width="200" alt="Inicio: saldo, disponible y deudas, ingresos y gastos del mes">
+  <img src="docs/screenshots/historial.jpg" width="200" alt="Historial con los logos de Netflix, Spotify, Rappi y DiDi">
+  <img src="docs/screenshots/limites.jpg" width="200" alt="Límites mensuales con el color de cada categoría">
+  <img src="docs/screenshots/categoria.jpg" width="200" alt="Crear una categoría con el logo de una marca">
+</p>
 
-## Qué es FinanFlow
+## Descargar
 
-FinanFlow te permite llevar un registro de tus finanzas de forma **rápida, privada y sin complicaciones**. Todos tus datos se guardan localmente en tu dispositivo y, si lo deseas, puedes sincronizarlos con **Google Cloud (Firebase)** para usarlos en cualquier dispositivo.
+- **Android:** descarga `FinanFlow-<versión>.apk` desde la [última versión](https://github.com/SantiagoCastrillonA/finanFlow/releases/latest), ábrelo en el celular y permite "instalar apps desconocidas" la primera vez. Para actualizar, instala el APK nuevo encima: tus datos se conservan.
+- **iPhone o computador:** abre [finanflow-32cae.web.app](https://finanflow-32cae.web.app). En el iPhone, desde Safari: **Compartir → Agregar a inicio**.
+
+## ¿Para qué sirve?
+
+- **Saber en qué se te va la plata.** Cada gasto queda con su categoría (y el logo de la marca: Netflix, Rappi, Uber, D1…). La dona y el resumen del año muestran dónde más gastas.
+- **No pasarte del presupuesto.** Pones un límite por categoría y la app te avisa al 80% y al 100%; en Inicio ves cuánto puedes gastar al día el resto del mes.
+- **Tener tus cuentas y tarjetas al día.** Efectivo, banco, Nequi y tarjetas de crédito con su saldo o deuda, la cuota del mes y un aviso antes de la fecha de pago.
+- **Registrar sin escribir (Android).** Cuando pagas con Google Wallet, Nu, Rappi, Davivienda o Nequi, aparece una tarjeta con el comercio y el monto: un toque y queda guardado.
+- **Llevar los gastos de la casa en pareja.** Un espacio "Hogar" compartido, separado de tus gastos personales, que dice quién pagó y quién le debe a quién.
+- **Ahorrar para algo.** Metas con cuánto llevas, cuánto falta y cuánto apartar al mes.
+
+**Tus datos son tuyos:** se guardan en tu teléfono. La sincronización con tu cuenta de Google es opcional, y el texto de las notificaciones que lee la app nunca sale del celular.
 
 ---
 
@@ -82,7 +98,7 @@ FinanFlow te permite llevar un registro de tus finanzas de forma **rápida, priv
 
 ---
 
-## Cómo funciona
+## Para desarrolladores
 
 ### 1. Desarrollo web
 ```bash
@@ -189,5 +205,4 @@ MIT - Libre para usar, modificar y distribuir.
 
 ---
 
-**Desarrollado con amor** ❤️  
-*Privacidad 100% garantizada. Tus datos son tuyos.*
+*Tus datos son tuyos.*

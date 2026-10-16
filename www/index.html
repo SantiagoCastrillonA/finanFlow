@@ -107,6 +107,24 @@
         </div>
 
         <div id="budget-alerts" class="alerts hidden"></div>
+
+        <!-- Solo con cuentas activadas en Ajustes → Cuentas y tarjetas -->
+        <div id="accounts-section" class="hidden">
+          <div class="section-header">
+            <h2>Cuentas</h2>
+            <button type="button" class="btn-plain" onclick="app.openAccounts()">Editar</button>
+          </div>
+          <div id="accounts-dash-list" class="list-group"></div>
+        </div>
+
+        <!-- Metas de ahorro (aportar = transferir a la meta) -->
+        <div id="goals-section" class="hidden">
+          <div class="section-header">
+            <h2>Metas</h2>
+            <button type="button" class="btn-plain" onclick="app.openGoalModal()">Nueva</button>
+          </div>
+          <div id="goals-dash-list" class="list-group"></div>
+        </div>
         </div>
 
         <div class="chart-row">
@@ -233,6 +251,11 @@
             <span class="setting-label">Categorías</span>
             <span class="ms chevron">chevron_right</span>
           </button>
+          <button type="button" class="setting-row" onclick="app.openAccounts()">
+            <span class="setting-icon" style="background:#0A84FF"><span class="ms">account_balance</span></span>
+            <span class="setting-label">Cuentas y tarjetas</span>
+            <span class="ms chevron">chevron_right</span>
+          </button>
         </div>
 
         <div id="notify-group" class="hidden">
@@ -258,8 +281,14 @@
               <span class="setting-label">Resumen semanal</span>
               <input type="checkbox" id="notify-weekly" class="switch">
             </label>
+            <label class="setting-row">
+              <span class="setting-icon" style="background:#FF9F0A"><span class="ms">credit_card</span></span>
+              <span class="setting-label">Pago de tarjetas</span>
+              <input type="checkbox" id="notify-cards" class="switch">
+            </label>
           </div>
-          <p class="footnote">El recordatorio no suena si ya registraste algo ese día.</p>
+          <p class="footnote">El recordatorio no suena si ya registraste algo ese día. El aviso de tarjetas llega 3 días
+            antes y el día del pago, solo si tienes deuda.</p>
         </div>
 
         <h2 class="group-title">FinanBot</h2>
@@ -322,7 +351,7 @@
           </button>
         </div>
 
-        <p class="app-version">FinanFlow 0.4.1 · Tus datos son tuyos</p>
+        <p class="app-version">FinanFlow 0.5.0 · Tus datos son tuyos</p>
       </section>
     </main>
 
@@ -361,6 +390,7 @@
         <div id="tx-type" class="segmented" aria-label="Tipo">
           <button data-value="expense">Gasto</button>
           <button data-value="income">Ingreso</button>
+          <button data-value="transfer">Transferir</button>
         </div>
 
         <label class="amount-field">
@@ -372,21 +402,29 @@
         <div id="tx-category-grid" class="category-grid" role="radiogroup" aria-label="Categoría"></div>
 
         <div class="list-group form-group">
+          <!-- Solo al transferir: de qué cuenta sale y a cuál entra (p. ej. pagar la tarjeta) -->
+          <label id="tx-from-row" class="form-row hidden">
+            <span>De</span>
+            <span class="select-inline">
+              <select id="tx-from"></select>
+              <span class="ms">unfold_more</span>
+            </span>
+          </label>
+          <label id="tx-to-row" class="form-row hidden">
+            <span>A</span>
+            <span class="select-inline">
+              <select id="tx-to"></select>
+              <span class="ms">unfold_more</span>
+            </span>
+          </label>
           <label class="form-row">
             <span>Fecha</span>
             <input type="date" id="tx-date" required>
           </label>
-          <label class="form-row">
-            <span>Método</span>
+          <label id="tx-method-row" class="form-row">
+            <span>Cuenta</span>
             <span class="select-inline">
-              <select id="tx-method">
-                <option value="Efectivo">Efectivo</option>
-                <option value="Tarjeta de Crédito">Tarjeta de crédito</option>
-                <option value="Tarjeta Débito">Tarjeta débito</option>
-                <option value="Cuenta Bancaria">Cuenta bancaria</option>
-                <option value="Nequi/Daviplata">Nequi / Daviplata</option>
-                <option value="Otro">Otro</option>
-              </select>
+              <select id="tx-method"></select>
               <span class="ms">unfold_more</span>
             </span>
           </label>
@@ -521,6 +559,99 @@
       </button>
       <p class="footnote">Las categorías que trae la app no se pueden cambiar. En el Hogar, las categorías se comparten
         con tu pareja.</p>
+    </div>
+  </div>
+
+  <!-- ================= HOJA: CUENTAS Y TARJETAS ================= -->
+  <div id="accounts-modal" class="modal" aria-hidden="true">
+    <div class="backdrop" data-close></div>
+    <div class="sheet" role="dialog" aria-modal="true" aria-labelledby="accounts-title">
+      <div class="sheet-handle" aria-hidden="true"></div>
+      <div class="sheet-header">
+        <span></span>
+        <h2 id="accounts-title">Cuentas y tarjetas</h2>
+        <button type="button" class="btn-plain" data-close>Listo</button>
+      </div>
+      <p class="footnote">Activa una cuenta para seguir su saldo. Pagar la tarjeta es una <strong>transferencia</strong>
+        (botón Transferir al registrar): baja la deuda sin contar como gasto.</p>
+      <div id="accounts-list"></div>
+      <button type="button" id="accounts-add-btn" class="btn-tinted full">
+        <span class="ms">add</span> Nueva cuenta
+      </button>
+      <h2 class="group-title">Metas de ahorro</h2>
+      <div id="goals-list"></div>
+      <button type="button" class="btn-tinted full" onclick="app.openGoalModal()">
+        <span class="ms">savings</span> Nueva meta
+      </button>
+    </div>
+  </div>
+
+  <!-- ================= HOJA: CUENTA / TARJETA / META ================= -->
+  <div id="account-modal" class="modal" aria-hidden="true">
+    <div class="backdrop" data-close></div>
+    <div class="sheet" role="dialog" aria-modal="true" aria-labelledby="account-title">
+      <div class="sheet-handle" aria-hidden="true"></div>
+      <div class="sheet-header">
+        <button type="button" class="btn-plain" data-close>Cancelar</button>
+        <h2 id="account-title">Nueva cuenta</h2>
+        <button type="submit" form="account-form" class="btn-plain strong">Guardar</button>
+      </div>
+      <form id="account-form" novalidate autocomplete="off">
+        <div class="list-group form-group">
+          <label class="form-row">
+            <span>Nombre</span>
+            <input type="text" id="acc-name" placeholder="Visa Bancolombia" maxlength="24" enterkeyhint="done">
+          </label>
+          <label id="acc-kind-row" class="form-row">
+            <span>Tipo</span>
+            <span class="select-inline">
+              <select id="acc-kind">
+                <option value="bank">Banco</option>
+                <option value="cash">Efectivo</option>
+                <option value="card">Tarjeta de crédito</option>
+              </select>
+              <span class="ms">unfold_more</span>
+            </span>
+          </label>
+        </div>
+        <p id="acc-amount-label" class="footnote center">Saldo actual</p>
+        <label class="amount-field">
+          <span class="amount-symbol acc-currency">$</span>
+          <input type="text" id="acc-amount" inputmode="decimal" placeholder="0" aria-labelledby="acc-amount-label"
+            enterkeyhint="done">
+        </label>
+        <div id="acc-card-fields" class="list-group form-group hidden">
+          <label class="form-row">
+            <span>Día de corte</span>
+            <input type="number" id="acc-cutoff" class="day-input" min="1" max="31" inputmode="numeric" placeholder="—">
+          </label>
+          <label class="form-row">
+            <span>Día de pago</span>
+            <input type="number" id="acc-due" class="day-input" min="1" max="31" inputmode="numeric" placeholder="—">
+          </label>
+          <label class="form-row">
+            <span>Cupo</span>
+            <input type="text" id="acc-limit" inputmode="decimal" placeholder="Opcional" enterkeyhint="done">
+          </label>
+        </div>
+        <div id="acc-goal-fields" class="list-group form-group hidden">
+          <label class="form-row">
+            <span>Meta</span>
+            <input type="text" id="acc-target" inputmode="decimal" placeholder="0" enterkeyhint="done">
+          </label>
+          <label class="form-row">
+            <span>Para</span>
+            <input type="month" id="acc-deadline" aria-label="Fecha objetivo (opcional)">
+          </label>
+        </div>
+        <p id="acc-hint" class="footnote"></p>
+        <div id="acc-colors" class="color-picker" role="radiogroup" aria-label="Color"></div>
+        <button type="submit" class="btn-primary full">Guardar</button>
+        <button type="button" id="acc-contribute-btn" class="btn-tinted full hidden">
+          <span class="ms">savings</span> Aportar a esta meta
+        </button>
+        <button type="button" id="acc-delete-btn" class="btn-plain destructive full hidden">Eliminar</button>
+      </form>
     </div>
   </div>
 

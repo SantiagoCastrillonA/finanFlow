@@ -48,6 +48,23 @@ const CATEGORY_ICONS = [
   "local_gas_station", "flight", "pets", "child_care", "checkroom", "fitness_center",
   "medication", "phone_iphone", "sports_esports", "volunteer_activism"
 ];
+// Cuentas base: son los "métodos" de siempre (sus ids ya están en tx.method). Solo se sigue su saldo
+// cuando el usuario las activa en Ajustes → Cuentas; "Otro" no es una cuenta.
+const BASE_ACCOUNTS = [
+  { id: "Efectivo", name: "Efectivo", kind: "cash", color: "#30D158" },
+  { id: "Cuenta Bancaria", name: "Cuenta bancaria", kind: "bank", color: "#0A84FF" },
+  { id: "Tarjeta Débito", name: "Tarjeta débito", kind: "bank", color: "#40C8E0" },
+  { id: "Nequi/Daviplata", name: "Nequi / Daviplata", kind: "bank", color: "#BF5AF2" },
+  { id: "Tarjeta de Crédito", name: "Tarjeta de crédito", kind: "card", color: "#FF9F0A" }
+];
+const OTHER_METHOD = { id: "Otro", name: "Otro" };
+const ACCOUNT_KINDS = {
+  cash: { label: "Efectivo", icon: "payments" },
+  bank: { label: "Banco", icon: "account_balance" },
+  card: { label: "Tarjeta de crédito", icon: "credit_card" },
+  goal: { label: "Meta de ahorro", icon: "savings" }
+};
+
 const CATEGORY_COLORS = ["#FF453A", "#FF9F0A", "#E5B800", "#30D158", "#40C8E0", "#0A84FF", "#5E5CE6", "#BF5AF2", "#FF375F", "#8E8E93"];
 
 const GEMINI_CONFIG = {
@@ -123,6 +140,38 @@ function cleanCategory(c) {
     createdAt: Number(c.createdAt) || 0
   };
 }
+/**
+ * Cuenta con seguimiento de saldo. `id` es lo que se guarda en tx.method (o en from/to de una
+ * transferencia); el saldo cuenta solo movimientos posteriores a startDate/startedAt.
+ */
+function cleanAccount(a) {
+  if (!a || typeof a.ref !== "string" || typeof a.id !== "string" || typeof a.name !== "string" || !a.name.trim()) return null;
+  const day = (d) => (Number(d) >= 1 && Number(d) <= 31 ? Math.round(Number(d)) : null);
+  const money = (n) => (Number.isFinite(Number(n)) ? Number(n) : 0);
+  return {
+    ref: a.ref,
+    id: a.id,
+    name: a.name.trim().slice(0, 24),
+    kind: ACCOUNT_KINDS[a.kind] ? a.kind : "bank",
+    color: /^#[0-9a-f]{6}$/i.test(a.color) ? a.color : "#0A84FF",
+    startDate: /^\d{4}-\d{2}-\d{2}$/.test(a.startDate) ? a.startDate : todayISO(),
+    startedAt: Number(a.startedAt) || 0,
+    startBalance: money(a.startBalance),
+    cutoffDay: day(a.cutoffDay),
+    dueDay: day(a.dueDay),
+    creditLimit: money(a.creditLimit) > 0 ? money(a.creditLimit) : null,
+    target: money(a.target) > 0 ? money(a.target) : null,
+    deadline: /^\d{4}-\d{2}$/.test(a.deadline) ? a.deadline : null,
+    createdAt: Number(a.createdAt) || 0
+  };
+}
+function normAccounts(list) {
+  return (Array.isArray(list) ? list : [])
+    .map(cleanAccount)
+    .filter(Boolean)
+    .sort((a, b) => a.createdAt - b.createdAt);
+}
+
 /** Categorías propias de un espacio: { expense: [...], income: [...] }. */
 function normCategories(c) {
   const list = (type) =>
@@ -135,10 +184,11 @@ const state = {
   transactions: Array.isArray(saved.transactions) ? saved.transactions : [],
   budgets: saved.budgets || {},
   categories: normCategories(saved.categories),
+  accounts: normAccounts(saved.accounts),
   activeTab: TAB_TITLES[saved.activeTab] ? saved.activeTab : "dashboard",
   chartType: saved.chartType || "balance",
   lastUsed: saved.lastUsed || { expense: {}, income: {} },
-  notify: Object.assign({ reminder: false, reminderTime: "20:00", budget: false, weekly: false }, saved.notify),
+  notify: Object.assign({ reminder: false, reminderTime: "20:00", budget: false, weekly: false, cards: false }, saved.notify),
   notified: saved.notified || {},
   viewMonth: monthKey(new Date()),
   filters: { type: "all", category: "all", date: "month", search: "" },
@@ -152,11 +202,26 @@ const state = {
 };
 
 const spaceCache = {
-  personal: { transactions: state.transactions, budgets: state.budgets, categories: state.categories },
-  household: { transactions: [], budgets: {}, categories: normCategories() }
+  personal: { transactions: state.transactions, budgets: state.budgets, categories: state.categories, accounts: state.accounts },
+  household: emptySpaceData()
 };
 
-const activeSpaceData = () => ({ transactions: state.transactions, budgets: state.budgets, categories: state.categories });
+function emptySpaceData() {
+  return { transactions: [], budgets: {}, categories: normCategories(), accounts: [] };
+}
+const activeSpaceData = () => ({
+  transactions: state.transactions,
+  budgets: state.budgets,
+  categories: state.categories,
+  accounts: state.accounts
+});
+/** Pone en state los datos de un espacio (al cambiar de espacio o cerrar sesión). */
+function loadSpaceData(data) {
+  state.transactions = data.transactions;
+  state.budgets = data.budgets;
+  state.categories = data.categories;
+  state.accounts = data.accounts;
+}
 
 /** Datos del espacio personal, esté activo o no (lo único que se guarda en el teléfono). */
 function personalData() {
@@ -173,6 +238,7 @@ function saveState() {
         transactions: personal.transactions,
         budgets: personal.budgets,
         categories: personal.categories,
+        accounts: personal.accounts,
         space: state.preferredSpace,
         activeTab: state.activeTab,
         chartType: state.chartType,
@@ -310,6 +376,71 @@ function amountToInput(amount) {
   );
 }
 
+/* --- Cuentas --- */
+
+/** Cuentas que se pueden elegir al registrar: las base (activadas o no) y las propias, sin las metas. */
+function accountsFor(accounts = state.accounts) {
+  const stored = new Map(accounts.map((a) => [a.id, a]));
+  const base = BASE_ACCOUNTS.map((b) =>
+    stored.has(b.id) ? { ...stored.get(b.id), name: b.name, kind: b.kind, base: true, active: true } : { ...b, base: true, active: false }
+  );
+  const own = accounts.filter((a) => a.kind !== "goal" && !BASE_ACCOUNTS.some((b) => b.id === a.id)).map((a) => ({ ...a, active: true }));
+  return [...base, ...own];
+}
+const goalsFor = (accounts = state.accounts) => accounts.filter((a) => a.kind === "goal").map((a) => ({ ...a, active: true }));
+const activeAccounts = () => [...accountsFor().filter((a) => a.active), ...goalsFor()];
+
+function accountInfo(id) {
+  return (
+    [...accountsFor(), ...goalsFor()].find((a) => a.id === id) || {
+      id,
+      name: id === OTHER_METHOD.id ? OTHER_METHOD.name : id,
+      kind: "bank",
+      color: "#8E8E93",
+      active: false
+    }
+  );
+}
+
+// El saldo de una cuenta parte del valor que el usuario dio al activarla: solo cuentan los movimientos de después.
+const countsForAccount = (t, a) => t.date > a.startDate || (t.date === a.startDate && (t.createdAt || 0) > a.startedAt);
+
+/** Saldo de una cuenta hasta una fecha (en una tarjeta, negativo = deuda). Las transferencias mueven dinero entre cuentas. */
+function accountBalance(a, list = state.transactions, until = null) {
+  let bal = a.startBalance;
+  for (const t of list) {
+    if (!countsForAccount(t, a) || (until && t.date > until)) continue;
+    const amt = Number(t.amount) || 0;
+    if (t.kind === "transfer") {
+      if (t.from === a.id) bal -= amt;
+      if (t.to === a.id) bal += amt;
+    } else if (t.method === a.id) {
+      bal += t.type === "income" ? amt : -amt;
+    }
+  }
+  return roundMoney(bal);
+}
+
+/**
+ * Saldo del Inicio. Si sigues cuentas, en el mes actual es lo que hay en ellas (bancos − deuda de
+ * tarjetas + metas); si no, o en meses pasados, el acumulado de ingresos − gastos.
+ */
+function personalBalance(dateStr, current, data = activeSpaceData()) {
+  const accounts = [...accountsFor(data.accounts).filter((a) => a.active), ...goalsFor(data.accounts)];
+  if (!current || !accounts.length) return balanceUntil(dateStr, data.transactions, data.categories);
+  return roundMoney(accounts.reduce((s, a) => s + accountBalance(a, data.transactions, dateStr), 0));
+}
+
+/** Próxima fecha (hoy incluido) con ese día del mes; el día se recorta en meses cortos. */
+function nextDueDate(day, from = new Date()) {
+  const today = toISODate(from);
+  for (let i = 0; i < 2; i++) {
+    const ym = addMonths(monthKey(from), i);
+    const date = `${ym}-${pad(Math.min(day, daysInMonth(ym)))}`;
+    if (date >= today) return date;
+  }
+}
+
 /** Categorías base + propias del espacio, con "Otros" siempre al final. */
 function categoriesFor(type, custom = state.categories) {
   const base = CATEGORIES[type] || [];
@@ -362,10 +493,10 @@ function cssVar(name) {
    Cálculos (una pasada por render)
    ========================================================================== */
 
-// No son ingresos ni gastos: las liquidaciones entre la pareja ("Saldar cuentas") y las categorías
-// marcadas "No sumar en totales" (p. ej. pagar la tarjeta, cuyas compras ya se registraron).
+// No son ingresos ni gastos: las liquidaciones entre la pareja ("Saldar cuentas"), las transferencias
+// entre cuentas (p. ej. pagar la tarjeta) y las categorías marcadas "No sumar en totales".
 const isExcludedCategory = (t, custom) => !!getCategoryInfo(t.category, t.type, custom).excluded;
-const countsAsMoney = (t, custom) => t.kind !== "settlement" && !isExcludedCategory(t, custom);
+const countsAsMoney = (t, custom) => t.kind !== "settlement" && t.kind !== "transfer" && !isExcludedCategory(t, custom);
 
 function monthStats(ym, untilDay = 31, list = state.transactions, custom = state.categories) {
   let income = 0;
@@ -819,8 +950,8 @@ function renderTrendChart() {
     const d = new Date(end);
     d.setDate(end.getDate() - i);
     labels.push(d.toLocaleDateString("es-CO", { day: "numeric", month: "short" }).replace(" de ", " ").replace(".", ""));
-    // Personal: saldo acumulado. Hogar: lo gastado en común desde el inicio del mes.
-    data.push(inHousehold() ? monthStats(monthKey(d), d.getDate()).expense : balanceUntil(toISODate(d)));
+    // Personal: saldo (en tus cuentas si las sigues en el mes actual). Hogar: lo gastado en común en el mes.
+    data.push(inHousehold() ? monthStats(monthKey(d), d.getDate()).expense : personalBalance(toISODate(d), state.viewMonth === current));
   }
 
   const accent = cssVar("--accent");
@@ -925,8 +1056,13 @@ function renderDashboard(stats) {
     setAnimatedText($("total-balance"), formatMoney(stats.expense));
     $("balance-label").textContent = `Gastos del Hogar · ${monthLabel(state.viewMonth, false).toLowerCase()}`;
   } else {
-    setAnimatedText($("total-balance"), formatMoney(balanceUntil(endOfView)));
-    $("balance-label").textContent = isCurrent ? "Saldo" : `Saldo al cierre de ${monthLabel(state.viewMonth, false).toLowerCase()}`;
+    setAnimatedText($("total-balance"), formatMoney(personalBalance(endOfView, isCurrent)));
+    const inAccounts = isCurrent && activeAccounts().length;
+    $("balance-label").textContent = inAccounts
+      ? "Saldo en tus cuentas"
+      : isCurrent
+        ? "Saldo"
+        : `Saldo al cierre de ${monthLabel(state.viewMonth, false).toLowerCase()}`;
   }
   setAnimatedText($("total-incomes"), formatMoney(stats.income));
   setAnimatedText($("total-expenses"), formatMoney(stats.expense));
@@ -935,6 +1071,8 @@ function renderDashboard(stats) {
   renderAllowance(stats, isCurrent);
   renderBudgetAlerts(stats);
   renderHouseholdBalance();
+  renderAccountsSection();
+  renderGoalsSection();
   renderRecentTransactions();
   // Chart.js mide el canvas al crearse: solo dibujar con la pestaña visible.
   if ($("tab-dashboard").classList.contains("active")) renderCharts(stats);
@@ -1092,11 +1230,26 @@ function txRow(t, showDate) {
     return el;
   }
 
+  if (t.kind === "transfer") {
+    // Dinero que pasa de una cuenta a otra (pagar la tarjeta, ahorrar en una meta): no es gasto ni ingreso.
+    const to = accountInfo(t.to);
+    const toGoal = to.kind === "goal";
+    el.innerHTML = `
+      <span class="row-icon" style="color:var(--accent);background:var(--accent-tint)"><span class="ms">${toGoal ? "savings" : "swap_horiz"}</span></span>
+      <span class="row-main">
+        <span class="row-title">${escapeHtml(t.note || (toGoal ? `Ahorro · ${to.name}` : to.kind === "card" ? `Pago ${to.name}` : "Transferencia"))}</span>
+        <span class="row-sub">${escapeHtml([`${accountInfo(t.from).name} → ${to.name}`, date].filter(Boolean).join(" · "))}</span>
+      </span>
+      <span class="row-amount excluded">${repeat}${formatMoney(t.amount)}</span>`;
+    el.onclick = () => openTransactionModal(t.id);
+    return el;
+  }
+
   // En el Hogar, el subtítulo dice quién pagó y cómo se dividió.
   const split =
     inHousehold() && t.paidBy
       ? [paidByLabel(t), t.type === "expense" ? splitLabel(t.payerShare ?? 50) : null]
-      : [cat.label, t.method];
+      : [cat.label, accountInfo(t.method).name];
   const excluded = cat.excluded ? "no suma" : null;
   const sub = [...split, excluded, date].filter(Boolean).map(escapeHtml).join(" · ");
   const authorInfo = inHousehold() && t.createdBy ? (state.household.memberInfo || {})[t.createdBy] : null;
@@ -1181,12 +1334,14 @@ function renderTransactionsList() {
 
   const filtered = state.transactions
     .filter((t) => {
-      if (f.type !== "all" && t.type !== f.type) return false;
+      // Las transferencias no son ingresos ni gastos: solo aparecen en "Todos".
+      if (f.type !== "all" && (t.type !== f.type || t.kind === "transfer")) return false;
       if (f.category !== "all" && t.category !== f.category) return false;
       if (!matchesDateFilter(t.date, f.date)) return false;
       if (q) {
         const cat = getCategoryInfo(t.category, t.type).label.toLowerCase();
-        const text = `${t.note || ""} ${cat} ${t.method || ""}`.toLowerCase();
+        const accounts = t.kind === "transfer" ? `${accountInfo(t.from).name} ${accountInfo(t.to).name}` : accountInfo(t.method).name;
+        const text = `${t.note || ""} ${cat} ${accounts}`.toLowerCase();
         const amountHit = qDigits && String(Math.round(t.amount)).includes(qDigits);
         if (!text.includes(q) && !amountHit) return false;
       }
@@ -1373,21 +1528,52 @@ function renderCategoryGrid() {
   grid.appendChild(add);
 }
 
+/** Opciones de "Cuenta" (gasto/ingreso) y de "De"/"A" (transferencia), conservando lo elegido. */
+function renderAccountOptions() {
+  const fill = (select, list) => {
+    const value = select.value;
+    select.innerHTML = "";
+    list.forEach((a) => select.appendChild(new Option(a.name, a.id)));
+    if (value) setSelectValue(select, value);
+  };
+  fill($("tx-method"), [...accountsFor(), OTHER_METHOD]);
+  const movable = [...accountsFor(), ...goalsFor()];
+  fill($("tx-from"), movable);
+  fill($("tx-to"), movable);
+}
+/** Elige un valor; si ya no existe (p. ej. una cuenta borrada) lo agrega para no perderlo al editar. */
+function setSelectValue(select, value) {
+  if (![...select.options].some((o) => o.value === value)) select.appendChild(new Option(accountInfo(value).name, value));
+  select.value = value;
+}
+
 function setTxType(type, keepCategory = false) {
   txSheet.type = type;
   setSegmented($("tx-type"), type);
-  const cats = categoriesFor(type);
-  // Al editar se respeta la categoría aunque ya no exista (se borró): solo cambia si el usuario elige otra.
-  if (!keepCategory) {
-    const last = state.lastUsed[type] || {};
-    txSheet.category = cats.some((c) => c.id === last.category) ? last.category : cats[0].id;
-    if (!txSheet.editing && last.method) $("tx-method").value = last.method;
+  const transfer = type === "transfer";
+  $("tx-category-grid").classList.toggle("hidden", transfer);
+  $("tx-method-row").classList.toggle("hidden", transfer);
+  $("tx-from-row").classList.toggle("hidden", !transfer);
+  $("tx-to-row").classList.toggle("hidden", !transfer);
+  const last = state.lastUsed[type] || {};
+  if (transfer) {
+    if (!keepCategory) {
+      if (last.from) setSelectValue($("tx-from"), last.from);
+      if (last.to) setSelectValue($("tx-to"), last.to);
+    }
+  } else {
+    const cats = categoriesFor(type);
+    // Al editar se respeta la categoría aunque ya no exista (se borró): solo cambia si el usuario elige otra.
+    if (!keepCategory) {
+      txSheet.category = cats.some((c) => c.id === last.category) ? last.category : cats[0].id;
+      if (!txSheet.editing && last.method) setSelectValue($("tx-method"), last.method);
+    }
+    renderCategoryGrid();
   }
-  renderCategoryGrid();
   updateSplitLabels();
 }
 
-function openTransactionModal(editId = null, presetType = "expense") {
+function openTransactionModal(editId = null, presetType = "expense", preset = {}) {
   const tx = editId ? state.transactions.find((t) => t.id === editId) : null;
   if (editId && !tx) return;
   txSheet.editing = tx;
@@ -1397,7 +1583,13 @@ function openTransactionModal(editId = null, presetType = "expense") {
   $("tx-date").value = tx ? tx.date : todayISO();
   $("tx-amount").value = tx ? amountToInput(tx.amount) : "";
   $("tx-note").value = tx ? tx.note || "" : "";
-  $("tx-method").value = tx ? tx.method : "Efectivo";
+  renderAccountOptions();
+  setSelectValue($("tx-method"), tx && tx.method ? tx.method : "Efectivo");
+  const isTransfer = !!(tx && tx.kind === "transfer");
+  if (isTransfer) {
+    setSelectValue($("tx-from"), tx.from);
+    setSelectValue($("tx-to"), tx.to);
+  }
 
   // Las copias generadas por un recurrente no se pueden marcar como recurrentes.
   const isCopy = !!(tx && tx.recurringOf);
@@ -1406,7 +1598,11 @@ function openTransactionModal(editId = null, presetType = "expense") {
   $("tx-recurring").checked = !!(tx && tx.recurring === "monthly");
 
   txSheet.category = tx ? tx.category : null;
-  setTxType(tx ? tx.type : presetType, !!tx);
+  setTxType(isTransfer ? "transfer" : tx ? tx.type : presetType, !!tx);
+  if (preset.to) {
+    setSelectValue($("tx-to"), preset.to);
+    if ($("tx-from").value === preset.to) $("tx-from").selectedIndex = 0;
+  }
   setupSplitFields(tx);
   openModal("transaction-modal", tx ? null : "tx-amount");
 }
@@ -1432,11 +1628,14 @@ function setupSplitFields(tx) {
 
 function updateSplitLabels() {
   // En ingresos se habla de quién recibió; la división solo aplica a gastos.
+  // Una transferencia no es un gasto común: no lleva quién pagó ni división.
   const income = txSheet.type === "income";
+  const transfer = txSheet.type === "transfer";
   $("tx-paidby-label").textContent = income ? "Recibió" : "Pagó";
   if (!inHousehold() || !partnerUid()) return;
-  $("tx-split-row").classList.toggle("hidden", income);
-  $("tx-share-row").classList.toggle("hidden", income || $("tx-split").value !== "custom");
+  $("tx-paidby-row").classList.toggle("hidden", transfer);
+  $("tx-split-row").classList.toggle("hidden", income || transfer);
+  $("tx-share-row").classList.toggle("hidden", income || transfer || $("tx-split").value !== "custom");
 }
 
 function readSplitFields() {
@@ -1457,7 +1656,7 @@ function householdBalance() {
     if (!t.paidBy) continue;
     const sign = t.paidBy === me ? 1 : -1;
     if (t.kind === "settlement") net += sign * Number(t.amount);
-    else if (t.type === "expense" && !isExcludedCategory(t)) net += sign * Number(t.amount) * (1 - (t.payerShare ?? 50) / 100);
+    else if (t.type === "expense" && t.kind !== "transfer" && !isExcludedCategory(t)) net += sign * Number(t.amount) * (1 - (t.payerShare ?? 50) / 100);
   }
   return roundMoney(net);
 }
@@ -1519,24 +1718,33 @@ function saveTransaction(event) {
     return;
   }
   const prev = txSheet.editing;
+  const transfer = txSheet.type === "transfer";
+  const from = $("tx-from").value;
+  const to = $("tx-to").value;
+  if (transfer && (!from || !to || from === to)) {
+    showToast("Elige dos cuentas distintas", "warning");
+    return;
+  }
+  const base = { ...(prev || {}) };
+  // Al cambiar de tipo no deben quedar restos del anterior.
+  ["kind", "from", "to", "paidBy", "payerShare"].forEach((k) => delete base[k]);
   const tx = {
-    ...(prev || {}),
+    ...base,
     id: prev ? prev.id : generateId("tx"),
-    type: txSheet.type,
     amount,
-    category: txSheet.category,
     date,
-    method: $("tx-method").value,
     note: $("tx-note").value.trim(),
     createdAt: prev && prev.createdAt ? prev.createdAt : Date.now(),
-    ...readSplitFields()
+    ...(transfer
+      ? { kind: "transfer", type: "expense", from, to, method: from, category: "Transferencia" }
+      : { type: txSheet.type, category: txSheet.category, method: $("tx-method").value, ...readSplitFields() })
   };
   if (!tx.recurringOf) {
     if ($("tx-recurring").checked) tx.recurring = "monthly";
     else delete tx.recurring;
   }
 
-  state.lastUsed[tx.type] = { category: tx.category, method: tx.method };
+  state.lastUsed[txSheet.type] = transfer ? { from, to } : { category: tx.category, method: tx.method };
   lastChangedId = tx.id;
   upsertTransaction(tx);
   if (tx.recurring) materializeRecurring();
@@ -1609,6 +1817,7 @@ function materializeRecurring() {
         category: t.category,
         method: t.method,
         note: t.note,
+        ...(t.kind === "transfer" ? { kind: t.kind, from: t.from, to: t.to } : {}),
         date,
         recurringOf: t.id,
         createdAt: Date.now()
@@ -1859,6 +2068,245 @@ function deleteCategoryFromSheet() {
 }
 
 /* ==========================================================================
+   Cuentas, tarjetas y metas (Ajustes → Cuentas y tarjetas, sección Cuentas del Inicio)
+   ========================================================================== */
+
+const accSheet = { editing: null, base: null, kind: "bank", color: "#0A84FF", initialAmount: "" };
+
+function openAccounts() {
+  renderAccountsList();
+  openModal("accounts-modal");
+}
+
+function renderAccountsList() {
+  const fill = (box, list, empty) => {
+    box.innerHTML = "";
+    if (!list.length) {
+      box.innerHTML = `<p class="footnote">${empty}</p>`;
+      return;
+    }
+    const group = document.createElement("div");
+    group.className = "list-group";
+    list.forEach((a) => group.appendChild(accountRow(a)));
+    box.appendChild(group);
+  };
+  fill($("accounts-list"), accountsFor(), "");
+  fill($("goals-list"), goalsFor(), "Ahorra para algo concreto: un viaje, un fondo de emergencia, el regalo de diciembre.");
+}
+
+function openGoalModal() {
+  openAccountModal(null, "goal");
+}
+
+function renderGoalsSection() {
+  const goals = goalsFor();
+  $("goals-section").classList.toggle("hidden", !goals.length);
+  const box = $("goals-dash-list");
+  box.innerHTML = "";
+  goals.forEach((a) => box.appendChild(accountRow(a)));
+}
+
+/** Abre el registro como transferencia hacia la meta (desde la última cuenta usada para transferir). */
+function contributeToGoal() {
+  const goal = accSheet.editing;
+  if (!goal) return;
+  closeModal("account-modal");
+  closeModal("accounts-modal");
+  openTransactionModal(null, "transfer", { to: goal.id });
+}
+
+/** Texto de la fecha de pago: "Paga hoy" / "Paga antes del 5 nov". */
+function dueLabel(a) {
+  const when = formatDateFriendly(nextDueDate(a.dueDay));
+  return when === "Hoy" ? "Paga hoy" : when === "Ayer" ? "Pago vencido" : `Paga antes del ${when}`;
+}
+
+/** Fila de una cuenta: saldo, deuda de tarjeta (con cupo usado) o avance de una meta. */
+function accountRow(a) {
+  const row = document.createElement("button");
+  row.type = "button";
+  row.className = "list-row account-row";
+  const icon = `<span class="row-icon" style="color:${a.color};background:${a.color}24"><span class="ms">${ACCOUNT_KINDS[a.kind].icon}</span></span>`;
+  let sub = ACCOUNT_KINDS[a.kind].label;
+  let amount = "";
+  let bar = null;
+  let amountClass = "";
+  if (!a.active) {
+    sub = "Sin seguimiento · toca para activar";
+  } else {
+    const bal = accountBalance(a);
+    if (a.kind === "card") {
+      const debt = Math.max(0, -bal);
+      amount = debt ? `−${formatMoney(debt)}` : formatMoney(0);
+      amountClass = debt ? "debt" : "";
+      sub = debt ? (a.dueDay ? dueLabel(a) : "Deuda actual") : "Sin deuda";
+      if (a.creditLimit) {
+        bar = Math.min(1, debt / a.creditLimit);
+        sub += ` · cupo ${Math.round(bar * 100)}%`;
+      }
+    } else if (a.kind === "goal") {
+      amount = formatMoney(bal);
+      bar = a.target ? Math.min(1, Math.max(0, bal / a.target)) : null;
+      sub = goalSubtitle(a, bal);
+    } else {
+      amount = formatMoney(bal);
+      amountClass = bal < 0 ? "debt" : "";
+    }
+  }
+  row.innerHTML = `
+    ${icon}
+    <span class="row-main">
+      <span class="row-title">${escapeHtml(a.name)}</span>
+      <span class="row-sub">${escapeHtml(sub)}</span>
+      ${bar !== null ? `<span class="mini-progress"><span style="transform:scaleX(${bar});background:${a.color}"></span></span>` : ""}
+    </span>
+    <span class="row-amount ${amountClass}">${amount}</span>`;
+  row.onclick = () => openAccountModal(a);
+  return row;
+}
+
+/** "Faltan $X · aparta $Y al mes" (o "¡Meta cumplida!"). */
+function goalSubtitle(a, saved) {
+  if (!a.target) return "Meta de ahorro";
+  const left = roundMoney(a.target - saved);
+  if (left <= 0) return "¡Meta cumplida!";
+  if (!a.deadline) return `Faltan ${formatMoney(left)}`;
+  const months = Math.max(1, (Number(a.deadline.slice(0, 4)) - new Date().getFullYear()) * 12 + Number(a.deadline.slice(5, 7)) - (new Date().getMonth() + 1) + 1);
+  return `Faltan ${formatMoney(left)} · aparta ${formatMoney(roundMoney(left / months))} al mes`;
+}
+
+function renderAccountsSection() {
+  const list = activeAccounts().filter((a) => a.kind !== "goal");
+  $("accounts-section").classList.toggle("hidden", !list.length);
+  const box = $("accounts-dash-list");
+  box.innerHTML = "";
+  list.forEach((a) => box.appendChild(accountRow(a)));
+}
+
+function openAccountModal(a = null, kind = "bank") {
+  accSheet.editing = a && a.active ? a : null;
+  accSheet.base = a && a.base ? a : null;
+  accSheet.kind = a ? a.kind : kind;
+  accSheet.color = a ? a.color : kind === "goal" ? "#30D158" : "#0A84FF";
+  const goal = accSheet.kind === "goal";
+  $("account-form").reset();
+  $("account-title").textContent = a ? (a.active ? a.name : `Activar ${a.name}`) : goal ? "Nueva meta" : "Nueva cuenta";
+  $("acc-name").value = a ? a.name : "";
+  $("acc-name").disabled = !!accSheet.base;
+  $("acc-name").placeholder = goal ? "Viaje a la playa" : "Visa Bancolombia";
+  $("acc-kind-row").classList.toggle("hidden", !!accSheet.base || goal);
+  if (!goal) $("acc-kind").value = accSheet.kind;
+
+  const current = accSheet.editing ? accountBalance(accSheet.editing) : 0;
+  $("acc-amount").value = current ? amountToInput(Math.abs(current)) : "";
+  accSheet.initialAmount = $("acc-amount").value;
+  $("acc-cutoff").value = (a && a.cutoffDay) || "";
+  $("acc-due").value = (a && a.dueDay) || "";
+  $("acc-limit").value = a && a.creditLimit ? amountToInput(a.creditLimit) : "";
+  $("acc-target").value = a && a.target ? amountToInput(a.target) : "";
+  $("acc-deadline").value = (a && a.deadline) || "";
+  document.querySelector(".acc-currency").textContent = getCurrencySymbol();
+
+  $("acc-contribute-btn").classList.toggle("hidden", !(goal && accSheet.editing));
+  const del = $("acc-delete-btn");
+  del.classList.toggle("hidden", !accSheet.editing);
+  del.textContent = accSheet.base ? "Dejar de seguir" : goal ? "Eliminar meta" : "Eliminar cuenta";
+  updateAccountKindFields();
+  renderPicker($("acc-colors"), CATEGORY_COLORS, accSheet.color, (b, color) => {
+    b.className = "pick-color";
+    b.style.setProperty("--c", color);
+    b.setAttribute("aria-label", `Color ${color}`);
+  }, (color) => (accSheet.color = color));
+  openModal("account-modal", a ? null : "acc-name");
+}
+
+function updateAccountKindFields() {
+  if (!accSheet.base && accSheet.kind !== "goal") accSheet.kind = $("acc-kind").value;
+  const kind = accSheet.kind;
+  $("acc-amount-label").textContent = kind === "card" ? "Deuda actual" : kind === "goal" ? "Ahorrado hasta hoy" : "Saldo actual";
+  $("acc-card-fields").classList.toggle("hidden", kind !== "card");
+  $("acc-goal-fields").classList.toggle("hidden", kind !== "goal");
+  $("acc-hint").textContent =
+    kind === "goal"
+      ? "Aporta con Transferir → A esta meta. Puedes hacerlo recurrente cada mes."
+      : "El saldo parte de este valor: los movimientos anteriores a hoy no lo cambian. Si no cuadra, edítalo aquí cuando quieras.";
+}
+
+function saveAccount(event) {
+  event.preventDefault();
+  const prev = accSheet.editing;
+  const kind = accSheet.kind;
+  const name = accSheet.base ? accSheet.base.name : $("acc-name").value.trim().replace(/\s+/g, " ");
+  if (!name) {
+    showToast("Escribe un nombre", "warning");
+    $("acc-name").focus();
+    return;
+  }
+  const same = (s) => String(s).toLowerCase() === name.toLowerCase();
+  const others = [...accountsFor(), ...goalsFor(), OTHER_METHOD].filter((a) => !(prev && a.ref === prev.ref) && a !== accSheet.base && !(accSheet.base && a.id === accSheet.base.id));
+  if (!accSheet.base && others.some((a) => same(a.name) || same(a.id))) {
+    showToast("Ya existe una cuenta con ese nombre", "warning");
+    return;
+  }
+  const amountStr = $("acc-amount").value;
+  const amount = amountStr ? parseAmountInput(amountStr) : 0;
+  const target = kind === "goal" ? parseAmountInput($("acc-target").value) : null;
+  if (isNaN(amount) || amount < 0) {
+    showToast("Revisa el monto", "warning");
+    return;
+  }
+  if (kind === "goal" && !(target > 0)) {
+    showToast("¿Cuánto quieres ahorrar? Escribe la meta", "warning");
+    $("acc-target").focus();
+    return;
+  }
+  // El saldo se reinicia solo si el usuario cambió el monto (o la cuenta es nueva).
+  const restart = !prev || amountStr !== accSheet.initialAmount;
+  const now = Date.now();
+  const acc = cleanAccount({
+    ...(prev || {}),
+    ref: prev ? prev.ref : generateId("acc"),
+    id: prev ? prev.id : accSheet.base ? accSheet.base.id : name,
+    name,
+    kind,
+    color: accSheet.color,
+    ...(restart ? { startDate: todayISO(), startedAt: now, startBalance: kind === "card" ? -amount : amount } : {}),
+    cutoffDay: kind === "card" ? $("acc-cutoff").value : null,
+    dueDay: kind === "card" ? $("acc-due").value : null,
+    creditLimit: kind === "card" && $("acc-limit").value ? parseAmountInput($("acc-limit").value) : null,
+    target,
+    deadline: kind === "goal" ? $("acc-deadline").value : null,
+    createdAt: prev ? prev.createdAt : now
+  });
+  upsertAccount(acc);
+  closeModal("account-modal");
+  haptic("success");
+  refreshAccountViews();
+}
+
+function deleteAccountFromSheet() {
+  const a = accSheet.editing;
+  const stored = a && state.accounts.find((x) => x.ref === a.ref);
+  if (!stored) return;
+  closeModal("account-modal");
+  removeAccount(stored);
+  haptic();
+  refreshAccountViews();
+  showToast(accSheet.base ? `Ya no se sigue ${stored.name}` : `${stored.name} eliminada`, "info", 5000, {
+    label: "Deshacer",
+    onClick: () => {
+      upsertAccount(stored);
+      refreshAccountViews();
+    }
+  });
+}
+
+function refreshAccountViews() {
+  if ($("accounts-modal").classList.contains("open")) renderAccountsList();
+  if ($("transaction-modal").classList.contains("open")) renderAccountOptions();
+}
+
+/* ==========================================================================
    Capa de datos: local o nube (Firestore aplica en caché local al instante)
    ========================================================================== */
 
@@ -2025,6 +2473,30 @@ function removeCategory(cat) {
   commit();
 }
 
+/* Cuentas y metas: un documento por cuenta (id = acc.ref). También se aplican al instante. */
+function setLocalAccount(acc, remove = false) {
+  const others = state.accounts.filter((a) => a.ref !== acc.ref);
+  state.accounts = remove ? others : normAccounts([...others, acc]);
+}
+function upsertAccount(acc) {
+  setLocalAccount(acc);
+  if (isCloud()) {
+    cloudWrite(cloudDoc("accounts", acc.ref).set(acc));
+    render();
+    return;
+  }
+  commit();
+}
+function removeAccount(acc) {
+  setLocalAccount(acc, true);
+  if (isCloud()) {
+    cloudWrite(cloudDoc("accounts", acc.ref).delete());
+    render();
+    return;
+  }
+  commit();
+}
+
 /* ==========================================================================
    Firebase (Auth + Firestore)
    ========================================================================== */
@@ -2059,10 +2531,13 @@ function handleAuthStateChange(user) {
     unsubscribeFirestore();
     setHousehold(null);
     const local = loadState() || {};
-    spaceCache.personal = { transactions: local.transactions || [], budgets: local.budgets || {}, categories: normCategories(local.categories) };
-    state.transactions = spaceCache.personal.transactions;
-    state.budgets = spaceCache.personal.budgets;
-    state.categories = spaceCache.personal.categories;
+    spaceCache.personal = {
+      transactions: local.transactions || [],
+      budgets: local.budgets || {},
+      categories: normCategories(local.categories),
+      accounts: normAccounts(local.accounts)
+    };
+    loadSpaceData(spaceCache.personal);
   }
   render();
   renderHouseholdSettings();
@@ -2078,6 +2553,11 @@ function receiveSpaceData(key, patch) {
       state.categories = patch.categories;
       if ($("transaction-modal").classList.contains("open")) renderCategoryGrid();
       if ($("categories-modal").classList.contains("open")) renderCategoriesList();
+    }
+    if (patch.accounts) {
+      state.accounts = patch.accounts;
+      if ($("transaction-modal").classList.contains("open")) renderAccountOptions();
+      if ($("accounts-modal").classList.contains("open")) renderAccountsList();
     }
     commit();
   } else if (key === "personal") {
@@ -2108,6 +2588,9 @@ function listenSpace(key, ref, onFirstTransactions) {
         .sort((a, b) => (a.createdAt || 0) - (b.createdAt || 0))
         .forEach((c) => raw[c.type] && raw[c.type].push(c));
       receiveSpaceData(key, { categories: normCategories(raw) });
+    }, cloudError),
+    ref.collection("accounts").onSnapshot((snap) => {
+      receiveSpaceData(key, { accounts: normAccounts(snap.docs.map((d) => ({ ...d.data(), ref: d.id }))) });
     }, cloudError)
   ];
   return () => unsubs.forEach((fn) => fn());
@@ -2139,7 +2622,7 @@ function setHousehold(household) {
   if (!household || household.id !== prevId) {
     householdListeners.forEach((fn) => fn());
     householdListeners = [];
-    spaceCache.household = { transactions: [], budgets: {}, categories: normCategories() };
+    spaceCache.household = emptySpaceData();
     state.activity = [];
     if (household) {
       householdListeners.push(
@@ -2178,9 +2661,7 @@ function switchSpace(space, remember = true) {
   spaceCache[state.space] = activeSpaceData();
   state.space = space;
   if (remember) state.preferredSpace = space;
-  state.transactions = spaceCache[space].transactions;
-  state.budgets = spaceCache[space].budgets;
-  state.categories = spaceCache[space].categories;
+  loadSpaceData(spaceCache[space]);
   state.viewMonth = monthKey(new Date());
   state.filters.category = "all";
   budgetsAnimated = false;
@@ -2500,6 +2981,7 @@ function migrateLocalDataToCloud() {
       Object.keys(local.budgets || {}).forEach((cat) => batch.set(userRef.collection("budgets").doc(budgetDocId(cat)), { limit: local.budgets[cat] }));
       const cats = normCategories(local.categories);
       [...cats.expense, ...cats.income].forEach((c) => batch.set(userRef.collection("categories").doc(c.ref), c));
+      normAccounts(local.accounts).forEach((a) => batch.set(userRef.collection("accounts").doc(a.ref), a));
       batch
         .commit()
         .then(() => {
@@ -2631,6 +3113,7 @@ function updateFirebaseStatusUI() {
 const LN = () => plugin("LocalNotifications");
 const REMINDER_IDS = [100, 101, 102, 103, 104, 105, 106];
 const WEEKLY_ID = 300;
+const CARD_IDS = Array.from({ length: 40 }, (_, i) => 400 + i); // 2 por tarjeta: 3 días antes y el día del pago
 
 async function ensureNotifyPermission() {
   const ln = LN();
@@ -2651,7 +3134,7 @@ function initNotifications() {
   ln.createChannel({ id: "finanflow", name: "FinanFlow", description: "Recordatorios y alertas de presupuesto", importance: 3 }).catch(() => {});
   ln.addListener("localNotificationActionPerformed", (e) => routeTo(e && e.notification && e.notification.extra && e.notification.extra.route));
 
-  ["reminder", "budget", "weekly"].forEach((key) => {
+  ["reminder", "budget", "weekly", "cards"].forEach((key) => {
     const input = $(`notify-${key}`);
     input.checked = !!state.notify[key];
     input.onchange = async () => {
@@ -2685,7 +3168,7 @@ function refreshScheduledNotifications() {
   clearTimeout(notifyTimer);
   notifyTimer = setTimeout(async () => {
     try {
-      await ln.cancel({ notifications: [...REMINDER_IDS, WEEKLY_ID].map((id) => ({ id })) });
+      await ln.cancel({ notifications: [...REMINDER_IDS, WEEKLY_ID, ...CARD_IDS].map((id) => ({ id })) });
     } catch (e) {
       /* nada programado */
     }
@@ -2712,7 +3195,9 @@ function refreshScheduledNotifications() {
       if (at <= now) at.setDate(at.getDate() + 7);
       const from = new Date(at);
       from.setDate(at.getDate() - 6);
-      const week = state.transactions.filter((t) => t.type === "expense" && t.date >= toISODate(from) && t.date <= toISODate(at));
+      const week = state.transactions.filter(
+        (t) => t.type === "expense" && countsAsMoney(t) && t.date >= toISODate(from) && t.date <= toISODate(at)
+      );
       const byCat = {};
       week.forEach((t) => (byCat[t.category] = (byCat[t.category] || 0) + Number(t.amount)));
       const top = Object.entries(byCat).sort((a, b) => b[1] - a[1])[0];
@@ -2720,6 +3205,36 @@ function refreshScheduledNotifications() {
         ? `Esta semana gastaste ${formatMoney(sumAmounts(week))}${top ? ` · Más en ${getCategoryInfo(top[0]).label}` : ""}.`
         : "Esta semana no registraste gastos. ¿Todo al día?";
       list.push({ ...base, id: WEEKLY_ID, title: "Tu resumen semanal", body, schedule: { at, allowWhileIdle: true }, extra: { route: "dashboard" } });
+    }
+
+    if (state.notify.cards) {
+      // Tarjetas del espacio personal con deuda y día de pago: aviso 3 días antes y el mismo día a las 9:00.
+      const { transactions, accounts } = personalData();
+      accountsFor(accounts)
+        .filter((a) => a.active && a.kind === "card" && a.dueDay)
+        .forEach((a) => {
+          const debt = -accountBalance(a, transactions);
+          if (debt <= 0) return;
+          const due = nextDueDate(a.dueDay);
+          const slot = 400 + (hashString(a.id) % 20) * 2;
+          [
+            [3, slot],
+            [0, slot + 1]
+          ].forEach(([daysBefore, id]) => {
+            const at = parseISO(due);
+            at.setDate(at.getDate() - daysBefore);
+            at.setHours(9, 0, 0, 0);
+            if (at <= now) return;
+            list.push({
+              ...base,
+              id,
+              title: daysBefore ? `${a.name}: pago en ${daysBefore} días` : `Hoy vence el pago de ${a.name}`,
+              body: `Debes ${formatMoney(debt)}. Regístralo con Transferir cuando pagues.`,
+              schedule: { at, allowWhileIdle: true },
+              extra: { route: "dashboard" }
+            });
+          });
+        });
     }
 
     if (list.length) ln.schedule({ notifications: list }).catch((e) => console.warn("Notificaciones:", e));
@@ -2792,12 +3307,12 @@ function syncWidget() {
   clearTimeout(widgetTimer);
   widgetTimer = setTimeout(() => {
     const ym = monthKey(new Date());
-    const { transactions: personal, categories } = personalData();
-    const s = monthStats(ym, 31, personal, categories);
+    const data = personalData();
+    const s = monthStats(ym, 31, data.transactions, data.categories);
     bridge
       .update({
         json: JSON.stringify({
-          balance: formatMoney(balanceUntil(todayISO(), personal, categories)),
+          balance: formatMoney(personalBalance(todayISO(), true, data)),
           income: formatMoney(s.income),
           expense: formatMoney(s.expense),
           monthKey: ym,
@@ -3017,7 +3532,14 @@ function exportFile(content, filename, type, successMessage) {
 
 function exportDataJSON() {
   const data = JSON.stringify(
-    { app: "FinanFlow", currency: state.currency, transactions: state.transactions, budgets: state.budgets, categories: state.categories },
+    {
+      app: "FinanFlow",
+      currency: state.currency,
+      transactions: state.transactions,
+      budgets: state.budgets,
+      categories: state.categories,
+      accounts: state.accounts
+    },
     null,
     2
   );
@@ -3026,10 +3548,17 @@ function exportDataJSON() {
 
 function exportDataCSV() {
   const esc = (v) => `"${String(v ?? "").replace(/"/g, '""')}"`;
-  const header = ["Fecha", "Tipo", "Categoría", "Monto", "Método", "Nota"].join(",");
+  const header = ["Fecha", "Tipo", "Categoría", "Monto", "Cuenta", "Nota"].join(",");
   const rows = [...state.transactions]
     .sort(byDateDesc)
-    .map((t) => [t.date, t.type === "income" ? "Ingreso" : "Gasto", getCategoryInfo(t.category, t.type).label, t.amount, t.method, t.note].map(esc).join(","));
+    .map((t) =>
+      (t.kind === "transfer"
+        ? [t.date, "Transferencia", `${accountInfo(t.from).name} → ${accountInfo(t.to).name}`, t.amount, accountInfo(t.from).name, t.note]
+        : [t.date, t.type === "income" ? "Ingreso" : "Gasto", getCategoryInfo(t.category, t.type).label, t.amount, accountInfo(t.method).name, t.note]
+      )
+        .map(esc)
+        .join(",")
+    );
   return exportFile("﻿" + [header, ...rows].join("\n"), `finanflow-${todayISO()}.csv`, "text/csv;charset=utf-8", "CSV exportado");
 }
 
@@ -3072,6 +3601,7 @@ function importDataJSON(event) {
         }
         const cats = normCategories(data.categories);
         [...cats.expense, ...cats.income].forEach((c) => (isCloud() ? upsertCategory(c) : setLocalCategory(c)));
+        normAccounts(data.accounts).forEach((a) => (isCloud() ? upsertAccount(a) : setLocalAccount(a)));
         if (!isCloud()) {
           state.transactions = data.transactions;
           state.budgets = data.budgets || {};
@@ -3088,7 +3618,7 @@ function importDataJSON(event) {
 
 /** Borra el espacio personal en la nube, en lotes (Firestore admite 500 escrituras por lote). */
 async function deletePersonalCloudData() {
-  for (const col of ["transactions", "budgets", "categories"]) {
+  for (const col of ["transactions", "budgets", "categories", "accounts"]) {
     const snap = await userRef().collection(col).get();
     for (let i = 0; i < snap.docs.length; i += 450) {
       const batch = db.batch();
@@ -3115,6 +3645,7 @@ function confirmResetAll() {
       state.transactions = [];
       state.budgets = {};
       state.categories = normCategories();
+      state.accounts = [];
       state.lastUsed = { expense: {}, income: {} };
       state.notified = {};
       state.viewMonth = monthKey(new Date());
@@ -3139,7 +3670,12 @@ function bindUI() {
   $("category-form").addEventListener("submit", saveCategory);
   $("cat-delete-btn").onclick = deleteCategoryFromSheet;
   $("categories-add-btn").onclick = () => openCategoryModal(null, categoriesListType);
-  ["tx-amount", "budget-limit"].forEach((id) => {
+  $("account-form").addEventListener("submit", saveAccount);
+  $("acc-delete-btn").onclick = deleteAccountFromSheet;
+  $("acc-contribute-btn").onclick = contributeToGoal;
+  $("acc-kind").onchange = updateAccountKindFields;
+  $("accounts-add-btn").onclick = () => openAccountModal(null, "bank");
+  ["tx-amount", "budget-limit", "acc-amount", "acc-limit", "acc-target"].forEach((id) => {
     $(id).addEventListener("input", (e) => {
       e.target.value = formatAmountInput(e.target.value);
     });
@@ -3261,6 +3797,8 @@ const app = {
   openTransactionModal,
   openBudgetModal,
   openCategories,
+  openAccounts,
+  openGoalModal,
   openAI,
   sendAIMessage,
   closeModal,

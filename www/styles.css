@@ -1756,6 +1756,51 @@ a {
   transition-duration: var(--dur-press);
 }
 
+/* Cuentas, tarjetas y metas */
+.row-amount.debt {
+  color: var(--expense);
+}
+
+/* Avance de una meta o cupo usado de una tarjeta (dato que se lee: sin animación) */
+.mini-progress {
+  display: block;
+  height: 4px;
+  margin-top: 6px;
+  border-radius: 2px;
+  background: var(--fill);
+  overflow: hidden;
+}
+
+.mini-progress > span {
+  display: block;
+  height: 100%;
+  transform-origin: left;
+}
+
+.form-row input.day-input,
+.form-row input[type="month"] {
+  border: none;
+  background: none;
+  outline: none;
+  text-align: right;
+  font-size: 17px;
+  color: var(--text-secondary);
+  min-height: 36px;
+}
+
+.form-row input.day-input {
+  width: 64px;
+}
+
+.form-row input:disabled {
+  opacity: 1;
+  -webkit-text-fill-color: var(--text-secondary);
+}
+
+#accounts-section {
+  margin: 8px 0 16px;
+}
+
 /* Filas de formulario */
 .form-group {
   margin-bottom: 4px;

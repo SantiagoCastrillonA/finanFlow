@@ -481,7 +481,7 @@
       <div class="sheet-header">
         <button type="button" class="btn-plain" data-close>Cancelar</button>
         <h2 id="modal-title">Nuevo movimiento</h2>
-        <button type="submit" form="transaction-form" class="btn-plain strong">Guardar</button>
+        <span></span>
       </div>
 
       <form id="transaction-form" novalidate autocomplete="off">
@@ -515,10 +515,18 @@
               <span class="ms">unfold_more</span>
             </span>
           </label>
-          <label class="form-row">
+          <!-- Fecha rápida: Hoy · Ayer · Otra (Otra abre el selector nativo, que queda encima invisible) -->
+          <div class="form-row date-row">
             <span>Fecha</span>
-            <input type="date" id="tx-date" required>
-          </label>
+            <span id="tx-date-chips" class="date-chips">
+              <button type="button" class="date-chip" data-offset="0">Hoy</button>
+              <button type="button" class="date-chip" data-offset="-1">Ayer</button>
+              <label class="date-chip date-other">
+                <span id="tx-date-other">Otra</span>
+                <input type="date" id="tx-date" required aria-label="Otra fecha">
+              </label>
+            </span>
+          </div>
           <label id="tx-method-row" class="form-row">
             <span>Cuenta</span>
             <span class="select-inline">
@@ -594,7 +602,7 @@
       <div class="sheet-header">
         <button type="button" class="btn-plain" data-close>Cancelar</button>
         <h2 id="budget-title">Nuevo límite</h2>
-        <button type="submit" form="budget-form" class="btn-plain strong">Guardar</button>
+        <span></span>
       </div>
       <form id="budget-form" novalidate autocomplete="off">
         <div class="list-group form-group">
@@ -722,7 +730,7 @@
       <div class="sheet-header">
         <button type="button" class="btn-plain" data-close>Cancelar</button>
         <h2 id="range-title">Rango de fechas</h2>
-        <button type="submit" form="range-form" class="btn-plain strong">Aplicar</button>
+        <span></span>
       </div>
       <form id="range-form" novalidate>
         <div class="list-group form-group">
@@ -772,7 +780,7 @@
       <div class="sheet-header">
         <button type="button" class="btn-plain" data-close>Cancelar</button>
         <h2 id="account-title">Nueva cuenta</h2>
-        <button type="submit" form="account-form" class="btn-plain strong">Guardar</button>
+        <span></span>
       </div>
       <form id="account-form" novalidate autocomplete="off">
         <div class="list-group form-group">
@@ -845,7 +853,7 @@
       <div class="sheet-header">
         <button type="button" class="btn-plain" data-close>Cancelar</button>
         <h2 id="category-title">Nueva categoría</h2>
-        <button type="submit" form="category-form" class="btn-plain strong">Guardar</button>
+        <span></span>
       </div>
       <form id="category-form" novalidate autocomplete="off">
         <div class="cat-preview-wrap">

@@ -555,6 +555,25 @@ function formatDateFriendly(dateStr) {
   if (dateStr === toISODate(yest)) return "Ayer";
   return parseISO(dateStr).toLocaleDateString("es-CO", { day: "numeric", month: "short" });
 }
+/** Pastillas de fecha de la hoja de movimiento: "Hoy, 16 oct" · "Ayer" · "Otra" (o la fecha elegida). */
+function renderDateChips() {
+  const value = $("tx-date").value;
+  const short = (iso) => parseISO(iso).toLocaleDateString("es-CO", { day: "numeric", month: "short" }).replace(" de ", " ").replace(".", "");
+  const [today, yesterday, other] = $("tx-date-chips").children;
+  const friendly = value ? formatDateFriendly(value) : "";
+  today.classList.toggle("active", friendly === "Hoy");
+  yesterday.classList.toggle("active", friendly === "Ayer");
+  other.classList.toggle("active", !!value && friendly !== "Hoy" && friendly !== "Ayer");
+  today.textContent = friendly === "Hoy" ? `Hoy, ${short(value)}` : "Hoy";
+  yesterday.textContent = friendly === "Ayer" ? `Ayer, ${short(value)}` : "Ayer";
+  const otherYear = value && value.slice(0, 4) !== todayISO().slice(0, 4);
+  $("tx-date-other").textContent = other.classList.contains("active")
+    ? parseISO(value).toLocaleDateString("es-CO", { day: "numeric", month: "short", ...(otherYear ? { year: "numeric" } : {}) }).replaceAll(" de ", " ").replace(".", "")
+    : "Otra";
+  today.setAttribute("aria-pressed", String(friendly === "Hoy"));
+  yesterday.setAttribute("aria-pressed", String(friendly === "Ayer"));
+}
+
 function formatDateGroupHeader(dateStr) {
   const friendly = formatDateFriendly(dateStr);
   if (friendly === "Hoy" || friendly === "Ayer") return friendly;
@@ -753,11 +772,25 @@ function openModal(id, focusId = null) {
   modal.classList.add("open");
   modal.setAttribute("aria-hidden", "false");
   modalStack.push(id);
+  modal.querySelectorAll(".amount-field input").forEach(fitAmount);
   if (focusId) {
     // Enfocar después de la entrada: si el teclado sale a mitad de la animación, la hoja salta.
     setTimeout(() => $(focusId)?.focus({ preventScroll: true }), reduceMotion.matches ? 0 : 360);
   }
 }
+/**
+ * El monto grande se ajusta al ancho de la cifra para que el símbolo quede pegado a ella y ambos
+ * centrados ("$ 45.000"). field-sizing: content hace lo mismo, pero no existe en WebViews viejos.
+ */
+let amountCtx = null;
+function fitAmount(input) {
+  amountCtx = amountCtx || document.createElement("canvas").getContext("2d");
+  const cs = getComputedStyle(input);
+  amountCtx.font = `${cs.fontWeight} ${cs.fontSize} ${cs.fontFamily}`;
+  const width = amountCtx.measureText(input.value || input.placeholder || "0").width;
+  input.style.width = `${Math.ceil(width) + 8}px`;
+}
+
 function closeModal(id) {
   const modal = $(id);
   if (!modal || !modal.classList.contains("open")) return;
@@ -1891,6 +1924,7 @@ function setSelectValue(select, value) {
 
 function setTxType(type, keepCategory = false) {
   txSheet.type = type;
+  $("tx-amount").dataset.type = type; // la cifra toma el color del tipo
   setSegmented($("tx-type"), type);
   const transfer = type === "transfer";
   $("tx-category-grid").classList.toggle("hidden", transfer);
@@ -1961,6 +1995,7 @@ function openTransactionModal(editId = null, presetType = "expense", preset = {}
     txSheet.category = preset.category;
     renderCategoryGrid();
   }
+  renderDateChips();
   openModal("transaction-modal", tx || preset.inbox ? null : "tx-amount");
 }
 
@@ -4839,6 +4874,15 @@ function bindUI() {
     updateCategoryPreview();
   });
   $("categories-add-btn").onclick = () => openCategoryModal(null, categoriesListType);
+  $("tx-date").addEventListener("change", renderDateChips);
+  $("tx-date-chips").querySelectorAll("[data-offset]").forEach((b) => {
+    b.onclick = () => {
+      const d = new Date();
+      d.setDate(d.getDate() + Number(b.dataset.offset));
+      $("tx-date").value = toISODate(d);
+      renderDateChips();
+    };
+  });
   // Solo CSS: clase en <html> (el <head> la pone antes de pintar para que no parpadee).
   $("brand-colors").checked = document.documentElement.classList.contains("brand-colors");
   $("brand-colors").onchange = (e) => {
@@ -4855,12 +4899,14 @@ function bindUI() {
   ["tx-amount", "budget-limit", "acc-amount", "acc-limit", "acc-target"].forEach((id) => {
     $(id).addEventListener("input", (e) => {
       e.target.value = formatAmountInput(e.target.value);
+      fitAmount(e.target);
     });
   });
 
   // Que el teclado no tape el campo enfocado dentro de una hoja
   document.querySelectorAll(".sheet").forEach((sheet) => {
     setupSheetGesture(sheet);
+    sheet.addEventListener("scroll", () => sheet.classList.toggle("scrolled", sheet.scrollTop > 4), { passive: true });
     sheet.addEventListener("focusin", (e) => {
       if (e.target.matches("input, select, textarea")) setTimeout(() => e.target.scrollIntoView({ block: "nearest" }), 300);
     });

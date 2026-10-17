@@ -1871,6 +1871,10 @@ html:not(.brand-colors) .row-icon.brand {
     backdrop-filter: none !important;
   }
 
+  .sheet-header {
+    background: var(--sheet-solid);
+  }
+
   [data-theme="light"] .toast {
     background: rgb(30, 30, 32);
   }
@@ -1922,7 +1926,13 @@ html:not(.brand-colors) .row-icon.brand {
   align-items: center;
   margin: 0 calc(-1 * var(--gutter)) 12px;
   padding: 0 var(--gutter);
-  background: inherit;
+  /* La hoja ya es vidrio: el encabezado no pone otro fondo encima (se notaba una franja). */
+  background: transparent;
+}
+
+/* Al hacer scroll, el encabezado se vuelve sólido para que el contenido no pase por debajo de su texto */
+.sheet.scrolled .sheet-header {
+  background: var(--sheet-solid);
 }
 
 .sheet-header > :first-child {
@@ -1954,10 +1964,10 @@ html:not(.brand-colors) .row-icon.brand {
   color: var(--text-secondary);
 }
 
+/* fitAmount() le da el ancho de la cifra: símbolo y cifra quedan centrados juntos */
 .amount-field input {
-  width: 100%;
-  max-width: 280px;
-  field-sizing: content; /* el símbolo queda pegado a la cifra donde hay soporte */
+  width: 1.2ch;
+  max-width: calc(100% - 40px);
   min-width: 1.2ch;
   border: none;
   background: none;
@@ -1970,8 +1980,57 @@ html:not(.brand-colors) .row-icon.brand {
   caret-color: var(--accent);
 }
 
+/* Fecha rápida en la hoja de movimiento */
+.date-chips {
+  display: flex;
+  gap: 6px;
+  flex-wrap: wrap;
+  justify-content: flex-end;
+}
+
+.date-chip {
+  position: relative;
+  display: inline-flex;
+  align-items: center;
+  min-height: 32px;
+  padding: 0 12px;
+  border-radius: 999px;
+  background: var(--fill);
+  font-size: 15px;
+  white-space: nowrap;
+  transition: background-color 150ms ease, color 150ms ease;
+}
+
+.date-chip.active {
+  background: var(--accent-fill);
+  color: var(--on-accent);
+  font-weight: 600;
+}
+
+/* El selector nativo va encima de "Otra", invisible: tocarlo abre el calendario del sistema */
+.date-chips .date-other input[type="date"] {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  opacity: 0;
+  cursor: pointer;
+}
+
 .amount-field input::placeholder {
   color: var(--text-secondary);
+}
+
+#tx-amount[data-type="expense"]:not(:placeholder-shown) {
+  color: var(--spend);
+}
+
+#tx-amount[data-type="income"]:not(:placeholder-shown) {
+  color: var(--income);
+}
+
+#tx-amount[data-type="transfer"]:not(:placeholder-shown) {
+  color: var(--accent-strong);
 }
 
 /* Cuadrícula de categorías (registro en dos toques) */
@@ -2024,13 +2083,12 @@ html:not(.brand-colors) .row-icon.brand {
   white-space: nowrap;
 }
 
-.cat-btn.active {
-  background: var(--fill);
-}
-
+/* La elegida: círculo lleno de su color y anillo Marea alrededor (sin rectángulo gris detrás) */
 .cat-btn.active .cat-icon {
   background: var(--c);
   color: #fff;
+  outline: 2.5px solid var(--accent);
+  outline-offset: 2px;
 }
 
 .cat-icon .brand-mono {
@@ -2049,7 +2107,6 @@ html:not(.brand-colors) .row-icon.brand {
 
 .cat-btn.active .cat-icon.brand {
   color: #fff;
-  box-shadow: 0 0 0 2px var(--card), 0 0 0 4px var(--c);
 }
 
 .cat-btn.active .cat-icon.brand.light {

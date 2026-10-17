@@ -26,7 +26,7 @@ Restricción: costo $0 y sin conexión. No se usan CDNs, y las fuentes e íconos
 | B | 0.11.1 | Ícono Moneda de oro en Android, PWA, splash y notificación | Mediana · **Hecha** |
 | C | 0.12.0 | Inicio: etiquetas, flechas, comparativa, alertas y neto | Mediana · **Hecha** |
 | C2 | 0.12.0 | Vidrio: moneda de fondo, saldo en vidrio, barra inferior flotante | Mediana · **Hecha** |
-| D | 0.12.1 | Registrar movimiento: monto, un solo Guardar, fecha rápida, selección | Mediana |
+| D | 0.12.1 | Registrar movimiento: monto, un solo Guardar, fecha rápida, selección | Mediana · **Hecha** |
 | E | 0.13.0 | Tipografía propia (Manrope local) | Pequeña |
 | F | 0.13.1 | Firma visual (moneda que se llena) y voz | Mediana |
 | H | 0.13.2 | Onboarding de 3 pantallas | Mediana |
@@ -251,7 +251,7 @@ Referencia visual: mockup "Inicio · vidrio", en claro y en oscuro, del lienzo d
 
 ---
 
-## Fase D — Registrar movimiento (0.12.1)
+## Fase D — Registrar movimiento (0.12.1) — HECHA
 
 1. **Monto agrupado.**
    - El "$" sale pegado a la izquierda y el 0 centrado.

@@ -67,7 +67,7 @@ Orden recomendado: A + A2 → B → C → C2 → D → E → F → H → I → J
 
 **Impacto en datos financieros:** ninguno; solo presentación.
 
-**Verificación:** `node --check www/app.js`. Revisar Inicio, Límites, Ajustes, Categorías y un aviso en ambos temas con `demo/finanflow-demo.json`. Con `grep -n "5E5CE6\|8E8CFF"` sobre `www/` solo deben quedar apariciones en la paleta de categorías (`CATEGORY_COLORS`, la categoría base Suscripciones y Nequi/Daviplata).
+**Verificación:** `node --check www/app.js`. Revisar Inicio, Límites, Ajustes, Categorías y un aviso en ambos temas con `www/demo/finanflow-demo.json`. Con `grep -n "5E5CE6\|8E8CFF"` sobre `www/` solo deben quedar apariciones en la paleta de categorías (`CATEGORY_COLORS`, la categoría base Suscripciones y Nequi/Daviplata).
 
 ---
 
@@ -304,7 +304,7 @@ Referencia visual: mockup "Inicio · vidrio", en claro y en oscuro, del lienzo d
 
 ---
 
-## Fase H — Onboarding (0.13.2)
+## Fase H — Onboarding (0.13.2) — HECHA (la mascota del paso 1 es la moneda hasta la Fase G)
 
 Hoy no hay primer uso: la app abre en Inicio vacío. Referencia: tableros "Onboarding 1–3" del lienzo de diseño.
 
@@ -318,7 +318,7 @@ Hoy no hay primer uso: la app abre en Inicio vacío. Referencia: tableros "Onboa
    - Nota: "Puedes cambiarlo cuando quieras en Ajustes → Nube".
 3. **Lo básico.**
    - Moneda en pastillas (COP preseleccionado según `navigator.language`), tema y recordatorio diario (solo en nativo).
-   - Botones "Anotar mi primer gasto" (abre la hoja de movimiento) y "Explorar con datos de ejemplo" (carga `demo/finanflow-demo.json` y muestra un aviso para borrarlos después).
+   - Botones "Anotar mi primer gasto" (abre la hoja de movimiento) y "Explorar con datos de ejemplo" (carga `www/demo/finanflow-demo.json` y muestra un aviso para borrarlos después).
 
 **Reglas:**
 - Se muestra solo si no hay `finanflow_state` ni sesión, y se marca como visto en `localStorage` (`finanflow_onboarded`).

@@ -2942,6 +2942,231 @@ html:not(.brand-colors) .row-icon.brand {
 }
 
 /* ==========================================================================
+   Primer uso (onboarding): pantalla completa, 3 pasos
+   ========================================================================== */
+
+.onboarding-modal {
+  z-index: 140;
+  align-items: stretch;
+  background: var(--bg);
+  opacity: 0;
+  transition: opacity 250ms var(--ease-out), visibility 0s linear 250ms;
+}
+
+.onboarding-modal.open {
+  opacity: 1;
+  transition: opacity 250ms var(--ease-out);
+}
+
+.onboarding {
+  position: relative;
+  display: flex;
+  flex-direction: column;
+  width: 100%;
+  max-width: 520px;
+  overflow-y: auto;
+  padding: var(--safe-top) 0 calc(12px + var(--safe-bottom));
+}
+
+.onb-step {
+  display: none;
+  flex: 1;
+  flex-direction: column;
+}
+
+.onb-step.active {
+  display: flex;
+  transition: opacity 250ms var(--ease-out), transform 250ms var(--ease-out);
+}
+
+/* Entrada de cada paso: desde un poco a la derecha, como avanzar una página */
+@starting-style {
+  .onb-step.active {
+    opacity: 0;
+    transform: translateX(16px);
+  }
+}
+
+.onb-hero {
+  position: relative;
+  flex: 1;
+  min-height: 220px;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 14px;
+  overflow: hidden;
+  isolation: isolate;
+}
+
+/* La marea del ícono, detrás de la moneda */
+.onb-hero::before {
+  content: "";
+  position: absolute;
+  z-index: -1;
+  left: 50%;
+  top: 50%;
+  width: 360px;
+  height: 360px;
+  margin: -180px 0 0 -180px;
+  border-radius: 50%;
+  background: var(--accent);
+  opacity: var(--coin-tide-opacity);
+}
+
+.onb-coin .coin {
+  width: 132px;
+  height: 132px;
+}
+
+.onb-logo {
+  font-family: var(--font-display);
+  font-size: 30px;
+  font-weight: 800;
+  letter-spacing: -0.5px;
+}
+
+.onb-body {
+  display: flex;
+  flex-direction: column;
+  padding: 24px var(--gutter) 0;
+}
+
+.onb-step:not([data-step="1"]) .onb-body {
+  flex: 1;
+  padding-top: 40px;
+}
+
+.onb-title {
+  font-family: var(--font-display);
+  font-size: 30px;
+  font-weight: 800;
+  letter-spacing: -0.5px;
+  line-height: 1.15;
+  margin: 0 0 8px;
+  outline: none; /* recibe el foco solo para anunciar el paso */
+}
+
+.onb-text {
+  color: var(--text-secondary);
+  font-size: 17px;
+  line-height: 1.4;
+  margin: 0 0 16px;
+}
+
+.onb-label {
+  font-size: 13px;
+  text-transform: uppercase;
+  color: var(--text-secondary);
+  margin: 18px 0 8px;
+}
+
+.onb-actions {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  margin-top: auto;
+  padding-top: 20px;
+}
+
+.onb-actions .btn-plain {
+  margin-top: 6px;
+}
+
+.onb-options {
+  display: grid;
+  gap: 10px;
+  margin-bottom: 12px;
+}
+
+.onb-option {
+  display: flex;
+  align-items: center;
+  gap: 14px;
+  padding: 14px 16px;
+  border-radius: 14px;
+  background: var(--card);
+  text-align: left;
+  outline: 2px solid transparent;
+  outline-offset: -2px;
+  transition: outline-color 150ms ease;
+}
+
+.onb-option.active {
+  outline-color: var(--accent-strong);
+}
+
+.onb-option-text {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  font-size: 15px;
+  color: var(--text-secondary);
+}
+
+.onb-option-text strong {
+  font-size: 17px;
+  font-weight: 600;
+  color: var(--text);
+}
+
+.onb-pills {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+
+.onb-pills button {
+  min-height: 40px;
+  padding: 0 16px;
+  border-radius: 20px;
+  background: var(--fill);
+  font-size: 15px;
+  font-weight: 500;
+  transition: background-color 150ms ease, color 150ms ease;
+}
+
+.onb-pills button.active {
+  background: var(--accent-fill);
+  color: var(--on-accent);
+}
+
+.onboarding #onb-reminder-row {
+  margin-top: 20px;
+}
+
+.onb-dots {
+  display: flex;
+  justify-content: center;
+  gap: 8px;
+  padding-top: 16px;
+}
+
+.onb-dots span {
+  width: 7px;
+  height: 7px;
+  border-radius: 50%;
+  background: var(--fill-strong);
+  transition: background-color 200ms ease;
+}
+
+.onb-dots span.active {
+  background: var(--accent-strong);
+}
+
+@media (orientation: landscape) and (max-height: 500px) {
+  .onb-hero {
+    min-height: 140px;
+  }
+
+  .onb-coin .coin {
+    width: 80px;
+    height: 80px;
+  }
+}
+
+/* ==========================================================================
    Tablet y horizontal
    ========================================================================== */
 
@@ -3216,6 +3441,12 @@ html:not(.brand-colors) .row-icon.brand {
   .dialog,
   .modal.open .dialog {
     transform: none;
+  }
+
+  @starting-style {
+    .onb-step.active {
+      transform: none;
+    }
   }
 
   .toast,

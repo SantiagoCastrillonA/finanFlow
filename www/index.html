@@ -441,6 +441,12 @@
           </button>
           <input type="file" id="import-file-input" accept=".json,application/json" hidden
             onchange="app.importDataJSON(event)">
+          <!-- Solo si se cargaron los datos de ejemplo del primer uso -->
+          <button type="button" id="demo-remove" class="setting-row hidden" onclick="app.removeDemoData()">
+            <span class="setting-icon"><span class="ms">delete</span></span>
+            <span class="setting-label">Quitar datos de ejemplo</span>
+            <span class="ms chevron">chevron_right</span>
+          </button>
         </div>
 
         <div class="list-group">
@@ -689,6 +695,74 @@
       </div>
       <p class="footnote">Toca una de la app para cambiar su color, u ocúltala si no la usas: tus movimientos viejos la
         siguen mostrando. En el Hogar, las categorías se comparten con tu pareja.</p>
+    </div>
+  </div>
+
+  <!-- Primer uso: bienvenida, dónde viven tus datos y lo básico (solo si no hay datos guardados) -->
+  <div id="onboarding-modal" class="modal onboarding-modal" aria-hidden="true">
+    <div class="onboarding" role="dialog" aria-modal="true" aria-labelledby="onb-title-1">
+      <section class="onb-step active" data-step="1">
+        <div class="onb-hero">
+          <span id="onb-coin" class="onb-coin"></span>
+          <span class="onb-logo">FinanFlow</span>
+        </div>
+        <div class="onb-body">
+          <h1 id="onb-title-1" class="onb-title">Tu dinero, en calma</h1>
+          <p class="onb-text">Anota tus gastos en segundos y mira a dónde se va tu plata. Sin anuncios, en español y también sin conexión.</p>
+          <div class="onb-actions">
+            <button type="button" class="btn-primary full" data-onb-next>Empezar</button>
+            <button type="button" class="btn-plain" id="onb-restore">Ya tengo un respaldo</button>
+          </div>
+        </div>
+      </section>
+
+      <section class="onb-step" data-step="2">
+        <div class="onb-body">
+          <h1 class="onb-title">Tus datos son tuyos</h1>
+          <p class="onb-text">Elige dónde se guardan.</p>
+          <div class="onb-options" role="radiogroup" aria-label="Dónde se guardan tus datos">
+            <button type="button" class="onb-option active" role="radio" aria-checked="true" data-storage="local">
+              <span class="setting-icon"><span class="ms">phone_iphone</span></span>
+              <span class="onb-option-text"><strong>Solo en este celular</strong><span>Nada sale de tu teléfono.</span></span>
+            </button>
+            <button type="button" class="onb-option" role="radio" aria-checked="false" data-storage="cloud">
+              <span class="setting-icon"><span class="ms">cloud</span></span>
+              <span class="onb-option-text"><strong>Sincronizar con Google</strong><span>Tus datos en todos tus dispositivos y un Hogar compartido.</span></span>
+            </button>
+          </div>
+          <p class="footnote">Puedes cambiarlo cuando quieras en Ajustes → Nube.</p>
+          <div class="onb-actions">
+            <button type="button" class="btn-primary full" data-onb-next>Continuar</button>
+          </div>
+        </div>
+      </section>
+
+      <section class="onb-step" data-step="3">
+        <div class="onb-body">
+          <h1 class="onb-title">Lo básico</h1>
+          <p class="onb-label">Moneda</p>
+          <div id="onb-currency" class="onb-pills" role="radiogroup" aria-label="Moneda"></div>
+          <p class="onb-label">Tema</p>
+          <div id="onb-theme" class="onb-pills" role="radiogroup" aria-label="Tema">
+            <button type="button" data-value="system">Automático</button>
+            <button type="button" data-value="light">Claro</button>
+            <button type="button" data-value="dark">Oscuro</button>
+          </div>
+          <div id="onb-reminder-row" class="list-group hidden">
+            <label class="setting-row">
+              <span class="setting-icon"><span class="ms">notifications</span></span>
+              <span class="setting-label">Recordatorio diario</span>
+              <input type="checkbox" id="onb-reminder" class="switch">
+            </label>
+          </div>
+          <div class="onb-actions">
+            <button type="button" class="btn-primary full" id="onb-first">Anotar mi primer gasto</button>
+            <button type="button" class="btn-plain" id="onb-demo">Explorar con datos de ejemplo</button>
+          </div>
+        </div>
+      </section>
+
+      <div class="onb-dots" aria-hidden="true"><span class="active"></span><span></span><span></span></div>
     </div>
   </div>
 

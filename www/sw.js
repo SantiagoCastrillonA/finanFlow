@@ -12,6 +12,7 @@ const ASSETS = [
   "./vendor/firebase/firebase-auth-compat.js",
   "./vendor/firebase/firebase-firestore-compat.js",
   "./manifest.json",
+  "./demo/finanflow-demo.json",
   "./icons/icon-192.png",
   "./icons/icon-512.png",
   "./icons/apple-touch-icon.png"

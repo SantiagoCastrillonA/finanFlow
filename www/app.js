@@ -143,6 +143,8 @@ const MIGRATED_KEY = "finanflow_migrated";
 const THEME_KEY = "finanflow_theme";
 const BRAND_COLORS_KEY = "finanflow_brand_colors"; // "1": logos con sus colores de marca (si no, monocromos)
 const GEMINI_KEY = "finanflow_gemini_key";
+const ONBOARDED_KEY = "finanflow_onboarded"; // "0": bienvenida a medias (se vuelve a mostrar), "1": vista
+const DEMO_KEY = "finanflow_demo"; // límites que agregaron los datos de ejemplo (para poder quitarlos)
 
 /* ==========================================================================
    Plataforma nativa (Capacitor). En la PWA todos estos plugins son undefined.
@@ -176,6 +178,8 @@ function loadState() {
   }
 }
 
+// Sin estado guardado = primera vez en este dispositivo (se muestra la bienvenida).
+const firstRun = localStorage.getItem(STORAGE_KEY) === null;
 const saved = loadState() || {};
 
 /** Valida una categoría propia (puede venir de la nube, de la pareja o de un respaldo). */
@@ -804,6 +808,7 @@ function closeModal(id) {
   const i = modalStack.lastIndexOf(id);
   if (i !== -1) modalStack.splice(i, 1);
   if (document.activeElement && modal.contains(document.activeElement)) document.activeElement.blur();
+  if (id === "onboarding-modal") localStorage.setItem(ONBOARDED_KEY, "1"); // también con Atrás / Escape
 }
 function closeTopModal() {
   if (!modalStack.length) return false;
@@ -3739,8 +3744,10 @@ function renderHouseholdSettings() {
 function migrateLocalDataToCloud() {
   const local = loadState();
   if (!local || localStorage.getItem(MIGRATED_KEY) === "true") return;
-  const txs = (local.transactions || []).filter((t) => !String(t.id).startsWith("seed-"));
+  // Los datos de ejemplo se quedan en el celular: no se suben a la cuenta.
+  const txs = (local.transactions || []).filter((t) => !/^(seed|demo)-/.test(String(t.id)));
   if (!txs.length) return;
+  const demoBudgets = demoBudgetKeys();
   showConfirmDialog(
     "¿Subir tus datos a la nube?",
     `Tienes ${txs.length} movimientos en este dispositivo. ¿Quieres sincronizarlos con tu cuenta de Google?`,
@@ -3748,7 +3755,7 @@ function migrateLocalDataToCloud() {
       const batch = db.batch();
       const userRef = db.collection("users").doc(state.user.uid);
       txs.forEach((t) => batch.set(userRef.collection("transactions").doc(t.id), t));
-      Object.keys(local.budgets || {}).forEach((cat) => batch.set(userRef.collection("budgets").doc(budgetDocId(cat)), { limit: local.budgets[cat] }));
+      Object.keys(local.budgets || {}).filter((cat) => !demoBudgets.includes(cat)).forEach((cat) => batch.set(userRef.collection("budgets").doc(budgetDocId(cat)), { limit: local.budgets[cat] }));
       const cats = normCategories(local.categories);
       [...cats.expense, ...cats.income].forEach((c) => batch.set(userRef.collection("categories").doc(c.ref), c));
       normAccounts(local.accounts).forEach((a) => batch.set(userRef.collection("accounts").doc(a.ref), a));
@@ -4882,11 +4889,174 @@ function confirmResetAll() {
       state.notified = {};
       state.viewMonth = monthKey(new Date());
       state.filters = { type: "all", category: "all", date: "month", search: "" };
+      localStorage.removeItem(DEMO_KEY);
       commit();
+      renderDemoRow();
       if (!cloud) showToast("Datos borrados", "info");
     },
     "Borrar todo"
   );
+}
+
+/* ==========================================================================
+   Primer uso: bienvenida en 3 pasos y datos de ejemplo
+   ========================================================================== */
+
+const DEMO_ANCHOR = "2026-10-16"; // el día "de hoy" del respaldo de ejemplo: sus fechas se corren a hoy
+
+function demoBudgetKeys() {
+  try {
+    return JSON.parse(localStorage.getItem(DEMO_KEY)) || [];
+  } catch (e) {
+    return [];
+  }
+}
+
+function renderDemoRow() {
+  $("demo-remove").classList.toggle("hidden", localStorage.getItem(DEMO_KEY) === null || isCloud());
+}
+
+/** Carga el respaldo de ejemplo en el espacio personal (solo modo local), con las fechas al día. */
+async function loadDemoData() {
+  let data;
+  try {
+    data = await (await fetch("demo/finanflow-demo.json")).json();
+  } catch (e) {
+    data = null;
+  }
+  if (!isValidBackup(data)) {
+    showToast("No se pudieron cargar los datos de ejemplo", "error");
+    return;
+  }
+  const days = Math.round((parseISO(todayISO()) - parseISO(DEMO_ANCHOR)) / 86400000);
+  const shift = (iso) => {
+    const d = parseISO(iso);
+    d.setDate(d.getDate() + days);
+    return toISODate(d);
+  };
+  const ids = new Set(state.transactions.map((t) => t.id));
+  // Las copias de los recurrentes se vuelven a generar con las fechas corridas.
+  const demo = data.transactions
+    .filter((t) => !t.recurringOf && !ids.has(t.id))
+    .map((t) => ({ ...t, date: shift(t.date), skipMonths: [] }))
+    .filter((t) => t.date <= todayISO());
+  const added = Object.keys(data.budgets || {}).filter((c) => state.budgets[c] === undefined);
+  added.forEach((c) => (state.budgets[c] = Number(data.budgets[c])));
+  state.transactions = [...state.transactions, ...demo];
+  localStorage.setItem(DEMO_KEY, JSON.stringify(added));
+  materializeRecurring();
+  resetCharts();
+  commit();
+  renderDemoRow();
+  showToast("Datos de ejemplo listos. Los quitas en Ajustes → Datos", "success", 4500);
+}
+
+function removeDemoData() {
+  showConfirmDialog(
+    "¿Quitar datos de ejemplo?",
+    "Se borran los movimientos y límites de ejemplo. Lo que hayas anotado tú se queda.",
+    () => {
+      state.transactions = state.transactions.filter((t) => !String(t.id).startsWith("demo-"));
+      demoBudgetKeys().forEach((c) => delete state.budgets[c]);
+      localStorage.removeItem(DEMO_KEY);
+      resetCharts();
+      commit();
+      renderDemoRow();
+      showToast("Datos de ejemplo quitados", "info");
+    },
+    "Quitar"
+  );
+}
+
+/** Moneda probable según el idioma del sistema (si no se reconoce, la de siempre). */
+function guessCurrency() {
+  const lang = (navigator.language || "").toLowerCase();
+  const map = { "es-co": "COP", "es-mx": "MXN", "es-ar": "ARS", "es-cl": "CLP", "es-pe": "PEN", "en-us": "USD" };
+  if (map[lang]) return map[lang];
+  return /^(es-es|de|fr|it|nl|pt-pt)/.test(lang) ? "EUR" : state.currency;
+}
+
+function initOnboarding() {
+  const flag = localStorage.getItem(ONBOARDED_KEY);
+  if (!((firstRun && flag === null) || flag === "0")) return;
+  localStorage.setItem(ONBOARDED_KEY, "0");
+
+  const modal = $("onboarding-modal");
+  const steps = [...modal.querySelectorAll(".onb-step")];
+  const dots = [...modal.querySelectorAll(".onb-dots span")];
+  let storage = "local";
+  const go = (n) => {
+    steps.forEach((s, i) => s.classList.toggle("active", i === n));
+    dots.forEach((d, i) => d.classList.toggle("active", i === n));
+    modal.querySelector(".onboarding").scrollTop = 0;
+    // El lector de pantalla anuncia el título del paso nuevo.
+    const title = steps[n].querySelector(".onb-title");
+    title.tabIndex = -1;
+    if (n > 0) title.focus({ preventScroll: true });
+  };
+  const finish = (then) => {
+    closeModal("onboarding-modal");
+    if (storage === "cloud") handleFirebaseSettingsAction();
+    else if (then) then();
+  };
+  // Pastillas de una sola opción (moneda y tema)
+  const pills = (box, value, onPick) => {
+    const sync = (v) =>
+      box.querySelectorAll("button").forEach((b) => {
+        b.classList.toggle("active", b.dataset.value === v);
+        b.setAttribute("role", "radio");
+        b.setAttribute("aria-checked", String(b.dataset.value === v));
+      });
+    box.querySelectorAll("button").forEach((b) => (b.onclick = () => (sync(b.dataset.value), onPick(b.dataset.value))));
+    sync(value);
+  };
+
+  // Paso 1: la moneda se llena al entrar
+  $("onb-coin").innerHTML = coinSVG(0);
+  setTimeout(() => fillCoin($("onb-coin").querySelector("svg"), 0, 0.62), 300);
+  modal.querySelectorAll("[data-onb-next]").forEach((b) => (b.onclick = () => go(steps.indexOf(b.closest(".onb-step")) + 1)));
+  $("onb-restore").onclick = () => {
+    closeModal("onboarding-modal");
+    $("import-file-input").click();
+  };
+
+  // Paso 2: dónde viven los datos
+  const options = [...modal.querySelectorAll(".onb-option")];
+  options.forEach((o) =>
+    (o.onclick = () => {
+      storage = o.dataset.storage;
+      options.forEach((x) => {
+        x.classList.toggle("active", x === o);
+        x.setAttribute("aria-checked", String(x === o));
+      });
+      // Los datos de ejemplo son solo locales: con la nube se empieza con la cuenta.
+      $("onb-demo").classList.toggle("hidden", storage === "cloud");
+      $("onb-first").textContent = storage === "cloud" ? "Conectar con Google" : "Anotar mi primer gasto";
+    })
+  );
+
+  // Paso 3: lo básico
+  $("onb-currency").innerHTML = Object.keys(CURRENCY_CONFIG).map((c) => `<button type="button" data-value="${c}">${c}</button>`).join("");
+  const currency = guessCurrency();
+  if (currency !== state.currency) changeCurrency(currency);
+  $("settings-currency").value = state.currency;
+  pills($("onb-currency"), state.currency, (c) => {
+    changeCurrency(c);
+    $("settings-currency").value = c;
+  });
+  pills($("onb-theme"), getThemePref(), applyThemePref);
+  const reminder = $("notify-reminder");
+  $("onb-reminder-row").classList.toggle("hidden", !(isNative && LN()));
+  $("onb-reminder").checked = reminder.checked;
+  $("onb-reminder").onchange = (e) => {
+    reminder.checked = e.target.checked;
+    reminder.dispatchEvent(new Event("change"));
+  };
+  $("onb-first").onclick = () => finish(() => openTransactionModal());
+  $("onb-demo").onclick = () => finish(loadDemoData);
+
+  go(0);
+  openModal("onboarding-modal");
 }
 
 /* ==========================================================================
@@ -5053,6 +5223,8 @@ function init() {
   initNotifications();
   initPaymentDetect();
   initUpdates();
+  renderDemoRow();
+  initOnboarding();
   handleDeepLink(location.href);
   checkBudgetAlerts();
   syncWidget();
@@ -5077,6 +5249,7 @@ const app = {
   exportDataCSV,
   importDataJSON,
   confirmResetAll,
+  removeDemoData,
   handleFirebaseSettingsAction,
   loginWithGoogle,
   openSyncSheet,

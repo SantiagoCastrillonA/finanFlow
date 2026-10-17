@@ -955,9 +955,9 @@ const centerTextPlugin = {
     ctx.fillStyle = cssVar("--text");
     // La cifra completa ($ 3.534.800) debe caber en el hueco de la dona: se achica si hace falta.
     const hole = Math.min(chartArea.width, chartArea.height) * 0.72 * 0.86;
-    ctx.font = `700 ${size}px ${cssVar("--font")}`;
+    ctx.font = `700 ${size}px ${cssVar("--font-display")}`;
     const fit = Math.min(1, hole / Math.max(1, ctx.measureText(lines[1] || "").width));
-    ctx.font = `700 ${size * fit}px ${cssVar("--font")}`;
+    ctx.font = `700 ${size * fit}px ${cssVar("--font-display")}`;
     ctx.fillText(lines[1] || "", x, y + size * 0.45);
     ctx.restore();
   }

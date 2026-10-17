@@ -27,7 +27,7 @@ Restricción: costo $0 y sin conexión. No se usan CDNs, y las fuentes e íconos
 | C | 0.12.0 | Inicio: etiquetas, flechas, comparativa, alertas y neto | Mediana · **Hecha** |
 | C2 | 0.12.0 | Vidrio: moneda de fondo, saldo en vidrio, barra inferior flotante | Mediana · **Hecha** |
 | D | 0.12.1 | Registrar movimiento: monto, un solo Guardar, fecha rápida, selección | Mediana · **Hecha** |
-| E | 0.13.0 | Tipografía propia (Manrope local) | Pequeña |
+| E | 0.13.0 | Tipografía propia (Manrope local) | Pequeña · **Hecha** |
 | F | 0.13.1 | Firma visual (moneda que se llena) y voz | Mediana |
 | H | 0.13.2 | Onboarding de 3 pantallas | Mediana |
 | I | 0.13.3 | Hogar compartido con la nueva marca | Mediana |
@@ -272,7 +272,7 @@ Referencia visual: mockup "Inicio · vidrio", en claro y en oscuro, del lienzo d
 
 ---
 
-## Fase E — Tipografía propia (0.13.0)
+## Fase E — Tipografía propia (0.13.0) — HECHA
 
 - **Manrope** (licencia OFL), variable, recortada a latín, en `www/vendor/fonts/manrope.woff2`.
   - Ampliar `scripts/vendor-assets.mjs` para descargarla de Google Fonts `css2`, como ya hace con Material Symbols.

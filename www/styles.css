@@ -95,6 +95,7 @@
 
 :root {
   --font: -apple-system, BlinkMacSystemFont, "SF Pro Text", system-ui, "Segoe UI", Roboto, sans-serif;
+  --font-display: "Manrope", var(--font);
   --radius: 14px;
   --gutter: 16px;
   --tab-h: 64px;   /* alto de la barra inferior flotante */
@@ -172,6 +173,27 @@ a {
 }
 
 /* Íconos locales, recortados a los que usa la app (npm run vendor para regenerar) */
+/* Manrope (OFL, local): títulos y cifras grandes. El texto de lectura sigue en la fuente del sistema. */
+@font-face {
+  font-family: "Manrope";
+  font-style: normal;
+  font-weight: 500 800;
+  font-display: swap;
+  src: url("vendor/fonts/manrope.woff2") format("woff2");
+}
+
+.large-title,
+.section-header h2,
+.balance-amount,
+.total-value,
+.allowance-value,
+.stat-value,
+.between-value,
+.amount-symbol,
+.amount-field input {
+  font-family: var(--font-display);
+}
+
 @font-face {
   font-family: "Material Symbols Rounded";
   font-style: normal;

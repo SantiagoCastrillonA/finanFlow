@@ -64,6 +64,16 @@
       <!-- ================= INICIO ================= -->
       <section id="tab-dashboard" class="tab-view" aria-label="Inicio">
         <div class="dash-col-left">
+        <!-- Moneda de fondo (decorativa): la del ícono, grande y detrás del saldo, que se ve a través del vidrio -->
+        <svg class="dash-coin" viewBox="0 0 400 420" aria-hidden="true" focusable="false">
+          <circle class="dash-coin-tide" cx="10" cy="270" r="72" />
+          <g transform="translate(250 170) scale(5.556) translate(-54 -54)">
+            <defs><clipPath id="dash-coin-clip"><circle cx="54" cy="54" r="27" /></clipPath></defs>
+            <circle class="dash-coin-disc" cx="54" cy="54" r="27" />
+            <path class="dash-coin-wave" clip-path="url(#dash-coin-clip)" d="M26 62 C34 55 41 55 48 59 S62 63 70 55 S79 49 82 50 V82 H26 Z" />
+            <circle class="dash-coin-rim" cx="54" cy="54" r="27" />
+          </g>
+        </svg>
         <div class="month-nav">
           <button type="button" id="month-prev" class="icon-btn plain" aria-label="Mes anterior">
             <span class="ms">chevron_left</span>

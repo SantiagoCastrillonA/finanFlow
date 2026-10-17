@@ -25,7 +25,7 @@ Restricción: costo $0 y sin conexión. No se usan CDNs, y las fuentes e íconos
 | A2 | 0.11.0 | Accesibilidad: contraste de tokens, tamaños táctiles, texto grande, gráficas | Pequeña · **Hecha** |
 | B | 0.11.1 | Ícono Moneda de oro en Android, PWA, splash y notificación | Mediana · **Hecha** |
 | C | 0.12.0 | Inicio: etiquetas, flechas, comparativa, alertas y neto | Mediana · **Hecha** |
-| C2 | 0.12.0 | Vidrio: moneda de fondo, saldo en vidrio, barra inferior flotante | Mediana |
+| C2 | 0.12.0 | Vidrio: moneda de fondo, saldo en vidrio, barra inferior flotante | Mediana · **Hecha** |
 | D | 0.12.1 | Registrar movimiento: monto, un solo Guardar, fecha rápida, selección | Mediana |
 | E | 0.13.0 | Tipografía propia (Manrope local) | Pequeña |
 | F | 0.13.1 | Firma visual (moneda que se llena) y voz | Mediana |
@@ -199,7 +199,7 @@ Sustituye por completo el ícono "Barras" del plan 009 y sigue sus mismos pasos 
 
 ---
 
-## Fase C2 — Vidrio con propósito (0.12.0, junto con C)
+## Fase C2 — Vidrio con propósito (0.12.0, junto con C) — HECHA
 
 Referencia visual: mockup "Inicio · vidrio", en claro y en oscuro, del lienzo de diseño "FinanFlow · Rediseño".
 

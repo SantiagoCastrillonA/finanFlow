@@ -34,13 +34,21 @@
   --bar-bg: rgba(12, 24, 24, 0.82);
   --backdrop: rgba(0, 0, 0, 0.5);
   --shadow: 0 8px 32px rgba(0, 0, 0, 0.5);
-  /* Vidrio sobre un fondo de un solo color: las tarjetas grandes más claras y con borde de luz, las listas más discretas. */
+  /* Vidrio con propósito: solo el saldo (sobre la moneda de fondo) y lo que flota (barra, hojas, avisos,
+     botón de FinanBot) desenfocan lo de atrás. Las demás tarjetas y listas son sólidas. */
   --glass: rgba(255, 255, 255, 0.08);
   --glass-edge: rgba(255, 255, 255, 0.18);
   --glass-glint: rgba(255, 255, 255, 0.25);
-  --surface: rgba(255, 255, 255, 0.045);
+  --surface: var(--card);
   --surface-edge: rgba(255, 255, 255, 0.07);
   --surface-glint: rgba(255, 255, 255, 0.09);
+  --glass-balance: rgba(255, 255, 255, 0.08);
+  --glass-float: rgba(27, 45, 45, 0.72);
+  --glass-sheet: rgba(19, 33, 33, 0.9);
+  --sheet-solid: var(--card);
+  --coin-disc-opacity: 0.09;
+  --coin-wave-opacity: 0.2;
+  --coin-tide-opacity: 0.22;
 }
 
 [data-theme="light"] {
@@ -73,16 +81,24 @@
   --glass: rgba(255, 255, 255, 0.45);
   --glass-edge: rgba(255, 255, 255, 0.75);
   --glass-glint: rgba(255, 255, 255, 0.95);
-  --surface: rgba(255, 255, 255, 0.62);
+  --surface: var(--card);
   --surface-edge: rgba(255, 255, 255, 0.8);
   --surface-glint: rgba(255, 255, 255, 0.9);
+  --glass-balance: rgba(255, 255, 255, 0.72);
+  --glass-float: rgba(255, 255, 255, 0.66);
+  --glass-sheet: rgba(238, 244, 243, 0.88);
+  --sheet-solid: var(--bg);
+  --coin-disc-opacity: 1;
+  --coin-wave-opacity: 0.8;
+  --coin-tide-opacity: 0.25;
 }
 
 :root {
   --font: -apple-system, BlinkMacSystemFont, "SF Pro Text", system-ui, "Segoe UI", Roboto, sans-serif;
   --radius: 14px;
   --gutter: 16px;
-  --tab-h: 56px;
+  --tab-h: 64px;   /* alto de la barra inferior flotante */
+  --tab-gap: 10px;  /* separación de la barra con el borde de la pantalla */
   --safe-top: env(safe-area-inset-top, 0px);
   --safe-bottom: env(safe-area-inset-bottom, 0px);
 
@@ -507,7 +523,8 @@ a {
   overflow-y: auto;
   overscroll-behavior-y: contain;
   -webkit-overflow-scrolling: touch;
-  padding: 4px var(--gutter) calc(var(--tab-h) + var(--safe-bottom) + 32px);
+  overflow-x: hidden; /* la moneda de fondo de Inicio se sale por la derecha */
+  padding: 4px var(--gutter) calc(var(--tab-h) + var(--tab-gap) + var(--safe-bottom) + 28px);
 }
 
 .tab-view {
@@ -574,8 +591,8 @@ a {
 }
 
 .card {
-  background: var(--glass);
-  box-shadow: inset 0 0 0 0.5px var(--glass-edge), inset 0 1px 0 var(--glass-glint);
+  background: var(--card);
+  box-shadow: inset 0 0 0 0.5px var(--surface-edge), inset 0 1px 0 var(--surface-glint);
   border-radius: var(--radius);
   padding: 16px;
   margin-bottom: 12px;
@@ -829,7 +846,81 @@ a {
 }
 
 .balance-card {
+  position: relative;
   padding: 20px;
+  background: var(--glass-balance);
+  -webkit-backdrop-filter: blur(24px) saturate(180%);
+  backdrop-filter: blur(24px) saturate(180%);
+  box-shadow: inset 0 0 0 1px var(--glass-edge), inset 0 1px 0 var(--glass-glint), 0 8px 24px rgba(0, 0, 0, 0.08);
+}
+
+/* Con la moneda detrás del vidrio, el texto de color se refuerza para seguir en ≥ 4.5:1 (peor caso medido:
+   la ola de oro y el círculo Marea bajo el texto). */
+[data-theme="light"] .balance-card {
+  --income: #166534;
+  --spend: #1D4ED8;
+  --warning-text: #92400E;
+  --expense: #BE123C;
+}
+
+[data-theme="dark"] .balance-card {
+  --income: #86EFAC;
+  --spend: #BFDBFE;
+  --warning-text: #FCD34D;
+  --expense: #FDA4AF;
+  --text-secondary: rgba(235, 235, 245, 0.72);
+}
+
+.balance-card .compare {
+  background: color-mix(in srgb, #fff 45%, transparent);
+}
+
+[data-theme="dark"] .balance-card .compare {
+  background: rgba(255, 255, 255, 0.08);
+}
+
+/* Moneda de fondo de Inicio: se mueve con el scroll, detrás del saldo. Misma geometría que el ícono. */
+.dash-col-left {
+  position: relative;
+  isolation: isolate;
+}
+
+.dash-coin {
+  position: absolute;
+  z-index: -1;
+  top: 24px;
+  right: -90px;
+  width: 400px;
+  height: 420px;
+  overflow: visible;
+  pointer-events: none;
+}
+
+.dash-coin-tide {
+  fill: var(--accent);
+  opacity: var(--coin-tide-opacity);
+}
+
+.dash-coin-disc {
+  fill: #FBE7B5;
+  opacity: var(--coin-disc-opacity);
+}
+
+.dash-coin-wave {
+  fill: var(--gold);
+  opacity: var(--coin-wave-opacity);
+}
+
+.dash-coin-rim {
+  fill: none;
+  stroke: #fff;
+  stroke-width: 6px;
+  stroke-opacity: 0.9;
+  vector-effect: non-scaling-stroke;
+}
+
+[data-theme="dark"] .dash-coin-rim {
+  stroke-opacity: 0.2;
 }
 
 .balance-amount {
@@ -1616,19 +1707,21 @@ html:not(.brand-colors) .row-icon.brand {
    Barra de pestañas
    ========================================================================== */
 
+/* Barra flotante de vidrio, separada del borde (en tablet es la barra lateral sólida) */
 .tab-bar {
   position: absolute;
-  left: 0;
-  right: 0;
-  bottom: 0;
+  left: 12px;
+  right: 12px;
+  bottom: calc(var(--tab-gap) + var(--safe-bottom));
   display: flex;
   align-items: center;
-  height: calc(var(--tab-h) + var(--safe-bottom));
-  padding: 0 8px var(--safe-bottom);
-  background: var(--bar-bg);
-  -webkit-backdrop-filter: saturate(180%) blur(12px);
-  backdrop-filter: saturate(180%) blur(12px);
-  border-top: 0.5px solid var(--separator);
+  height: var(--tab-h);
+  padding: 0 8px;
+  border-radius: calc(var(--tab-h) / 2);
+  background: var(--glass-float);
+  -webkit-backdrop-filter: blur(20px) saturate(180%);
+  backdrop-filter: blur(20px) saturate(180%);
+  box-shadow: inset 0 0 0 1px var(--glass-edge), 0 8px 24px rgba(0, 0, 0, 0.14);
   z-index: 10;
 }
 
@@ -1662,8 +1755,8 @@ html:not(.brand-colors) .row-icon.brand {
 }
 
 .nav-add {
-  width: 46px;
-  height: 46px;
+  width: 52px;
+  height: 52px;
   margin: 0 8px;
   border-radius: 50%;
   display: inline-flex;
@@ -1731,16 +1824,14 @@ html:not(.brand-colors) .row-icon.brand {
   max-height: calc(100% - var(--safe-top) - 24px);
   overflow-y: auto;
   overscroll-behavior: contain;
-  background: var(--bg);
+  background: var(--glass-sheet);
+  -webkit-backdrop-filter: blur(24px) saturate(180%);
+  backdrop-filter: blur(24px) saturate(180%);
   border-radius: 14px 14px 0 0;
   padding: 0 var(--gutter) calc(16px + var(--safe-bottom));
   transform: translateY(100%);
   transition: transform 250ms var(--ease-drawer);
   box-shadow: var(--shadow);
-}
-
-[data-theme="dark"] .sheet {
-  background: var(--card);
 }
 
 .sheet,
@@ -1753,11 +1844,48 @@ html:not(.brand-colors) .row-icon.brand {
   --surface-glint: transparent;
 }
 
-/* Quien pide menos transparencia en el sistema ve tarjetas sólidas. */
+/* Botón de FinanBot y demás del encabezado: flotan sobre la moneda, en vidrio */
+.app-header .icon-btn:not(.plain) {
+  background: var(--glass-float);
+  -webkit-backdrop-filter: blur(20px) saturate(180%);
+  backdrop-filter: blur(20px) saturate(180%);
+  box-shadow: inset 0 0 0 1px var(--glass-edge);
+}
+
+/* Quien pide menos transparencia en el sistema (o un WebView sin backdrop-filter) ve todo sólido. */
 @media (prefers-reduced-transparency: reduce) {
-  :root {
+  :root,
+  [data-theme="light"] {
     --glass: var(--card);
-      --surface: var(--card);
+    --glass-balance: var(--card);
+    --glass-float: var(--card);
+    --glass-sheet: var(--sheet-solid);
+  }
+
+  .balance-card,
+  .tab-bar,
+  .sheet,
+  .toast,
+  .app-header .icon-btn {
+    -webkit-backdrop-filter: none !important;
+    backdrop-filter: none !important;
+  }
+
+  [data-theme="light"] .toast {
+    background: rgb(30, 30, 32);
+  }
+
+  [data-theme="dark"] .toast {
+    background: var(--elevated);
+  }
+}
+
+@supports not ((backdrop-filter: blur(1px)) or (-webkit-backdrop-filter: blur(1px))) {
+  :root,
+  [data-theme="light"] {
+    --glass-balance: var(--card);
+    --glass-float: var(--card);
+    --glass-sheet: var(--sheet-solid);
   }
 }
 
@@ -2579,7 +2707,7 @@ html:not(.brand-colors) .row-icon.brand {
 #toast-container {
   position: fixed;
   left: 50%;
-  bottom: calc(var(--tab-h) + var(--safe-bottom) + 12px);
+  bottom: calc(var(--tab-h) + var(--tab-gap) + var(--safe-bottom) + 12px);
   transform: translateX(-50%);
   width: min(420px, calc(100% - 32px));
   display: flex;
@@ -2597,7 +2725,9 @@ html:not(.brand-colors) .row-icon.brand {
   padding: 8px 8px 8px 14px;
   border-radius: 14px;
   --toast-accent: var(--accent-strong);
-  background: var(--elevated);
+  background: rgba(27, 45, 45, 0.9);
+  -webkit-backdrop-filter: blur(20px) saturate(180%);
+  backdrop-filter: blur(20px) saturate(180%);
   box-shadow: var(--shadow);
   font-size: 15px;
   pointer-events: auto;
@@ -2608,7 +2738,7 @@ html:not(.brand-colors) .row-icon.brand {
 
 [data-theme="light"] .toast {
   --toast-accent: #3FD6C2; /* el aviso es oscuro también en tema claro */
-  background: rgba(30, 30, 32, 0.94);
+  background: rgba(30, 30, 32, 0.88);
   color: #fff;
 }
 
@@ -2866,7 +2996,8 @@ html:not(.brand-colors) .row-icon.brand {
     background: var(--card);
     -webkit-backdrop-filter: none;
     backdrop-filter: none;
-    border-top: 0;
+    border-radius: 0;
+    box-shadow: none;
     border-right: 0.5px solid var(--separator);
   }
 

@@ -24,6 +24,7 @@ public final class PaymentStore {
     private static final String KEY_MERCHANTS = "merchants";
     private static final String KEY_CONTEXT = "context";
     private static final String KEY_SOURCES = "sources";
+    private static final String KEY_DIAG = "diag";
     static final String KEY_ENABLED = "enabled";
     private static final int MAX_ITEMS = 50;
     private static final long SAME_PAYMENT_MS = 10 * 60 * 1000;
@@ -83,6 +84,22 @@ public final class PaymentStore {
                 prefs(c).edit().putString(KEY_SOURCES, s.toString()).apply();
             }
         } catch (JSONException ignored) {}
+    }
+
+    /**
+     * Diagnóstico sin contenido (nunca texto, monto ni comercio): cuándo se conectó el lector, cuándo
+     * leyó el último aviso de una app de pagos y cómo se mostró el último pago. Se ve en Ajustes.
+     */
+    static JSONObject diag(Context c) {
+        return obj(c, KEY_DIAG);
+    }
+
+    static synchronized void noteDiag(Context c, String key, Object value) {
+        JSONObject d = diag(c);
+        try {
+            d.put(key, value);
+        } catch (JSONException ignored) {}
+        prefs(c).edit().putString(KEY_DIAG, d.toString()).apply();
     }
 
     static String link(Context c, String key) {

@@ -23,6 +23,7 @@
       var pref = localStorage.getItem("finanflow_theme") || "system";
       var dark = pref === "dark" || (pref === "system" && matchMedia("(prefers-color-scheme: dark)").matches);
       document.documentElement.setAttribute("data-theme", dark ? "dark" : "light");
+      if (localStorage.getItem("finanflow_brand_colors") === "1") document.documentElement.classList.add("brand-colors");
     })();
   </script>
 
@@ -167,7 +168,8 @@
             <button data-value="income">Ingresos</button>
           </div>
           <div class="chart-wrapper">
-            <canvas id="categoryChart" aria-label="Distribución del mes"></canvas>
+            <canvas id="categoryChart" aria-hidden="true"></canvas>
+            <p id="categoryChart-summary" class="sr-only"></p>
             <div id="no-chart-data" class="chart-empty hidden">
               <span class="ms">donut_large</span>
               <p>Sin movimientos este mes</p>
@@ -180,7 +182,8 @@
             <h2 id="trend-title" class="card-title">Saldo · últimos 7 días</h2>
           </div>
           <div class="chart-wrapper trend">
-            <canvas id="trendChart" aria-label="Evolución del saldo"></canvas>
+            <canvas id="trendChart" aria-hidden="true"></canvas>
+            <p id="trendChart-summary" class="sr-only"></p>
             <div id="no-trend-data" class="chart-empty hidden">
               <span class="ms">show_chart</span>
               <p>Registra movimientos para ver la tendencia</p>
@@ -254,7 +257,7 @@
         <h2 class="group-title">General</h2>
         <div class="list-group">
           <label class="setting-row">
-            <span class="setting-icon" style="background:#5E5CE6"><span class="ms">contrast</span></span>
+            <span class="setting-icon"><span class="ms">contrast</span></span>
             <span class="setting-label">Tema</span>
             <span class="select-inline">
               <select id="settings-theme" onchange="app.applyThemePref(this.value)">
@@ -266,7 +269,7 @@
             </span>
           </label>
           <label class="setting-row">
-            <span class="setting-icon" style="background:#30D158"><span class="ms">payments</span></span>
+            <span class="setting-icon"><span class="ms">payments</span></span>
             <span class="setting-label">Moneda</span>
             <span class="select-inline">
               <select id="settings-currency" onchange="app.changeCurrency(this.value)">
@@ -282,12 +285,12 @@
             </span>
           </label>
           <button type="button" class="setting-row" onclick="app.openCategories()">
-            <span class="setting-icon" style="background:#FF9F0A"><span class="ms">category</span></span>
+            <span class="setting-icon"><span class="ms">category</span></span>
             <span class="setting-label">Categorías</span>
             <span class="ms chevron">chevron_right</span>
           </button>
           <button type="button" class="setting-row" onclick="app.openAccounts()">
-            <span class="setting-icon" style="background:#0A84FF"><span class="ms">account_balance</span></span>
+            <span class="setting-icon"><span class="ms">account_balance</span></span>
             <span class="setting-label">Cuentas y tarjetas</span>
             <span class="ms chevron">chevron_right</span>
           </button>
@@ -297,27 +300,27 @@
           <h2 class="group-title">Notificaciones</h2>
           <div class="list-group">
             <label class="setting-row">
-              <span class="setting-icon" style="background:#FF9F0A"><span class="ms">notifications</span></span>
+              <span class="setting-icon"><span class="ms">notifications</span></span>
               <span class="setting-label">Recordatorio diario</span>
               <input type="checkbox" id="notify-reminder" class="switch">
             </label>
             <label id="notify-time-row" class="setting-row hidden">
-              <span class="setting-icon" style="background:#8E8E93"><span class="ms">schedule</span></span>
+              <span class="setting-icon"><span class="ms">schedule</span></span>
               <span class="setting-label">Hora</span>
               <input type="time" id="notify-time" class="time-input">
             </label>
             <label class="setting-row">
-              <span class="setting-icon" style="background:#FF453A"><span class="ms">warning</span></span>
+              <span class="setting-icon"><span class="ms">warning</span></span>
               <span class="setting-label">Alertas de límites</span>
               <input type="checkbox" id="notify-budget" class="switch">
             </label>
             <label class="setting-row">
-              <span class="setting-icon" style="background:#0A84FF"><span class="ms">insights</span></span>
+              <span class="setting-icon"><span class="ms">insights</span></span>
               <span class="setting-label">Resumen semanal</span>
               <input type="checkbox" id="notify-weekly" class="switch">
             </label>
             <label class="setting-row">
-              <span class="setting-icon" style="background:#FF9F0A"><span class="ms">credit_card</span></span>
+              <span class="setting-icon"><span class="ms">credit_card</span></span>
               <span class="setting-label">Pago de tarjetas</span>
               <input type="checkbox" id="notify-cards" class="switch">
             </label>
@@ -331,12 +334,12 @@
           <h2 class="group-title">Detectar pagos</h2>
           <div class="list-group">
             <label class="setting-row">
-              <span class="setting-icon" style="background:#5E5CE6"><span class="ms">contactless</span></span>
+              <span class="setting-icon"><span class="ms">contactless</span></span>
               <span class="setting-label">Registrar al pagar</span>
               <input type="checkbox" id="paydetect-enabled" class="switch">
             </label>
             <button type="button" id="paydetect-listener" class="setting-row hidden">
-              <span class="setting-icon" style="background:#FF9F0A"><span class="ms">notifications</span></span>
+              <span class="setting-icon"><span class="ms">notifications</span></span>
               <span class="setting-text">
                 <span class="setting-label">Acceso a notificaciones</span>
                 <span id="paydetect-listener-sub" class="setting-sub"></span>
@@ -344,13 +347,20 @@
               <span class="ms chevron">chevron_right</span>
             </button>
             <button type="button" id="paydetect-overlay" class="setting-row hidden">
-              <span class="setting-icon" style="background:#0A84FF"><span class="ms">layers</span></span>
+              <span class="setting-icon"><span class="ms">layers</span></span>
               <span class="setting-text">
                 <span class="setting-label">Mostrar sobre otras apps</span>
                 <span id="paydetect-overlay-sub" class="setting-sub"></span>
               </span>
               <span class="ms chevron">chevron_right</span>
             </button>
+            <div id="paydetect-status" class="setting-row hidden">
+              <span class="setting-icon"><span class="ms">info</span></span>
+              <span class="setting-text">
+                <span class="setting-label">Último aviso</span>
+                <span id="paydetect-status-sub" class="setting-sub"></span>
+              </span>
+            </div>
           </div>
           <p id="paydetect-note" class="footnote"></p>
         </div>
@@ -360,7 +370,7 @@
           <h2 class="group-title">Seguridad</h2>
           <div class="list-group">
             <label class="setting-row">
-              <span class="setting-icon" style="background:#30D158"><span class="ms">fingerprint</span></span>
+              <span class="setting-icon"><span class="ms">fingerprint</span></span>
               <span class="setting-label">Bloquear con huella o PIN</span>
               <input type="checkbox" id="lock-enabled" class="switch">
             </label>
@@ -371,7 +381,7 @@
         <h2 class="group-title">FinanBot</h2>
         <div class="list-group">
           <div class="setting-row">
-            <span class="setting-icon" style="background:#BF5AF2"><span class="ms">key</span></span>
+            <span class="setting-icon"><span class="ms">key</span></span>
             <input type="password" id="gemini-api-key" class="inline-input" placeholder="API Key de Gemini"
               autocomplete="off" onchange="app.saveGeminiKey(this.value)" aria-label="API Key de Gemini">
             <button type="button" class="icon-btn plain" onclick="app.toggleApiKeyVisibility()"
@@ -386,7 +396,7 @@
         <h2 class="group-title">Nube</h2>
         <div class="list-group">
           <div class="setting-row">
-            <span class="setting-icon" style="background:#0A84FF"><span id="firebase-status-icon"
+            <span class="setting-icon"><span id="firebase-status-icon"
                 class="ms">cloud</span></span>
             <span class="setting-text">
               <span id="firebase-status-title" class="setting-label">Modo local</span>
@@ -404,17 +414,17 @@
         <h2 class="group-title">Datos</h2>
         <div class="list-group">
           <button type="button" class="setting-row" onclick="app.exportDataJSON()">
-            <span class="setting-icon" style="background:#5E5CE6"><span class="ms">download</span></span>
+            <span class="setting-icon"><span class="ms">download</span></span>
             <span class="setting-label">Exportar respaldo (JSON)</span>
             <span class="ms chevron">chevron_right</span>
           </button>
           <button type="button" class="setting-row" onclick="app.exportDataCSV()">
-            <span class="setting-icon" style="background:#30D158"><span class="ms">table_view</span></span>
+            <span class="setting-icon"><span class="ms">table_view</span></span>
             <span class="setting-label">Exportar a Excel (CSV)</span>
             <span class="ms chevron">chevron_right</span>
           </button>
           <button type="button" class="setting-row" onclick="document.getElementById('import-file-input').click()">
-            <span class="setting-icon" style="background:#FF9F0A"><span class="ms">upload</span></span>
+            <span class="setting-icon"><span class="ms">upload</span></span>
             <span class="setting-label">Restaurar respaldo</span>
             <span class="ms chevron">chevron_right</span>
           </button>
@@ -428,7 +438,7 @@
           </button>
         </div>
 
-        <p class="app-version">FinanFlow 0.10.3 · Tus datos son tuyos</p>
+        <p class="app-version">FinanFlow 0.11.0 · Tus datos son tuyos</p>
         <button type="button" id="update-check" class="btn-plain small update-check hidden">Buscar actualizaciones</button>
       </section>
     </main>
@@ -652,6 +662,12 @@
       <button type="button" id="categories-add-btn" class="btn-tinted full">
         <span class="ms">add</span> Nueva categoría
       </button>
+      <div class="list-group brand-colors-group">
+        <label class="setting-row">
+          <span class="setting-label">Logos con sus colores</span>
+          <input type="checkbox" id="brand-colors" class="switch">
+        </label>
+      </div>
       <p class="footnote">Toca una de la app para cambiar su color, u ocúltala si no la usas: tus movimientos viejos la
         siguen mostrando. En el Hogar, las categorías se comparten con tu pareja.</p>
     </div>

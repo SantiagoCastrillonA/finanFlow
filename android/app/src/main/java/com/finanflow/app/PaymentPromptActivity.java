@@ -34,6 +34,9 @@ public class PaymentPromptActivity extends Activity {
 
     private static final long AUTO_HIDE_MS = 15000;
 
+    /** Último pago que llegó a mostrarse (PaymentNotifier lo revisa para saber si Android bloqueó la tarjeta). */
+    static volatile String openedId;
+
     private final Handler handler = new Handler(Looper.getMainLooper());
     private final Runnable autoHide = this::toPending;
     private String id;
@@ -79,6 +82,7 @@ public class PaymentPromptActivity extends Activity {
             close();
             return;
         }
+        openedId = id;
         render();
         restartTimer();
         root.post(() -> root.performHapticFeedback(HapticFeedbackConstants.VIRTUAL_KEY));

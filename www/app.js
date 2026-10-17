@@ -1613,16 +1613,24 @@ function txRow(t, showDate) {
     return el;
   }
 
-  // En el Hogar, el subtítulo dice quién pagó y cómo se dividió.
+  // En el Hogar, el subtítulo dice quién pagó, cómo se dividió y cuánto te toca.
+  const share = t.payerShare ?? 50;
+  const myPart = t.type === "expense" && t.paidBy ? roundMoney((Number(t.amount) * (isMine(t) ? share : 100 - share)) / 100) : 0;
   const split =
     inHousehold() && t.paidBy
-      ? [paidByLabel(t), t.type === "expense" ? splitLabel(t.payerShare ?? 50) : null]
+      ? [
+          paidByLabel(t),
+          t.type === "expense" ? splitLabel(share) : null,
+          myPart > 0 && !(isMine(t) && share === 100) ? `tu parte ${formatMoney(myPart)}` : null
+        ]
       : [cat.label, accountInfo(t.method).name];
   const excluded = cat.excluded ? "no suma" : null;
-  const sub = [...split, excluded, date].filter(Boolean).map(escapeHtml).join(" · ");
-  const authorInfo = inHousehold() && t.createdBy ? (state.household.memberInfo || {})[t.createdBy] : null;
-  const author = authorInfo
-    ? `<span class="row-author" title="Registró ${escapeHtml(memberName(t.createdBy))}">${escapeHtml((authorInfo.name || "?").charAt(0).toUpperCase())}</span>`
+  // En el Hogar no cabe la fecha junto a "Pagó Camila · 50/50 · tu parte $X": se omite.
+  const sub = [...split, excluded, inHousehold() && t.paidBy ? null : date].filter(Boolean).map(escapeHtml).join(" · ");
+  // Insignia con la inicial de quien pagó (solo si hay pareja: con un miembro sería siempre la tuya).
+  const payer = inHousehold() && t.paidBy && partnerUid() ? t.paidBy : null;
+  const author = payer
+    ? `<span class="row-author ${memberRole(payer)}" title="${escapeHtml(paidByLabel(t))}">${escapeHtml(memberInitial(payer))}</span>`
     : "";
   el.innerHTML = `
     ${rowIcon(cat, brandFor(t.note) || catBrand(cat), author)}
@@ -2052,6 +2060,29 @@ function setupSplitFields(tx) {
   $("tx-split").value = preset;
   $("tx-share").value = share;
   $("tx-share-row").classList.toggle("hidden", preset !== "custom");
+  // Las tarjetas y pastillas escriben en los <select> ocultos, que siguen siendo la fuente del valor.
+  const cards = $("tx-paidby-cards");
+  cards.innerHTML = [...select.options]
+    .map(
+      (o) => `<button type="button" role="radio" class="payer-card" data-value="${escapeHtml(o.value)}">
+        <span class="avatar ${memberRole(o.value)}" aria-hidden="true">${escapeHtml(memberInitial(o.value))}</span><span>${escapeHtml(o.textContent)}</span></button>`
+    )
+    .join("");
+  cards.querySelectorAll("button").forEach(
+    (b) =>
+      (b.onclick = () => {
+        select.value = b.dataset.value;
+        updateSplitLabels();
+      })
+  );
+  $("tx-split-pills").querySelectorAll("button").forEach(
+    (b) =>
+      (b.onclick = () => {
+        $("tx-split").value = b.dataset.value;
+        if (b.dataset.value === "custom" && !$("tx-share").value) $("tx-share").value = 50;
+        updateSplitLabels();
+      })
+  );
   updateSplitLabels();
 }
 
@@ -2061,11 +2092,32 @@ function updateSplitLabels() {
   const income = txSheet.type === "income";
   const transfer = txSheet.type === "transfer";
   updatePaidFromRow();
-  $("tx-paidby-label").textContent = income ? "Recibió" : "Pagó";
+  $("tx-paidby-label").textContent = income ? "¿Quién recibió?" : "¿Quién pagó?";
   if (!inHousehold() || !partnerUid()) return;
   $("tx-paidby-row").classList.toggle("hidden", transfer);
   $("tx-split-row").classList.toggle("hidden", income || transfer);
   $("tx-share-row").classList.toggle("hidden", income || transfer || $("tx-split").value !== "custom");
+  syncSplitControls();
+}
+
+/** Marca la tarjeta y la pastilla elegidas y muestra en vivo cuánto pone cada uno. */
+function syncSplitControls() {
+  if (!inHousehold() || !partnerUid()) return;
+  const mark = (box, value) =>
+    box.querySelectorAll("button").forEach((b) => {
+      b.classList.toggle("active", b.dataset.value === value);
+      b.setAttribute("aria-checked", String(b.dataset.value === value));
+    });
+  const paidBy = $("tx-paidby").value;
+  mark($("tx-paidby-cards"), paidBy);
+  mark($("tx-split-pills"), $("tx-split").value);
+  const { payerShare } = readSplitFields();
+  const amount = parseAmountInput($("tx-amount").value) || 0;
+  // Sin monto todavía, la barra muestra solo los porcentajes.
+  const base = amount || 100;
+  const payer = roundMoney((base * payerShare) / 100);
+  const mine = paidBy === state.user.uid ? payer : roundMoney(base - payer);
+  renderSplitBar($("tx-split-row").querySelector(".split-bar"), $("tx-split-legend"), mine, roundMoney(base - mine), amount > 0);
 }
 
 function readSplitFields() {
@@ -2196,11 +2248,26 @@ function renderHouseholdBalance() {
   const net = householdBalance();
   const name = memberName(partner);
   const settled = Math.abs(net) < 1;
-  card.classList.toggle("owed", net > 0 && !settled);
-  card.classList.toggle("owe", net < 0 && !settled);
   setAnimatedText($("balance-between-value"), settled ? "Están a mano" : formatMoney(Math.abs(net)));
   $("balance-between-label").textContent = settled ? `Entre tú y ${name}` : net > 0 ? `${name} te debe` : `Le debes a ${name}`;
   $("settle-btn").classList.toggle("hidden", settled);
+  $("hogar-avatar-me").textContent = memberInitial(state.user.uid);
+  $("hogar-avatar-partner").textContent = memberInitial(partner);
+
+  // Lo gastado en el mes que se ve: cuántos gastos se dividieron y quién pagó cuánto.
+  const month = monthLabel(state.viewMonth, false).toLowerCase();
+  const spent = state.transactions.filter((t) => t.paidBy && t.type === "expense" && !t.kind && !isExcludedCategory(t) && isInMonth(t.date, state.viewMonth));
+  const shared = spent.filter((t) => (t.payerShare ?? 50) !== 100).length;
+  const sub = $("between-sub");
+  sub.textContent = `Por ${shared} ${shared === 1 ? "gasto compartido" : "gastos compartidos"} de ${month}`;
+  sub.classList.toggle("hidden", settled || !shared);
+  const total = roundMoney(spent.reduce((s, t) => s + Number(t.amount), 0));
+  const mine = roundMoney(spent.filter(isMine).reduce((s, t) => s + Number(t.amount), 0));
+  $("hogar-spent").classList.toggle("hidden", !total);
+  if (!total) return;
+  $("hogar-spent-title").textContent = `Gastado en ${month}`;
+  $("hogar-spent-total").textContent = formatMoney(total);
+  renderSplitBar($("hogar-spent").querySelector(".split-bar"), $("hogar-spent-legend"), mine, roundMoney(total - mine));
 }
 
 function settleUp() {
@@ -2898,6 +2965,7 @@ function accountRow(a) {
       ? `<span class="row-icon coin-icon">${coinSVG(a.target ? accountBalance(a) / a.target : 0.5)}</span>`
       : `<span class="row-icon" style="color:${a.color};background:${a.color}24"><span class="ms">${ACCOUNT_KINDS[a.kind].icon}</span></span>`;
   let sub = ACCOUNT_KINDS[a.kind].label;
+  let sub2 = "";
   let amount = "";
   let bar = null;
   let amountClass = "";
@@ -2922,6 +2990,11 @@ function accountRow(a) {
       amountClass = bal > 0 ? "income" : bal < 0 ? "debt" : "";
       bar = a.target ? Math.min(1, Math.max(0, bal / a.target)) : null;
       sub = goalSubtitle(a, bal);
+      // Meta del Hogar: cuánto ha puesto cada uno.
+      if (inHousehold() && partnerUid()) {
+        const c = goalContributions(a);
+        sub2 = `Tú aportaste ${formatMoney(c.me)} · ${memberName(partnerUid())} ${formatMoney(c.partner)}`;
+      }
     } else {
       amount = formatMoney(bal);
       amountClass = bal > 0 ? "income" : bal < 0 ? "debt" : "";
@@ -2932,11 +3005,23 @@ function accountRow(a) {
     <span class="row-main">
       <span class="row-title">${escapeHtml(a.name)}</span>
       <span class="row-sub">${escapeHtml(sub)}</span>
+      ${sub2 ? `<span class="row-sub">${escapeHtml(sub2)}</span>` : ""}
       ${bar !== null ? `<span class="mini-progress"><span style="transform:scaleX(${bar});background:${a.kind === "goal" ? "var(--gold)" : a.color}"></span></span>` : ""}
     </span>
     <span class="row-amount ${amountClass}">${amount}</span>`;
   row.onclick = () => openAccountModal(a);
   return row;
+}
+
+/** Aportes netos de cada miembro a una meta del Hogar (transferencias hacia ella menos las que salen). */
+function goalContributions(goal) {
+  const by = { me: 0, partner: 0 };
+  state.transactions.forEach((t) => {
+    const uid = t.paidBy || t.createdBy;
+    if (t.kind !== "transfer" || !uid || (t.to !== goal.id && t.from !== goal.id)) return;
+    by[memberRole(uid)] += (t.to === goal.id ? 1 : -1) * Number(t.amount);
+  });
+  return { me: roundMoney(by.me), partner: roundMoney(by.partner) };
 }
 
 /** "Faltan $X · aparta $Y al mes" (o "¡Meta cumplida!"). */
@@ -3455,7 +3540,10 @@ function renderSpaceSwitch() {
   const el = $("space-switch");
   const show = !!state.household && state.activeTab !== "settings";
   el.classList.toggle("hidden", !show);
-  if (state.household) el.querySelector('[data-value="household"]').textContent = state.household.name || "Hogar";
+  if (state.household) {
+    el.querySelector('[data-value="personal"]').innerHTML = '<span class="ms">person</span><span class="space-name">Personal</span>';
+    el.querySelector('[data-value="household"]').innerHTML = `<span class="ms">home</span><span class="space-name">${escapeHtml(state.household.name || "Hogar")}</span>`;
+  }
   setSegmented(el, state.space);
 }
 
@@ -3477,6 +3565,25 @@ function memberName(uid) {
 
 function partnerUid() {
   return state.household && state.user ? state.household.members.find((m) => m !== state.user.uid) : null;
+}
+
+/** Inicial de un miembro y su color: tú en Marea ("me"), tu pareja en Oro ("partner"). */
+function memberInitial(uid) {
+  const info = ((state.household && state.household.memberInfo) || {})[uid] || {};
+  return (info.name || memberName(uid) || "?").charAt(0).toUpperCase();
+}
+const memberRole = (uid) => (state.user && uid === state.user.uid ? "me" : "partner");
+
+/** Barra dividida tú / pareja con su leyenda (nombre, monto y %): la proporción no depende solo del color. */
+function renderSplitBar(bar, legend, mine, theirs, withMoney = true) {
+  const total = mine + theirs;
+  const pct = total ? Math.round((mine / total) * 100) : 50;
+  const [me, partner] = bar.children;
+  me.style.flexGrow = total ? mine : 1;
+  partner.style.flexGrow = total ? theirs : 1;
+  const item = (role, name, value, p) =>
+    `<span><i class="dot ${role}"></i><strong>${escapeHtml(name)}</strong> ${withMoney ? `${formatMoney(value)} · ` : ""}${p}%</span>`;
+  legend.innerHTML = item("me", "Tú", mine, pct) + item("partner", memberName(partnerUid()), theirs, 100 - pct);
 }
 
 async function createHousehold(event) {
@@ -3663,25 +3770,38 @@ function renderActivityList() {
     return;
   }
   list.innerHTML = "";
-  const group = document.createElement("div");
-  group.className = "list-group";
+  // Agrupado por Hoy / Esta semana / Antes (la lista ya viene de la más nueva a la más vieja).
+  const today = new Date();
+  today.setHours(0, 0, 0, 0);
+  const weekStart = today.getTime() - 6 * 86400000;
+  const bucket = (ms) => (ms >= today.getTime() ? "Hoy" : ms >= weekStart ? "Esta semana" : "Antes");
+  let group = null;
+  let current = "";
   items.forEach((a) => {
+    if (bucket(a.clientAt) !== current) {
+      current = bucket(a.clientAt);
+      const title = document.createElement("h3");
+      title.className = "activity-group-title";
+      title.textContent = current;
+      group = document.createElement("div");
+      group.className = "list-group";
+      list.append(title, group);
+    }
     const mine = state.user && a.by === state.user.uid;
-    const info = (state.household.memberInfo || {})[a.by] || {};
     const row = document.createElement("div");
     row.className = "list-row activity-row";
     if (!mine && a.clientAt > seen) row.classList.add("unseen");
-    const who = mine ? "Tú" : info.name || "Tu pareja";
+    const who = memberName(a.by);
     const verb = mine ? { add: "agregaste", edit: "editaste", delete: "borraste", settle: "registraste un pago de" }[a.action] : ACTIVITY_VERBS[a.action];
+    const settle = a.action === "settle";
     row.innerHTML = `
-      <span class="avatar">${escapeHtml((info.name || "?").charAt(0).toUpperCase())}</span>
+      <span class="avatar ${memberRole(a.by)}" aria-hidden="true">${escapeHtml(memberInitial(a.by))}</span>
       <span class="row-main">
-        <span class="activity-text"><strong>${escapeHtml(who)}</strong> ${verb} ${escapeHtml(a.action === "settle" ? "" : a.note)} · ${formatMoney(a.amount)}</span>
+        <span class="activity-text"><strong>${escapeHtml(who)}</strong> ${verb} ${escapeHtml(settle ? "" : a.note)} · <span class="activity-amount${settle ? " settle" : ""}">${formatMoney(a.amount)}</span></span>
         <span class="row-sub">${timeAgo(a.clientAt)}</span>
       </span>`;
     group.appendChild(row);
   });
-  list.appendChild(group);
 }
 
 function openActivity() {
@@ -5150,6 +5270,8 @@ function bindUI() {
 
   // Hogar compartido
   $("tx-split").onchange = updateSplitLabels;
+  $("tx-share").addEventListener("input", syncSplitControls);
+  $("tx-amount").addEventListener("input", syncSplitControls);
   $("settle-btn").onclick = settleUp;
   $("household-form").addEventListener("submit", createHousehold);
   $("join-form").addEventListener("submit", joinHousehold);

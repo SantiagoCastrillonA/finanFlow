@@ -110,13 +110,27 @@
         </div>
 
         <!-- Hogar: saldo entre la pareja -->
-        <div id="household-balance" class="card between-card hidden">
-          <span class="between-icon"><span class="ms">handshake</span></span>
-          <div class="between-text">
-            <span id="balance-between-label" class="caption">Entre ustedes</span>
-            <span id="balance-between-value" class="between-value">Están a mano</span>
+        <div id="household-balance" class="card hogar-card hidden">
+          <div class="hogar-top">
+            <span class="avatar-pair" aria-hidden="true">
+              <span id="hogar-avatar-me" class="avatar me"></span><span id="hogar-avatar-partner" class="avatar partner"></span>
+            </span>
+            <div class="between-text">
+              <span id="balance-between-label" class="caption">Entre ustedes</span>
+              <span id="balance-between-value" class="between-value">Están a mano</span>
+            </div>
+            <button type="button" id="settle-btn" class="btn-primary small">Saldar</button>
           </div>
-          <button type="button" id="settle-btn" class="btn-tinted small">Saldar</button>
+          <p id="between-sub" class="hogar-sub hidden"></p>
+          <!-- Quién pagó lo gastado en el mes (barra dividida + nombres y montos: no solo el color) -->
+          <div id="hogar-spent" class="hogar-spent hidden">
+            <div class="hogar-spent-head">
+              <span id="hogar-spent-title" class="caption">Gastado</span>
+              <span id="hogar-spent-total" class="hogar-spent-total"></span>
+            </div>
+            <div class="split-bar" aria-hidden="true"><span class="me"></span><span class="partner"></span></div>
+            <div id="hogar-spent-legend" class="split-legend"></div>
+          </div>
         </div>
 
         <!-- Android: hay una versión más nueva publicada en GitHub -->
@@ -541,26 +555,30 @@
               <span class="ms">unfold_more</span>
             </span>
           </label>
-          <!-- Solo en el Hogar: quién pagó y cómo se divide -->
-          <label id="tx-paidby-row" class="form-row hidden">
-            <span id="tx-paidby-label">Pagó</span>
-            <span class="select-inline">
-              <select id="tx-paidby"></select>
-              <span class="ms">unfold_more</span>
-            </span>
-          </label>
-          <label id="tx-split-row" class="form-row hidden">
-            <span>División</span>
-            <span class="select-inline">
-              <select id="tx-split">
-                <option value="50">50 / 50</option>
-                <option value="100">Solo de quien pagó</option>
-                <option value="0">Todo del otro</option>
-                <option value="custom">Personalizada</option>
-              </select>
-              <span class="ms">unfold_more</span>
-            </span>
-          </label>
+          <!-- Solo en el Hogar: quién pagó (tarjetas) y cómo se divide (pastillas). Los <select> ocultos guardan el valor. -->
+          <div id="tx-paidby-row" class="form-block hidden">
+            <span id="tx-paidby-label" class="form-block-label">¿Quién pagó?</span>
+            <div id="tx-paidby-cards" class="payer-cards" role="radiogroup" aria-labelledby="tx-paidby-label"></div>
+            <select id="tx-paidby" hidden tabindex="-1" aria-hidden="true"></select>
+          </div>
+          <div id="tx-split-row" class="form-block hidden">
+            <span id="tx-split-label" class="form-block-label">¿Cómo lo dividen?</span>
+            <div id="tx-split-pills" class="onb-pills split-pills" role="radiogroup" aria-labelledby="tx-split-label">
+              <button type="button" role="radio" data-value="50">Mitad y mitad</button>
+              <button type="button" role="radio" data-value="100">Solo de quien pagó</button>
+              <button type="button" role="radio" data-value="0">Todo del otro</button>
+              <button type="button" role="radio" data-value="custom">Otro %</button>
+            </div>
+            <select id="tx-split" hidden tabindex="-1" aria-hidden="true">
+              <option value="50">50 / 50</option>
+              <option value="100">Solo de quien pagó</option>
+              <option value="0">Todo del otro</option>
+              <option value="custom">Personalizada</option>
+            </select>
+            <!-- En vivo: cuánto pone cada uno -->
+            <div class="split-bar" aria-hidden="true"><span class="me"></span><span class="partner"></span></div>
+            <div id="tx-split-legend" class="split-legend"></div>
+          </div>
           <label id="tx-share-row" class="form-row hidden">
             <span>Parte de quien pagó</span>
             <span class="share-input"><input type="number" id="tx-share" min="0" max="100" step="5" inputmode="numeric"

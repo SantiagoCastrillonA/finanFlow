@@ -41,7 +41,6 @@ fitness_center
 flight
 group
 group_add
-handshake
 history
 home
 http
@@ -62,6 +61,7 @@ north_east
 notifications
 password
 payments
+person
 person_add
 pets
 phone_iphone

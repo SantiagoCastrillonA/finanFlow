@@ -329,7 +329,7 @@ Hoy no hay primer uso: la app abre en Inicio vacío. Referencia: tableros "Onboa
 
 ---
 
-## Fase I — Hogar compartido (0.13.3)
+## Fase I — Hogar compartido (0.13.3) — HECHA
 
 Referencia: tableros "Hogar · Inicio", "Hogar · gasto compartido" y "Hogar · actividad".
 

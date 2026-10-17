@@ -70,8 +70,9 @@ public final class PaymentParser {
     // Monto con marca de moneda ("COP42,782.00", "$189.627,03") o, si no hay, un número con miles ("100.000,00").
     private static final Pattern MONEY_MARKED = Pattern.compile("(?:COP|US\\$|USD|\\$)\\s?([0-9][0-9.,]*[0-9]|[0-9])");
     private static final Pattern MONEY_GROUPED = Pattern.compile("(?<![0-9.,])([0-9]{1,3}(?:[.,][0-9]{3})+(?:[.,][0-9]{1,2})?)(?![0-9])");
+    // "COP42,782.00 con MasterDebit ••1821" en cualquier línea del texto (puede traer otras antes o después).
     private static final Pattern WALLET_TEXT = Pattern.compile(
-        "^\\s*(?:[A-Z]{3})?\\s*\\$?\\s*[0-9][0-9.,]*\\s+(?:con|with)\\s+(.+?)\\s*$", Pattern.CASE_INSENSITIVE);
+        "(?:^|\\s)(?:[A-Z]{3})?\\s*\\$?\\s*[0-9][0-9.,]*\\s+(?:con|with)\\s+(.+?)\\s*$", Pattern.CASE_INSENSITIVE | Pattern.MULTILINE);
     private static final Pattern LAST4 = Pattern.compile("(?:\\*+|•+|\\.{2,}|terminada en|terminado en|final)\\s*([0-9]{4})", Pattern.CASE_INSENSITIVE);
 
     public static Result parse(String pkg, String title, String text, String ownName) {
@@ -81,16 +82,21 @@ public final class PaymentParser {
         text = text == null ? "" : text.trim();
         String all = (title + " · " + text).trim();
         String lower = all.toLowerCase(Locale.ROOT);
-        for (String w : IGNORE) if (lower.contains(w)) return null;
 
         Result r = new Result();
         r.source = source;
 
         if (source.equals("wallet")) {
-            // Título = comercio, texto = "COP42,782.00 con MasterDebit ••1821".
+            // Título = comercio, texto = "COP42,782.00 con MasterDebit ••1821". Las palabras a ignorar se
+            // buscan solo en el texto: el nombre de un comercio puede contener "promo", "clave"… Del título
+            // solo cuenta que el pago no haya pasado.
+            if (containsAny(title.toLowerCase(Locale.ROOT), "rechaz", "declin", "no se pudo", "no pudimos", "fallid", "failed")) return null;
+            String textLower = text.toLowerCase(Locale.ROOT);
+            for (String w : IGNORE) if (textLower.contains(w)) return null;
             Matcher m = WALLET_TEXT.matcher(text);
-            Double amount = amountIn(text);
-            if (!m.matches() || amount == null) return null;
+            if (!m.find()) return null;
+            Double amount = amountIn(m.group());
+            if (amount == null) return null;
             r.amount = amount;
             r.merchant = title;
             r.cardKey = normalizeCard(m.group(1));
@@ -98,6 +104,7 @@ public final class PaymentParser {
             return r;
         }
 
+        for (String w : IGNORE) if (lower.contains(w)) return null;
         Double amount = amountIn(all);
         if (amount == null || amount <= 0) return null;
         r.amount = amount;

@@ -9,6 +9,8 @@ import android.content.Context;
 import android.content.Intent;
 import android.net.Uri;
 import android.os.Build;
+import android.os.Handler;
+import android.os.Looper;
 import android.os.PowerManager;
 import android.provider.Settings;
 import androidx.core.app.NotificationCompat;
@@ -37,8 +39,25 @@ final class PaymentNotifier {
         c.getSystemService(NotificationManager.class).createNotificationChannel(ch);
     }
 
+    /** Tiempo para que la tarjeta abra antes de dar por hecho que Android la bloqueó. */
+    private static final long PROMPT_TIMEOUT_MS = 3000;
+
     static void present(Context c, JSONObject it) {
-        if (canShowPrompt(c) && PaymentPromptActivity.show(c, it.optString("id"))) return;
+        String id = it.optString("id");
+        if (canShowPrompt(c) && PaymentPromptActivity.show(c, id)) {
+            // Android puede bloquear en silencio abrir una pantalla desde segundo plano (startActivity no
+            // falla). Si la tarjeta no abrió a tiempo, el pago llega como notificación con sonido.
+            PaymentStore.noteDiag(c, "payShown", "prompt");
+            new Handler(Looper.getMainLooper()).postDelayed(() -> {
+                if (id.equals(PaymentPromptActivity.openedId)) return;
+                JSONObject now = PaymentStore.get(c, id);
+                if (now == null || !"pending".equals(now.optString("status"))) return;
+                PaymentStore.noteDiag(c, "payShown", "blocked");
+                notify(c, now, true);
+            }, PROMPT_TIMEOUT_MS);
+            return;
+        }
+        PaymentStore.noteDiag(c, "payShown", "notification");
         notify(c, it, true);
     }
 

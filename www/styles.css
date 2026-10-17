@@ -19,10 +19,18 @@
      negativo y límites superados; los gastos normales usan --spend, un azul suave que no alarma. */
   --accent: #11A08F;
   --accent-tint: rgba(17, 160, 143, 0.22);
+  /* Acento para texto (enlaces, avisos) y fondo de botones con su texto: contraste ≥ 4.5:1. */
+  --accent-strong: #3FD6C2;
+  --accent-fill: #11A08F;
+  --on-accent: #0B1F1D;
+  /* Oro: segundo color de marca. Solo metas y logros, nunca alertas (eso es --warning). */
+  --gold: #F5C35B;
+  --gold-soft: rgba(245, 195, 91, 0.18);
   --income: #4ADE80;
   --expense: #FB7185;
   --spend: #93C5FD;
   --warning: #FBBF24;
+  --warning-text: #FBBF24;
   --bar-bg: rgba(12, 24, 24, 0.82);
   --backdrop: rgba(0, 0, 0, 0.5);
   --shadow: 0 8px 32px rgba(0, 0, 0, 0.5);
@@ -45,14 +53,20 @@
   --seg-thumb: #FFFFFF;
   --separator: rgba(60, 60, 67, 0.18);
   --text: #000000;
-  --text-secondary: rgba(60, 60, 67, 0.6);
+  --text-secondary: #556664;
   --text-tertiary: rgba(60, 60, 67, 0.3);
   --accent: #0E8A7E;
   --accent-tint: rgba(14, 138, 126, 0.14);
-  --income: #16A34A;
-  --expense: #E11D48;
+  --accent-strong: #0B766C;
+  --accent-fill: #0B766C;
+  --on-accent: #FFFFFF;
+  --gold: #F2B544;
+  --gold-soft: #FBE7B5;
+  --income: #15803D;
+  --expense: #D3123F;
   --spend: #2563EB;
   --warning: #D97706;
+  --warning-text: #B45309; /* la barra y los íconos siguen en --warning */
   --bar-bg: rgba(247, 251, 250, 0.85);
   --backdrop: rgba(0, 0, 0, 0.3);
   --shadow: 0 8px 32px rgba(0, 0, 0, 0.12);
@@ -133,7 +147,7 @@ button {
 }
 
 a {
-  color: var(--accent);
+  color: var(--accent-strong);
   text-decoration: none;
 }
 
@@ -329,7 +343,7 @@ a {
 }
 
 .row-amount.settlement {
-  color: var(--accent);
+  color: var(--accent-strong);
 }
 
 .share-input {
@@ -442,7 +456,7 @@ a {
   margin: 16px 0 4px;
   font-size: 30px;
   font-weight: 700;
-  color: var(--accent);
+  color: var(--accent-strong);
 }
 
 /* Pastilla de estado: solo existe mientras la nube tiene un problema */
@@ -597,6 +611,44 @@ a {
   transition: transform var(--dur-release) var(--ease-out), opacity var(--dur-release) ease;
 }
 
+/* Solo para lectores de pantalla (p. ej. lo que muestran las gráficas) */
+.sr-only {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  margin: -1px;
+  padding: 0;
+  overflow: hidden;
+  clip-path: inset(50%);
+  white-space: nowrap;
+  border: 0;
+}
+
+/* Área táctil mínima de 44 px sin cambiar el tamaño que se ve */
+.icon-btn,
+.chip,
+.space-switch button,
+.btn-tinted.small,
+.btn-plain.small,
+.toast-action {
+  position: relative;
+}
+
+.icon-btn::after,
+.chip::after,
+.space-switch button::after,
+.btn-tinted.small::after,
+.btn-plain.small::after,
+.toast-action::after {
+  content: "";
+  position: absolute;
+  left: 50%;
+  top: 50%;
+  width: max(100%, 44px);
+  height: max(100%, 44px);
+  transform: translate(-50%, -50%);
+}
+
 .icon-btn.plain {
   background: none;
 }
@@ -612,7 +664,7 @@ a {
 }
 
 .btn-plain {
-  color: var(--accent);
+  color: var(--accent-strong);
   font-size: 17px;
   padding: 10px 4px;
   min-height: 44px;
@@ -659,13 +711,13 @@ a {
 }
 
 .btn-primary {
-  background: var(--accent);
-  color: #fff;
+  background: var(--accent-fill);
+  color: var(--on-accent);
 }
 
 .btn-tinted {
   background: var(--accent-tint);
-  color: var(--accent);
+  color: var(--accent-strong);
 }
 
 .btn-primary:active,
@@ -734,8 +786,9 @@ a {
   gap: 8px;
   overflow-x: auto;
   scrollbar-width: none;
-  margin: 0 calc(-1 * var(--gutter)) 12px;
-  padding: 0 var(--gutter);
+  /* 5 px arriba y abajo para el área táctil de 44 px de las pastillas (sin scroll vertical) */
+  margin: -5px calc(-1 * var(--gutter)) 7px;
+  padding: 5px var(--gutter);
 }
 
 .chips::-webkit-scrollbar {
@@ -754,8 +807,8 @@ a {
 }
 
 .chip.active {
-  background: var(--accent);
-  color: #fff;
+  background: var(--accent-fill);
+  color: var(--on-accent);
 }
 
 /* ==========================================================================
@@ -788,7 +841,11 @@ a {
   overflow-wrap: anywhere;
 }
 
-.balance-amount.positive,
+/* El saldo va en neutro: el verde se reserva para ingresos. */
+.balance-amount.positive {
+  color: var(--text);
+}
+
 .balance-split .positive,
 .total-value.income {
   color: var(--income);
@@ -878,7 +935,7 @@ a {
 }
 
 .compare.bad {
-  color: var(--warning);
+  color: var(--warning-text);
 }
 
 .allowance {
@@ -978,7 +1035,7 @@ a {
   align-items: center;
   justify-content: center;
   gap: 8px;
-  color: var(--text-tertiary);
+  color: var(--text-secondary);
   font-size: 14px;
   text-align: center;
 }
@@ -1063,6 +1120,18 @@ a {
   color: #000;
 }
 
+/* En las listas, por defecto el logo va monocromo sobre el recuadro neutro, para no romper la paleta.
+   Ajustes → Categorías → "Logos con sus colores" pone la clase .brand-colors en <html>. */
+html:not(.brand-colors) .row-icon.brand {
+  background: var(--fill);
+  color: var(--text);
+  box-shadow: none;
+}
+
+.brand-colors-group {
+  margin-top: 16px;
+}
+
 .brand svg {
   width: 50%;
   height: 50%;
@@ -1129,7 +1198,7 @@ a {
 
 .row-badge {
   font-size: 15px;
-  color: var(--text-tertiary);
+  color: var(--text-secondary);
 }
 
 /* Movimiento recién guardado: entra en su sitio y se resalta un instante */
@@ -1276,9 +1345,14 @@ a {
   width: 100%;
   padding: 14px 16px;
   border-radius: var(--radius);
-  background: color-mix(in srgb, var(--c, transparent) 10%, var(--surface));
-  box-shadow: inset 0 0 0 0.5px color-mix(in srgb, var(--c, transparent) 22%, var(--surface-edge)), inset 0 1px 0 var(--surface-glint);
+  background: var(--surface);
+  box-shadow: inset 0 0 0 0.5px var(--surface-edge), inset 0 1px 0 var(--surface-glint);
   transition: background-color 100ms ease;
+}
+
+/* El color va por estado, no por categoría: el de la categoría queda solo en su ícono. */
+.budget-row.danger {
+  box-shadow: inset 0 0 0 1px color-mix(in srgb, var(--expense) 60%, transparent), inset 0 1px 0 var(--surface-glint);
 }
 
 .budget-row:active {
@@ -1298,7 +1372,7 @@ a {
 }
 
 .budget-row.warning .budget-pct {
-  color: var(--warning);
+  color: var(--warning-text);
 }
 
 .budget-row.danger .budget-pct {
@@ -1316,7 +1390,7 @@ a {
   height: 100%;
   width: 100%;
   border-radius: 4px;
-  background: var(--c, var(--income));
+  background: var(--accent);
   transform-origin: left;
 }
 
@@ -1369,7 +1443,8 @@ a {
   align-items: center;
   justify-content: center;
   flex-shrink: 0;
-  color: #fff;
+  color: var(--accent);
+  background: var(--accent-tint);
 }
 
 .setting-icon .ms {
@@ -1470,7 +1545,7 @@ a {
 .app-version {
   text-align: center;
   font-size: 13px;
-  color: var(--text-tertiary);
+  color: var(--text-secondary);
   margin: 28px 0 8px;
 }
 
@@ -1501,7 +1576,7 @@ a {
 }
 
 .switch:checked {
-  background: var(--income);
+  background: var(--accent);
 }
 
 .switch:checked::before {
@@ -1554,12 +1629,12 @@ a {
 }
 
 .nav-label {
-  font-size: 10px;
+  font-size: 11px;
   font-weight: 500;
 }
 
 .nav-item.active {
-  color: var(--accent);
+  color: var(--accent-strong);
 }
 
 .nav-item.active .ms {
@@ -1748,7 +1823,7 @@ a {
 }
 
 .amount-field input::placeholder {
-  color: var(--text-tertiary);
+  color: var(--text-secondary);
 }
 
 /* Cuadrícula de categorías (registro en dos toques) */
@@ -2004,7 +2079,7 @@ a {
 }
 
 .setting-sub.warn {
-  color: var(--warning);
+  color: var(--warning-text);
 }
 
 /* Cuentas, tarjetas y metas */
@@ -2237,7 +2312,7 @@ a {
 
 .dialog-note {
   margin-top: 6px;
-  color: var(--text-tertiary) !important;
+  color: var(--text-secondary) !important;
 }
 
 .dialog-note:empty {
@@ -2257,7 +2332,7 @@ a {
 .dialog-btn {
   min-height: 44px;
   font-size: 17px;
-  color: var(--accent);
+  color: var(--accent-strong);
   text-align: center;
   transition: background-color 100ms ease;
 }
@@ -2419,8 +2494,8 @@ a {
 }
 
 .ai-message.user .ai-bubble {
-  background: var(--accent);
-  color: #fff;
+  background: var(--accent-fill);
+  color: var(--on-accent);
   border-bottom-right-radius: 6px;
 }
 
@@ -2501,6 +2576,7 @@ a {
   min-height: 48px;
   padding: 8px 8px 8px 14px;
   border-radius: 14px;
+  --toast-accent: var(--accent-strong);
   background: var(--elevated);
   box-shadow: var(--shadow);
   font-size: 15px;
@@ -2511,6 +2587,7 @@ a {
 }
 
 [data-theme="light"] .toast {
+  --toast-accent: #3FD6C2; /* el aviso es oscuro también en tema claro */
   background: rgba(30, 30, 32, 0.94);
   color: #fff;
 }
@@ -2522,6 +2599,20 @@ a {
 
 .toast.leaving {
   transition-duration: 200ms;
+}
+
+/* Con una hoja abierta el aviso va arriba, para no tapar sus botones: entra y sale por arriba. */
+#toast-container.top {
+  top: calc(var(--safe-top) + 12px);
+  bottom: auto;
+}
+
+#toast-container.top .toast {
+  transform: translateY(-100%);
+}
+
+#toast-container.top .toast.show {
+  transform: translateY(0);
 }
 
 .toast {
@@ -2555,7 +2646,7 @@ a {
 }
 
 .toast-info .toast-icon {
-  color: #8E8CFF;
+  color: var(--toast-accent);
 }
 
 .toast-action {
@@ -2563,7 +2654,7 @@ a {
   padding: 0 12px;
   border-radius: 10px;
   font-weight: 600;
-  color: #8E8CFF;
+  color: var(--toast-accent);
 }
 
 .toast-action:active {
@@ -2783,7 +2874,7 @@ a {
 
   .nav-item.active {
     background: var(--accent-tint);
-    color: var(--accent);
+    color: var(--accent-strong);
   }
 
   .nav-add {
@@ -2796,6 +2887,9 @@ a {
     font-size: 16px;
     font-weight: 600;
     box-shadow: none;
+    /* Aquí lleva texto: mismos colores que .btn-primary para el contraste */
+    background: var(--accent-fill);
+    color: var(--on-accent);
   }
 
   .nav-add .ms {
@@ -2844,7 +2938,8 @@ a {
   }
 
   .toast,
-  .toast.show {
+  .toast.show,
+  #toast-container.top .toast {
     transform: none;
   }
 

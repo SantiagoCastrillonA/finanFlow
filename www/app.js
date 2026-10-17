@@ -66,10 +66,10 @@ const ACCOUNT_KINDS = {
 };
 
 const CATEGORY_COLORS = [
-  "#FF453A", "#FF9F0A", "#E5B800", "#9BD32F", "#30D158", "#00C7BE", "#40C8E0",
+  "#FF453A", "#FF9F0A", "#E5B800", "#9BD32F", "#30D158", "#0E8A7E", "#40C8E0",
   "#0A84FF", "#5E5CE6", "#BF5AF2", "#E879F9", "#FF375F", "#A2845E", "#8E8E93"
 ];
-const NEW_CATEGORY_COLOR = "#5E5CE6";
+const NEW_CATEGORY_COLOR = "#0E8A7E";
 
 /* Marcas (www/vendor/brands.js, generado por npm run vendor): logo de la marca en vez del ícono. */
 const BRANDS = window.BRANDS || [];
@@ -141,6 +141,7 @@ const TAB_TITLES = { dashboard: "Inicio", transactions: "Historial", budgets: "L
 const STORAGE_KEY = "finanflow_state";
 const MIGRATED_KEY = "finanflow_migrated";
 const THEME_KEY = "finanflow_theme";
+const BRAND_COLORS_KEY = "finanflow_brand_colors"; // "1": logos con sus colores de marca (si no, monocromos)
 const GEMINI_KEY = "finanflow_gemini_key";
 
 /* ==========================================================================
@@ -658,6 +659,9 @@ function showToast(message, type = "info", duration = 3000, action = null) {
     container.setAttribute("aria-live", "polite");
     document.body.appendChild(container);
   }
+  // Con una hoja abierta, arriba (si ya hay avisos visibles, se quedan donde están).
+  if (!container.children.length) container.classList.toggle("top", modalStack.length > 0);
+  const dir = container.classList.contains("top") ? -1 : 1; // hacia dónde se desliza para cerrar
   const icons = { info: "info", success: "check_circle", warning: "warning", error: "error" };
   const toast = document.createElement("div");
   toast.className = `toast toast-${type}`;
@@ -695,18 +699,18 @@ function showToast(message, type = "info", duration = 3000, action = null) {
   });
   toast.addEventListener("pointermove", (e) => {
     if (startY === null) return;
-    const dy = e.clientY - startY;
-    velocity = 0.8 * ((e.clientY - lastY) / Math.max(1, e.timeStamp - lastT)) + 0.2 * velocity;
+    const dy = (e.clientY - startY) * dir;
+    velocity = 0.8 * (((e.clientY - lastY) * dir) / Math.max(1, e.timeStamp - lastT)) + 0.2 * velocity;
     lastY = e.clientY;
     lastT = e.timeStamp;
     if (Math.abs(dy) < 6 && !toast.classList.contains("dragging")) return;
     toast.classList.add("dragging");
-    toast.style.transform = `translateY(${dy > 0 ? dy : dy * 0.2}px)`;
+    toast.style.transform = `translateY(${(dy > 0 ? dy : dy * 0.2) * dir}px)`;
     toast.style.opacity = String(Math.max(0, 1 - Math.max(dy, 0) / 120));
   });
   const release = () => {
     if (startY === null) return;
-    const dy = lastY - startY;
+    const dy = (lastY - startY) * dir;
     startY = null;
     if (dy > 40 || (velocity > 0.11 && dy > 10)) return dismiss();
     toast.classList.remove("dragging");
@@ -935,6 +939,13 @@ function toggleChartEmpty(canvasId, emptyId, empty, text) {
   const box = $(emptyId);
   box.classList.toggle("hidden", !empty);
   if (text) box.querySelector("p").textContent = text;
+  if (empty) setChartSummary(canvasId, "");
+}
+
+/** Lo que dice la gráfica, en texto para lectores de pantalla (el canvas no lo expone). */
+function setChartSummary(canvasId, text) {
+  const p = $(`${canvasId}-summary`);
+  if (p) p.textContent = text;
 }
 
 /* --- Resumen de los últimos 12 meses (hoja desde "Resumen del año") --- */
@@ -1070,6 +1081,15 @@ function renderCategoryChart(stats) {
   const emptyText = { balance: "Sin movimientos este mes", expense: "Sin gastos este mes", income: "Sin ingresos este mes" }[type];
   toggleChartEmpty("categoryChart", "no-chart-data", empty, emptyText);
   if (empty) return;
+  if (type === "balance") {
+    const net = stats.income - stats.expense;
+    setChartSummary("categoryChart", `Ingresos ${formatMoney(stats.income)}, gastos ${formatMoney(stats.expense)}, ${net >= 0 ? "te quedan" : "te pasaste por"} ${formatMoney(Math.abs(net))}.`);
+  } else {
+    const total = data.reduce((s, v) => s + v, 0);
+    const parts = labels.slice(0, LEGEND_MAX).map((l, i) => `${l} ${formatMoney(data[i])} (${Math.round((data[i] / total) * 100)}%)`);
+    const more = labels.length > LEGEND_MAX ? ` y ${labels.length - LEGEND_MAX} más` : "";
+    setChartSummary("categoryChart", `${type === "expense" ? "Gastos" : "Ingresos"} del mes ${formatMoney(total)}: ${parts.join(", ")}${more}.`);
+  }
 
   if (!charts.category) {
     charts.category = new Chart($("categoryChart"), {
@@ -1158,6 +1178,8 @@ function renderTrendChart() {
     // Personal: saldo (en tus cuentas si las sigues en el mes actual). Hogar: lo gastado en común en el mes.
     data.push(inHousehold() ? monthStats(monthKey(d), d.getDate()).expense : personalBalance(toISODate(d), state.viewMonth === current));
   }
+
+  setChartSummary("trendChart", `${inHousehold() ? "Gastado en el mes" : "Saldo"}: ${formatMoney(data[0])} el ${labels[0]} y ${formatMoney(data[6])} el ${labels[6]}.`);
 
   const accent = cssVar("--accent");
   if (!charts.trend) {
@@ -1721,7 +1743,6 @@ function renderBudgetsList(stats) {
       const row = document.createElement("button");
       row.type = "button";
       row.className = `budget-row ${u.level}`;
-      row.style.setProperty("--c", info.color);
       row.innerHTML = `
         <div class="budget-top">
           ${rowIcon(info)}
@@ -2808,7 +2829,7 @@ function accountRow(a) {
     <span class="row-main">
       <span class="row-title">${escapeHtml(a.name)}</span>
       <span class="row-sub">${escapeHtml(sub)}</span>
-      ${bar !== null ? `<span class="mini-progress"><span style="transform:scaleX(${bar});background:${a.color}"></span></span>` : ""}
+      ${bar !== null ? `<span class="mini-progress"><span style="transform:scaleX(${bar});background:${a.kind === "goal" ? "var(--gold)" : a.color}"></span></span>` : ""}
     </span>
     <span class="row-amount ${amountClass}">${amount}</span>`;
   row.onclick = () => openAccountModal(a);
@@ -3573,16 +3594,16 @@ function renderHouseholdSettings() {
   if (!box) return;
   if (!state.user) {
     box.innerHTML = `
-      <div class="setting-row"><span class="setting-icon" style="background:#FF9F0A"><span class="ms">group</span></span>
+      <div class="setting-row"><span class="setting-icon"><span class="ms">group</span></span>
         <span class="setting-text"><span class="setting-label">Hogar compartido</span>
         <span class="setting-sub">Conecta tu cuenta de Google para compartir gastos.</span></span></div>`;
     return;
   }
   if (!state.household) {
     box.innerHTML = `
-      <button type="button" class="setting-row" data-action="create"><span class="setting-icon" style="background:#FF9F0A"><span class="ms">add_home</span></span>
+      <button type="button" class="setting-row" data-action="create"><span class="setting-icon"><span class="ms">add_home</span></span>
         <span class="setting-label">Crear un Hogar</span><span class="ms chevron">chevron_right</span></button>
-      <button type="button" class="setting-row" data-action="join"><span class="setting-icon" style="background:#30D158"><span class="ms">group_add</span></span>
+      <button type="button" class="setting-row" data-action="join"><span class="setting-icon"><span class="ms">group_add</span></span>
         <span class="setting-label">Unirme con un código</span><span class="ms chevron">chevron_right</span></button>`;
   } else {
     const members = state.household.members
@@ -3595,10 +3616,10 @@ function renderHouseholdSettings() {
       })
       .join("");
     box.innerHTML = `
-      <div class="setting-row"><span class="setting-icon" style="background:#FF9F0A"><span class="ms">home</span></span>
+      <div class="setting-row"><span class="setting-icon"><span class="ms">home</span></span>
         <span class="setting-label">${escapeHtml(state.household.name || "Hogar")}</span></div>
       ${members}
-      ${state.household.members.length < 2 ? `<button type="button" class="setting-row" data-action="invite"><span class="setting-icon" style="background:#5E5CE6"><span class="ms">person_add</span></span>
+      ${state.household.members.length < 2 ? `<button type="button" class="setting-row" data-action="invite"><span class="setting-icon"><span class="ms">person_add</span></span>
         <span class="setting-label">Invitar a tu pareja</span><span class="ms chevron">chevron_right</span></button>` : ""}
       <button type="button" class="setting-row destructive" data-action="leave"><span class="setting-label">Salir del Hogar</span></button>`;
   }
@@ -4299,10 +4320,39 @@ async function refreshPayDetect() {
     $(`paydetect-${key}-sub`).textContent = ok ? "Activado" : missing;
     $(`paydetect-${key}-sub`).classList.toggle("warn", !ok);
   });
+  renderPayDiagnostics(st);
   const seen = (st.sources || []).length ? ` Detectadas: ${st.sources.join(", ")}.` : "";
   $("paydetect-note").textContent =
     "Lee solo los avisos de Google Wallet, Nu, Rappi, Davivienda y Nequi, y nada sale de tu celular. Ningún pago se registra sin que lo confirmes." + seen;
   return st;
+}
+
+/**
+ * Hasta dónde llegó el último aviso (solo fuente y hora, nunca su contenido): si el lector está conectado,
+ * cuándo leyó algo de una app de pagos y cómo se mostró el último pago. Sirve para saber dónde falla.
+ */
+let payRecheck = false;
+function renderPayDiagnostics(st) {
+  const row = $("paydetect-status");
+  row.classList.toggle("hidden", !st.enabled || !st.listener);
+  if (!st.enabled || !st.listener) return;
+  const sub = $("paydetect-status-sub");
+  if (!st.connected) {
+    // status() acaba de pedir a Android que lo reconecte: se revisa de nuevo en un momento.
+    sub.textContent = "Reconectando el lector… Si sigue así, apaga y enciende el acceso a notificaciones";
+    sub.classList.add("warn");
+    if (!payRecheck) {
+      payRecheck = true;
+      setTimeout(refreshPayDetect, 2500);
+    }
+    return;
+  }
+  payRecheck = false;
+  const shown = { prompt: "con la tarjeta", notification: "como notificación", blocked: "como notificación (Android no dejó abrir la tarjeta)" }[st.payShown] || "";
+  const parts = [st.seenAt ? `${st.seenSource}, ${timeAgo(st.seenAt)}` : "Lector activo. Aún no llega ningún aviso de pago"];
+  if (st.payAt) parts.push(`último pago ${timeAgo(st.payAt)}${shown ? ` ${shown}` : ""}`);
+  sub.textContent = parts.join(" · ");
+  sub.classList.remove("warn");
 }
 
 /* ==========================================================================
@@ -4762,6 +4812,12 @@ function bindUI() {
     updateCategoryPreview();
   });
   $("categories-add-btn").onclick = () => openCategoryModal(null, categoriesListType);
+  // Solo CSS: clase en <html> (el <head> la pone antes de pintar para que no parpadee).
+  $("brand-colors").checked = document.documentElement.classList.contains("brand-colors");
+  $("brand-colors").onchange = (e) => {
+    document.documentElement.classList.toggle("brand-colors", e.target.checked);
+    try { localStorage.setItem(BRAND_COLORS_KEY, e.target.checked ? "1" : "0"); } catch {}
+  };
   $("account-form").addEventListener("submit", saveAccount);
   $("range-form").addEventListener("submit", applyRange);
   $("export-filtered-btn").onclick = exportFilteredCSV;

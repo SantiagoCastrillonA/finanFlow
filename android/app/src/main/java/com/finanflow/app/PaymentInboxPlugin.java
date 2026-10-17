@@ -42,8 +42,21 @@ public class PaymentInboxPlugin extends Plugin {
     public void status(PluginCall call) {
         Context c = getContext();
         JSObject res = new JSObject();
-        res.put("enabled", PaymentStore.isEnabled(c));
-        res.put("listener", NotificationManagerCompat.getEnabledListenerPackages(c).contains(c.getPackageName()));
+        boolean enabled = PaymentStore.isEnabled(c);
+        boolean allowed = NotificationManagerCompat.getEnabledListenerPackages(c).contains(c.getPackageName());
+        // Autorizado pero sin conectar (pasa tras reinstalar): se pide de nuevo al abrir o volver a la app.
+        if (enabled && allowed && !PaymentListenerService.connected) {
+            PaymentListenerService.rebind(c);
+            PaymentStore.noteDiag(c, "rebindAt", System.currentTimeMillis());
+        }
+        res.put("enabled", enabled);
+        res.put("listener", allowed);
+        res.put("connected", PaymentListenerService.connected);
+        JSONObject d = PaymentStore.diag(c);
+        res.put("seenAt", d.optLong("seenAt", 0));
+        res.put("seenSource", d.has("seenSource") ? PaymentParser.sourceLabel(d.optString("seenSource")) : "");
+        res.put("payAt", d.optLong("payAt", 0));
+        res.put("payShown", d.optString("payShown", ""));
         res.put("overlay", Build.VERSION.SDK_INT < 23 || Settings.canDrawOverlays(c));
         JSArray sources = new JSArray();
         JSONObject seen = PaymentStore.sources(c);

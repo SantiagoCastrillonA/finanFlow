@@ -3566,8 +3566,27 @@ html:not(.brand-colors) .row-icon.brand {
     gap: 0;
   }
 
-  .dash-full {
-    grid-column: 1 / -1;
+  /* Columna derecha: Este mes (gráficos), metas y recientes */
+  .dash-col-right {
+    display: flex;
+    flex-direction: column;
+  }
+
+  .dash-col-right #goals-section {
+    order: 1;
+  }
+
+  .dash-col-right .dash-full {
+    order: 2;
+  }
+
+  /* La moneda de fondo se corta en el borde de su columna (en el celular la corta la pantalla) */
+  .dash-col-left {
+    overflow-x: clip;
+  }
+
+  .dash-coin {
+    right: -60px;
   }
 
   .tab-bar {
@@ -3645,6 +3664,85 @@ html:not(.brand-colors) .row-icon.brand {
   #toast-container {
     left: calc(50% + var(--sidebar-w) / 2);
     bottom: calc(24px + var(--safe-bottom));
+  }
+
+  .nav-brand {
+    order: -2;
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    padding: 0 8px 18px;
+    font-family: var(--font-display);
+    font-size: 22px;
+    font-weight: 800;
+    letter-spacing: -0.3px;
+  }
+
+  .nav-brand .coin {
+    width: 30px;
+    height: 30px;
+  }
+
+  /* FinanBot vive abajo en la barra lateral; el botón del encabezado sobra */
+  .header-ai {
+    display: none;
+  }
+
+  .nav-bot {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    margin-top: auto;
+    padding: 12px;
+    border-radius: 14px;
+    background: var(--accent-tint);
+    text-align: left;
+    transition: transform var(--dur-release) var(--ease-out);
+  }
+
+  .nav-bot:active {
+    transform: scale(0.97);
+    transition-duration: var(--dur-press);
+  }
+
+  .nav-bot-icon {
+    width: 36px;
+    height: 36px;
+    border-radius: 50%;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    flex-shrink: 0;
+    background: var(--accent-fill);
+    color: var(--on-accent);
+  }
+
+  .nav-bot-icon .ms {
+    font-size: 20px;
+    font-variation-settings: "FILL" 1;
+  }
+
+  .nav-bot-text {
+    display: flex;
+    flex-direction: column;
+    gap: 2px;
+    min-width: 0;
+    font-size: 13px;
+    color: var(--text-secondary);
+  }
+
+  .nav-bot-text strong {
+    font-size: 15px;
+    font-weight: 600;
+    color: var(--text);
+  }
+}
+
+/* La marca y FinanBot solo existen en la barra lateral */
+@media (max-width: 899.98px) {
+  .nav-brand,
+  .nav-bot {
+    display: none;
   }
 }
 

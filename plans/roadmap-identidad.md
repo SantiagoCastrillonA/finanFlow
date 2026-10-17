@@ -354,7 +354,7 @@ Referencia: tableros "Hogar · Inicio", "Hogar · gasto compartido" y "Hogar · 
 
 ---
 
-## Fase J — Tablet (0.13.4)
+## Fase J — Tablet (0.13.4) — HECHA (FinanBot con ícono hasta la mascota de la Fase G)
 
 Referencia: tablero "Tablet horizontal".
 

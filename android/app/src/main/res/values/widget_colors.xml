@@ -1,9 +1,10 @@
 <?xml version="1.0" encoding="utf-8"?>
+<!-- Widgets: el mismo degradado Marea en claro y oscuro (texto blanco). -->
 <resources>
-    <color name="widget_bg">#FFFFFFFF</color>
-    <color name="widget_text">#FF000000</color>
-    <color name="widget_text_secondary">#993C3C43</color>
-    <color name="widget_accent">#FF0E8A7E</color>
-    <color name="widget_income">#FF16A34A</color>
-    <color name="widget_expense">#FF2563EB</color>
+    <color name="widget_bg_start">#FF0A6E65</color>
+    <color name="widget_bg_end">#FF06504A</color>
+    <color name="widget_text">#FFFFFFFF</color>
+    <color name="widget_text_secondary">#D1FFFFFF</color>
+    <color name="widget_gold_soft">#FFFBE7B5</color>
+    <color name="widget_on_gold">#FF3A2A00</color>
 </resources>

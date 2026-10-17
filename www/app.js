@@ -1408,23 +1408,31 @@ function renderComparison(stats, isCurrent) {
   }
 }
 
+/** Lo que queda de los límites del mes actual y cuánto toca por día (null sin límites). */
+function dailyAllowance(stats, budgets = state.budgets) {
+  const cats = Object.keys(budgets);
+  if (!cats.length) return null;
+  const limit = cats.reduce((s, c) => s + Number(budgets[c]), 0);
+  const spent = cats.reduce((s, c) => s + (stats.byCat.expense[c] || 0), 0);
+  const remaining = limit - spent;
+  const daysLeft = daysInMonth(monthKey(new Date())) - new Date().getDate() + 1;
+  return { remaining, daysLeft, perDay: remaining > 0 ? roundMoney(remaining / daysLeft) : 0 };
+}
+
 function renderAllowance(stats, isCurrent) {
   const el = $("daily-allowance");
-  const cats = Object.keys(state.budgets);
-  if (!isCurrent || !cats.length) {
+  const allowance = isCurrent ? dailyAllowance(stats) : null;
+  if (!allowance) {
     el.classList.add("hidden");
     return;
   }
-  const limit = cats.reduce((s, c) => s + Number(state.budgets[c]), 0);
-  const spent = cats.reduce((s, c) => s + (stats.byCat.expense[c] || 0), 0);
-  const remaining = limit - spent;
-  const daysLeft = daysInMonth(state.viewMonth) - new Date().getDate() + 1;
+  const { remaining, daysLeft } = allowance;
   el.classList.remove("hidden");
   el.classList.toggle("bad", remaining <= 0);
   if (!el.firstElementChild) el.innerHTML = '<span class="allowance-value"></span><span class="allowance-label"></span>';
   const [value, label] = el.children;
   if (remaining > 0) {
-    setAnimatedText(value, formatMoney(roundMoney(remaining / daysLeft)));
+    setAnimatedText(value, formatMoney(allowance.perDay));
     label.textContent = `disponible por día · ${daysLeft} ${daysLeft === 1 ? "día" : "días"} restantes`;
   } else {
     setAnimatedText(value, formatMoney(Math.abs(remaining)));
@@ -4081,7 +4089,7 @@ function refreshScheduledNotifications() {
         at.setDate(at.getDate() + i);
         at.setHours(h, m, 0, 0);
         if (at <= now || (i === 0 && loggedToday)) return;
-        list.push({ ...base, id, title: "FinanFlow", body: "¿Registraste tus gastos de hoy? Toma 5 segundos.", schedule: { at, allowWhileIdle: true }, extra: { route: "add" } });
+        list.push({ ...base, id, title: "¿Ya anotaste lo de hoy?", body: "Toma 5 segundos. Toca para registrar.", schedule: { at, allowWhileIdle: true }, extra: { route: "add" } });
       });
     }
 
@@ -4090,18 +4098,26 @@ function refreshScheduledNotifications() {
       at.setDate(at.getDate() + ((7 - at.getDay()) % 7));
       at.setHours(19, 0, 0, 0);
       if (at <= now) at.setDate(at.getDate() + 7);
-      const from = new Date(at);
-      from.setDate(at.getDate() - 6);
-      const week = state.transactions.filter(
-        (t) => t.type === "expense" && countsAsMoney(t) && t.date >= toISODate(from) && t.date <= toISODate(at)
-      );
+      const shift = (d, days) => {
+        const c = new Date(d);
+        c.setDate(c.getDate() + days);
+        return toISODate(c);
+      };
+      const spentBetween = (fromISO, toISO) =>
+        state.transactions.filter((t) => t.type === "expense" && countsAsMoney(t) && t.date >= fromISO && t.date <= toISO);
+      const week = spentBetween(shift(at, -6), toISODate(at));
+      const total = sumAmounts(week);
+      const prev = sumAmounts(spentBetween(shift(at, -13), shift(at, -7)));
       const byCat = {};
       week.forEach((t) => (byCat[t.category] = (byCat[t.category] || 0) + Number(t.amount)));
       const top = Object.entries(byCat).sort((a, b) => b[1] - a[1])[0];
+      // "Gastaste $X, 12% menos que la semana pasada. Donde más: Comida."
+      const pct = prev > 0 ? Math.round(((total - prev) / prev) * 100) : null;
+      const vs = pct === null ? "" : pct === 0 ? ", lo mismo que la semana pasada" : `, ${Math.abs(pct)}% ${pct < 0 ? "menos" : "más"} que la semana pasada`;
       const body = week.length
-        ? `Esta semana gastaste ${formatMoney(sumAmounts(week))}${top ? ` · Más en ${getCategoryInfo(top[0]).label}` : ""}.`
+        ? `Gastaste ${formatMoney(total)}${vs}.${top ? ` Donde más: ${getCategoryInfo(top[0]).label}.` : ""}`
         : "Esta semana no registraste gastos. ¿Todo al día?";
-      list.push({ ...base, id: WEEKLY_ID, title: "Tu resumen semanal", body, schedule: { at, allowWhileIdle: true }, extra: { route: "dashboard" } });
+      list.push({ ...base, id: WEEKLY_ID, title: "Tu semana en FinanFlow", body, schedule: { at, allowWhileIdle: true }, extra: { route: "dashboard" } });
     }
 
     if (state.notify.cards) {
@@ -4173,8 +4189,11 @@ function checkBudgetAlerts() {
         id: 200 + (hashString(u.cat) % 40) * 2 + (u.threshold === 100 ? 1 : 0),
         channelId: "finanflow",
         smallIcon: "ic_stat_finanflow",
-        title: u.threshold === 100 ? `Superaste el límite de ${label}` : `${label}: cerca del límite`,
-        body: `Llevas ${formatMoney(u.spent)} de ${formatMoney(u.limit)} (${Math.round(u.pct)}%).`,
+        title: u.threshold === 100 ? `${label} pasó su límite` : `${label} va en ${Math.round(u.pct)}%`,
+        body:
+          u.threshold === 100
+            ? `Llevas ${formatMoney(u.spent)} de ${formatMoney(u.limit)}. Aún puedes cuidar el resto del mes.`
+            : `Te quedan ${formatMoney(roundMoney(u.limit - u.spent))} para el resto del mes.`,
         schedule: { at: new Date(Date.now() + 1000 + i * 200), allowWhileIdle: true },
         extra: { route: "budgets" }
       };
@@ -4297,6 +4316,8 @@ function syncWidget() {
     if (pay) pay.setContext({ json: JSON.stringify(paymentContext(data)) }).catch(() => {});
     if (!bridge) return;
     const s = monthStats(ym, 31, data.transactions, data.categories);
+    // Widget pequeño: "Disponible hoy" (vale solo el día en que se calcula).
+    const allowance = dailyAllowance(s, data.budgets);
     bridge
       .update({
         json: JSON.stringify({
@@ -4304,7 +4325,10 @@ function syncWidget() {
           income: formatMoney(s.income),
           expense: formatMoney(s.expense),
           monthKey: ym,
-          monthLabel: monthLabel(ym, false)
+          monthLabel: monthLabel(ym, false).toLowerCase(),
+          allowance: allowance && allowance.remaining > 0 ? formatMoney(allowance.perDay) : "",
+          allowanceOver: allowance && allowance.remaining <= 0 ? formatMoney(-allowance.remaining) : "",
+          allowanceDate: todayISO()
         })
       })
       .catch(() => {});

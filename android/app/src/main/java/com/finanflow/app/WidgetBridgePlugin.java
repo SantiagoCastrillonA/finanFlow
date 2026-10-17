@@ -27,6 +27,7 @@ public class WidgetBridgePlugin extends Plugin {
             .putString(BalanceWidgetProvider.KEY_SUMMARY, json)
             .apply();
         BalanceWidgetProvider.updateAll(context);
+        AllowanceWidgetProvider.updateAll(context);
         call.resolve();
     }
 }

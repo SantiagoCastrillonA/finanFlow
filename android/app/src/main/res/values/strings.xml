@@ -12,10 +12,15 @@
     <string name="shortcut_view_history_long">Ver historial de transacciones</string>
     <string name="widget_name">FinanFlow</string>
     <string name="widget_description">Saldo y movimientos del mes, con acceso rápido para agregar un gasto</string>
-    <string name="widget_balance_label">Saldo</string>
+    <string name="widget_balance_label">Saldo total</string>
     <string name="widget_income_label">Ingresos</string>
     <string name="widget_expense_label">Gastos</string>
     <string name="widget_add">Agregar gasto</string>
     <string name="widget_stale">Abre FinanFlow para actualizar</string>
+    <string name="widget_allowance_name">FinanFlow · Disponible hoy</string>
+    <string name="widget_allowance_description">Cuánto puedes gastar hoy según tus límites del mes</string>
+    <string name="widget_allowance_label">Disponible hoy</string>
+    <string name="widget_allowance_over">Por encima de tus límites</string>
+    <string name="widget_allowance_none">Define límites en FinanFlow</string>
     <string name="payment_listener_label">FinanFlow: detectar pagos</string>
 </resources>

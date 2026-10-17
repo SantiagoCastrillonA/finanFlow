@@ -370,7 +370,7 @@ Referencia: tablero "Tablet horizontal".
 
 ---
 
-## Fase K — Widget y notificaciones de Android (0.13.5)
+## Fase K — Widget y notificaciones de Android (0.13.5) — HECHA (sin el aviso del Hogar: sin servidor no hay push real)
 
 Referencia: tablero "Widget y notificaciones".
 

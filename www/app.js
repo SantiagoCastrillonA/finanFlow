@@ -920,7 +920,11 @@ const centerTextPlugin = {
     ctx.font = `500 ${size * 0.72}px ${cssVar("--font")}`;
     ctx.fillText(lines[0], x, y - size * 0.6);
     ctx.fillStyle = cssVar("--text");
+    // La cifra completa ($ 3.534.800) debe caber en el hueco de la dona: se achica si hace falta.
+    const hole = Math.min(chartArea.width, chartArea.height) * 0.72 * 0.86;
     ctx.font = `700 ${size}px ${cssVar("--font")}`;
+    const fit = Math.min(1, hole / Math.max(1, ctx.measureText(lines[1] || "").width));
+    ctx.font = `700 ${size * fit}px ${cssVar("--font")}`;
     ctx.fillText(lines[1] || "", x, y + size * 0.45);
     ctx.restore();
   }
@@ -952,8 +956,14 @@ function setChartSummary(canvasId, text) {
 
 function openYearSummary() {
   const end = monthKey(new Date());
-  const months = Array.from({ length: 12 }, (_, i) => addMonths(end, i - 11));
-  const stats = months.map((ym) => monthStats(ym));
+  // Hasta 12 meses, desde el primero con movimientos (sin barras vacías al inicio) y como mínimo 3.
+  const all = Array.from({ length: 12 }, (_, i) => addMonths(end, i - 11));
+  const allStats = all.map((ym) => monthStats(ym));
+  const first = allStats.findIndex((m) => m.income || m.expense);
+  const from = first === -1 ? 9 : Math.min(first, 9);
+  const months = all.slice(from);
+  const stats = allStats.slice(from);
+  $("summary-title").textContent = months.length === 12 ? "Últimos 12 meses" : `Últimos ${months.length} meses`;
   const income = roundMoney(stats.reduce((s, m) => s + m.income, 0));
   const expense = roundMoney(stats.reduce((s, m) => s + m.expense, 0));
   const active = stats.filter((m) => m.income || m.expense);
@@ -1066,7 +1076,7 @@ function renderCategoryChart(stats) {
     data = [stats.income, stats.expense];
     colors = [cssVar("--income"), cssVar("--spend")];
     const net = stats.income - stats.expense;
-    center = ["Neto", (net > 0 ? "+" : "") + formatCompact(net)];
+    center = ["Neto", (net > 0 ? "+" : "") + formatMoney(net)];
   } else {
     const entries = Object.entries(stats.byCat[type]).sort((a, b) => b[1] - a[1]);
     ids = entries.map((e) => e[0]);
@@ -1074,7 +1084,7 @@ function renderCategoryChart(stats) {
     data = entries.map((e) => e[1]);
     colors = ids.map((id) => getCategoryInfo(id, type).color);
     const total = data.reduce((s, v) => s + v, 0);
-    center = ["Total", formatCompact(total)];
+    center = ["Total", formatMoney(total)];
   }
 
   const empty = data.every((v) => !v);
@@ -1301,7 +1311,7 @@ function renderDashboard(stats) {
         ? "Deuda en tarjetas"
         : "Saldo en tus cuentas"
       : isCurrent
-        ? "Saldo"
+        ? "Saldo total"
         : `Saldo al cierre de ${monthLabel(state.viewMonth, false).toLowerCase()}`;
   }
   setAnimatedText($("total-incomes"), formatMoney(stats.income));
@@ -1346,12 +1356,14 @@ function renderComparison(stats, isCurrent) {
   const diff = ((stats.expense - prev.expense) / prev.expense) * 100;
   const name = monthLabel(prevYM, false).toLowerCase();
   const pct = Math.abs(Math.round(diff));
+  const when = isCurrent ? " a la fecha" : "";
   el.classList.remove("hidden", "good", "bad");
+  // Pastilla: el texto en secundario y solo la flecha con el porcentaje en color.
   if (pct === 0) {
-    el.textContent = `Gastos iguales que en ${name}${isCurrent ? " a esta fecha" : ""}`;
+    el.innerHTML = `<span class="compare-text">Gastas igual que en ${name}${when}</span>`;
   } else {
     el.classList.add(diff < 0 ? "good" : "bad");
-    el.innerHTML = `<span class="ms">${diff < 0 ? "south_east" : "north_east"}</span>Gastos ${pct}% ${diff < 0 ? "menos" : "más"} que en ${name}${isCurrent ? " a esta fecha" : ""}`;
+    el.innerHTML = `<span class="compare-delta"><span class="ms">${diff < 0 ? "south_east" : "north_east"}</span>${pct}%</span><span class="compare-text">${diff < 0 ? "menos" : "más"} gasto que en ${name}${when}</span>`;
   }
 }
 
@@ -1423,6 +1435,21 @@ function renderBudgetAlerts(stats) {
   const alerts = budgetUsage(stats).filter((u) => u.level !== "safe");
   const keys = new Set(alerts.map((a) => `${a.cat}:${a.level}`));
   container.innerHTML = "";
+  if (alerts.length > 1) {
+    // Varias a la vez: una sola fila con el nivel más grave, que lleva a Límites.
+    const level = alerts.some((a) => a.level === "danger") ? "danger" : "warning";
+    const row = document.createElement("button");
+    row.type = "button";
+    row.className = `alert-row ${level}`;
+    if ([...keys].some((k) => !prevAlertKeys.has(k))) row.classList.add("is-new");
+    row.innerHTML = `
+      <span class="ms">${level === "danger" ? "error" : "warning"}</span>
+      <span class="alert-text"><strong>${alerts.length} límites</strong> necesitan atención</span>
+      <span class="ms chevron">chevron_right</span>`;
+    row.onclick = () => switchTab("budgets");
+    container.appendChild(row);
+    alerts.length = 0;
+  }
   alerts.forEach((a) => {
     const info = getCategoryInfo(a.cat);
     const div = document.createElement("button");
@@ -1437,7 +1464,7 @@ function renderBudgetAlerts(stats) {
     container.appendChild(div);
   });
   prevAlertKeys = keys;
-  container.classList.toggle("hidden", !alerts.length);
+  container.classList.toggle("hidden", !container.children.length);
 }
 
 function emptyStateHTML(icon, title, text, actionLabel) {

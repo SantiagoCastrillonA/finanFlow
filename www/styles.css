@@ -917,24 +917,44 @@ a {
   text-overflow: ellipsis;
 }
 
+/* Comparativa con el mes anterior: pastilla de una línea; solo la flecha y el % llevan color. */
 .compare {
   display: flex;
   align-items: center;
-  gap: 4px;
+  gap: 6px;
+  width: fit-content;
+  max-width: 100%;
   margin-top: 14px;
+  padding: 4px 10px 4px 8px;
+  border-radius: 999px;
+  background: var(--fill);
   font-size: 13px;
   color: var(--text-secondary);
+  white-space: nowrap;
+}
+
+.compare-delta {
+  display: inline-flex;
+  align-items: center;
+  gap: 2px;
+  font-weight: 600;
+  font-variant-numeric: tabular-nums;
+}
+
+.compare-text {
+  overflow: hidden;
+  text-overflow: ellipsis;
 }
 
 .compare .ms {
   font-size: 16px;
 }
 
-.compare.good {
+.compare.good .compare-delta {
   color: var(--income);
 }
 
-.compare.bad {
+.compare.bad .compare-delta {
   color: var(--warning-text);
 }
 

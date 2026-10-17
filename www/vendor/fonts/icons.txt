@@ -2,7 +2,6 @@
 account_balance
 add
 add_home
-arrow_downward
 arrow_upward
 auto_awesome
 autorenew
@@ -51,7 +50,6 @@ input
 insights
 join
 key
-label
 laptop_mac
 layers
 light
@@ -84,6 +82,7 @@ settings
 shopping_bag
 show_chart
 south_east
+south_west
 sports_esports
 swap_horiz
 switch

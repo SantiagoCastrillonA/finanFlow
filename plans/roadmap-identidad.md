@@ -24,7 +24,7 @@ Restricción: costo $0 y sin conexión. No se usan CDNs, y las fuentes e íconos
 | A | 0.11.0 | Limpieza de color: fuera violeta, tokens Oro, interruptores, Límites por estado, saldo neutro | Pequeña · **Hecha** |
 | A2 | 0.11.0 | Accesibilidad: contraste de tokens, tamaños táctiles, texto grande, gráficas | Pequeña · **Hecha** |
 | B | 0.11.1 | Ícono Moneda de oro en Android, PWA, splash y notificación | Mediana · **Hecha** |
-| C | 0.12.0 | Inicio: etiquetas, flechas, comparativa, alertas y neto | Mediana |
+| C | 0.12.0 | Inicio: etiquetas, flechas, comparativa, alertas y neto | Mediana · **Hecha** |
 | C2 | 0.12.0 | Vidrio: moneda de fondo, saldo en vidrio, barra inferior flotante | Mediana |
 | D | 0.12.1 | Registrar movimiento: monto, un solo Guardar, fecha rápida, selección | Mediana |
 | E | 0.13.0 | Tipografía propia (Manrope local) | Pequeña |
@@ -179,7 +179,7 @@ Sustituye por completo el ícono "Barras" del plan 009 y sigue sus mismos pasos 
 
 ---
 
-## Fase C — Inicio (0.12.0)
+## Fase C — Inicio (0.12.0) — HECHA (sin los puntos opcionales 5 y 7, que piden preguntar)
 
 1. **Etiqueta del saldo.** En el mes actual y sin cuentas activas, `balance-label` dice "Saldo", pero muestra el acumulado (`app.js` ~1277–1283), mientras que Ingresos y Gastos son del mes. Cambiar a "Saldo total". Los demás textos ("Saldo en tus cuentas", "Saldo al cierre de…") están bien.
 2. **Flechas.**

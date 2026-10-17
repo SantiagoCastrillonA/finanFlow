@@ -34,13 +34,21 @@
   --bar-bg: rgba(12, 24, 24, 0.82);
   --backdrop: rgba(0, 0, 0, 0.5);
   --shadow: 0 8px 32px rgba(0, 0, 0, 0.5);
-  /* Vidrio sobre un fondo de un solo color: las tarjetas grandes más claras y con borde de luz, las listas más discretas. */
+  /* Vidrio con propósito: solo el saldo (sobre la moneda de fondo) y lo que flota (barra, hojas, avisos,
+     botón de FinanBot) desenfocan lo de atrás. Las demás tarjetas y listas son sólidas. */
   --glass: rgba(255, 255, 255, 0.08);
   --glass-edge: rgba(255, 255, 255, 0.18);
   --glass-glint: rgba(255, 255, 255, 0.25);
-  --surface: rgba(255, 255, 255, 0.045);
+  --surface: var(--card);
   --surface-edge: rgba(255, 255, 255, 0.07);
   --surface-glint: rgba(255, 255, 255, 0.09);
+  --glass-balance: rgba(255, 255, 255, 0.08);
+  --glass-float: rgba(27, 45, 45, 0.72);
+  --glass-sheet: rgba(19, 33, 33, 0.9);
+  --sheet-solid: var(--card);
+  --coin-disc-opacity: 0.09;
+  --coin-wave-opacity: 0.2;
+  --coin-tide-opacity: 0.22;
 }
 
 [data-theme="light"] {
@@ -73,16 +81,25 @@
   --glass: rgba(255, 255, 255, 0.45);
   --glass-edge: rgba(255, 255, 255, 0.75);
   --glass-glint: rgba(255, 255, 255, 0.95);
-  --surface: rgba(255, 255, 255, 0.62);
+  --surface: var(--card);
   --surface-edge: rgba(255, 255, 255, 0.8);
   --surface-glint: rgba(255, 255, 255, 0.9);
+  --glass-balance: rgba(255, 255, 255, 0.72);
+  --glass-float: rgba(255, 255, 255, 0.66);
+  --glass-sheet: rgba(238, 244, 243, 0.88);
+  --sheet-solid: var(--bg);
+  --coin-disc-opacity: 1;
+  --coin-wave-opacity: 0.8;
+  --coin-tide-opacity: 0.25;
 }
 
 :root {
   --font: -apple-system, BlinkMacSystemFont, "SF Pro Text", system-ui, "Segoe UI", Roboto, sans-serif;
+  --font-display: "Manrope", var(--font);
   --radius: 14px;
   --gutter: 16px;
-  --tab-h: 56px;
+  --tab-h: 64px;   /* alto de la barra inferior flotante */
+  --tab-gap: 10px;  /* separación de la barra con el borde de la pantalla */
   --safe-top: env(safe-area-inset-top, 0px);
   --safe-bottom: env(safe-area-inset-bottom, 0px);
 
@@ -156,6 +173,27 @@ a {
 }
 
 /* Íconos locales, recortados a los que usa la app (npm run vendor para regenerar) */
+/* Manrope (OFL, local): títulos y cifras grandes. El texto de lectura sigue en la fuente del sistema. */
+@font-face {
+  font-family: "Manrope";
+  font-style: normal;
+  font-weight: 500 800;
+  font-display: swap;
+  src: url("vendor/fonts/manrope.woff2") format("woff2");
+}
+
+.large-title,
+.section-header h2,
+.balance-amount,
+.total-value,
+.allowance-value,
+.stat-value,
+.between-value,
+.amount-symbol,
+.amount-field input {
+  font-family: var(--font-display);
+}
+
 @font-face {
   font-family: "Material Symbols Rounded";
   font-style: normal;
@@ -221,6 +259,21 @@ a {
 .space-switch button {
   min-height: 34px;
   font-size: 14px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+  min-width: 0;
+}
+
+.space-switch button .ms {
+  font-size: 18px;
+}
+
+.space-name {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
 }
 
 @starting-style {
@@ -313,18 +366,169 @@ a {
   font-variant-numeric: tabular-nums;
 }
 
-.btn-tinted.small {
+.btn-tinted.small,
+.btn-primary.small {
   min-height: 34px;
   padding: 0 14px;
   font-size: 15px;
   border-radius: 17px;
 }
 
+/* Hogar: "Entre ustedes" (quién le debe a quién) y quién pagó lo del mes */
+.hogar-card {
+  padding: 14px 16px;
+}
+
+.hogar-top {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+
+.hogar-card .between-value {
+  font-size: 26px;
+  font-weight: 800;
+  letter-spacing: -0.3px;
+}
+
+.avatar-pair {
+  display: inline-flex;
+  flex-shrink: 0;
+}
+
+.avatar-pair .avatar {
+  width: 34px;
+  height: 34px;
+  box-shadow: 0 0 0 2px var(--card);
+}
+
+.avatar-pair .avatar + .avatar {
+  margin-left: -10px;
+}
+
+.hogar-sub {
+  margin: 6px 0 0;
+  font-size: 14px;
+  color: var(--text-secondary);
+}
+
+.hogar-spent {
+  margin-top: 14px;
+  padding-top: 12px;
+  border-top: 0.5px solid var(--separator);
+}
+
+.hogar-spent-head {
+  display: flex;
+  justify-content: space-between;
+  align-items: baseline;
+  margin-bottom: 8px;
+}
+
+.hogar-spent-total {
+  font-family: var(--font-display);
+  font-weight: 700;
+  font-variant-numeric: tabular-nums;
+}
+
+/* Barra dividida tú / pareja: Marea y Oro, con una separación para no depender solo del color */
+.split-bar {
+  display: flex;
+  gap: 3px;
+  height: 8px;
+}
+
+.split-bar span {
+  flex: 1 1 0;
+  min-width: 0;
+  border-radius: 4px;
+}
+
+.split-bar .me {
+  background: var(--accent);
+}
+
+.split-bar .partner {
+  background: var(--gold);
+}
+
+.split-legend {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: space-between;
+  gap: 4px 12px;
+  margin-top: 8px;
+  font-size: 14px;
+  color: var(--text-secondary);
+  font-variant-numeric: tabular-nums;
+}
+
+.split-legend strong {
+  color: var(--text);
+  font-weight: 600;
+}
+
+.split-legend .dot {
+  display: inline-block;
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  margin-right: 6px;
+  vertical-align: 1px;
+}
+
+.dot.me {
+  background: var(--accent);
+}
+
+.dot.partner {
+  background: var(--gold);
+}
+
+/* Hoja: "¿Quién pagó?" como dos tarjetas */
+.payer-cards {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 8px;
+}
+
+.payer-card {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  min-height: 48px;
+  padding: 8px 12px;
+  border-radius: 12px;
+  background: var(--fill);
+  font-size: 16px;
+  font-weight: 500;
+  text-align: left;
+  outline: 2px solid transparent;
+  outline-offset: -2px;
+  transition: outline-color 150ms ease;
+}
+
+.payer-card.active {
+  outline-color: var(--accent-strong);
+}
+
+.payer-card span:last-child {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.split-pills button {
+  min-height: 36px;
+  padding: 0 14px;
+  font-size: 14px;
+}
+
 .row-icon {
   position: relative;
 }
 
-/* Inicial de quien registró el movimiento en el Hogar */
+/* Inicial de quien pagó el movimiento en el Hogar (tú en Marea, tu pareja en Oro) */
 .row-author {
   position: absolute;
   right: -4px;
@@ -340,6 +544,16 @@ a {
   font-size: 9px;
   font-weight: 700;
   box-shadow: 0 0 0 2px var(--card);
+}
+
+.row-author.me {
+  background: var(--accent-fill);
+  color: var(--on-accent);
+}
+
+.row-author.partner {
+  background: var(--gold);
+  color: #3A2A00;
 }
 
 .row-amount.settlement {
@@ -428,6 +642,32 @@ a {
   font-weight: 700;
 }
 
+.avatar.me {
+  background: var(--accent-fill);
+  color: var(--on-accent);
+}
+
+.avatar.partner {
+  background: var(--gold);
+  color: #3A2A00;
+}
+
+.activity-group-title {
+  margin: 16px 4px 6px;
+  font-size: 13px;
+  text-transform: uppercase;
+  color: var(--text-secondary);
+}
+
+.activity-group-title:first-child {
+  margin-top: 4px;
+}
+
+.activity-amount.settle {
+  color: var(--income);
+  font-weight: 600;
+}
+
 .dialog-input {
   width: 100%;
   height: 40px;
@@ -507,7 +747,8 @@ a {
   overflow-y: auto;
   overscroll-behavior-y: contain;
   -webkit-overflow-scrolling: touch;
-  padding: 4px var(--gutter) calc(var(--tab-h) + var(--safe-bottom) + 32px);
+  overflow-x: hidden; /* la moneda de fondo de Inicio se sale por la derecha */
+  padding: 4px var(--gutter) calc(var(--tab-h) + var(--tab-gap) + var(--safe-bottom) + 28px);
 }
 
 .tab-view {
@@ -574,8 +815,8 @@ a {
 }
 
 .card {
-  background: var(--glass);
-  box-shadow: inset 0 0 0 0.5px var(--glass-edge), inset 0 1px 0 var(--glass-glint);
+  background: var(--card);
+  box-shadow: inset 0 0 0 0.5px var(--surface-edge), inset 0 1px 0 var(--surface-glint);
   border-radius: var(--radius);
   padding: 16px;
   margin-bottom: 12px;
@@ -629,6 +870,7 @@ a {
 .chip,
 .space-switch button,
 .btn-tinted.small,
+.btn-primary.small,
 .btn-plain.small,
 .toast-action {
   position: relative;
@@ -638,6 +880,7 @@ a {
 .chip::after,
 .space-switch button::after,
 .btn-tinted.small::after,
+.btn-primary.small::after,
 .btn-plain.small::after,
 .toast-action::after {
   content: "";
@@ -829,7 +1072,81 @@ a {
 }
 
 .balance-card {
+  position: relative;
   padding: 20px;
+  background: var(--glass-balance);
+  -webkit-backdrop-filter: blur(24px) saturate(180%);
+  backdrop-filter: blur(24px) saturate(180%);
+  box-shadow: inset 0 0 0 1px var(--glass-edge), inset 0 1px 0 var(--glass-glint), 0 8px 24px rgba(0, 0, 0, 0.08);
+}
+
+/* Con la moneda detrás del vidrio, el texto de color se refuerza para seguir en ≥ 4.5:1 (peor caso medido:
+   la ola de oro y el círculo Marea bajo el texto). */
+[data-theme="light"] .balance-card {
+  --income: #166534;
+  --spend: #1D4ED8;
+  --warning-text: #92400E;
+  --expense: #BE123C;
+}
+
+[data-theme="dark"] .balance-card {
+  --income: #86EFAC;
+  --spend: #BFDBFE;
+  --warning-text: #FCD34D;
+  --expense: #FDA4AF;
+  --text-secondary: rgba(235, 235, 245, 0.72);
+}
+
+.balance-card .compare {
+  background: color-mix(in srgb, #fff 45%, transparent);
+}
+
+[data-theme="dark"] .balance-card .compare {
+  background: rgba(255, 255, 255, 0.08);
+}
+
+/* Moneda de fondo de Inicio: se mueve con el scroll, detrás del saldo. Misma geometría que el ícono. */
+.dash-col-left {
+  position: relative;
+  isolation: isolate;
+}
+
+.dash-coin {
+  position: absolute;
+  z-index: -1;
+  top: 24px;
+  right: -90px;
+  width: 400px;
+  height: 420px;
+  overflow: visible;
+  pointer-events: none;
+}
+
+.dash-coin-tide {
+  fill: var(--accent);
+  opacity: var(--coin-tide-opacity);
+}
+
+.dash-coin-disc {
+  fill: #FBE7B5;
+  opacity: var(--coin-disc-opacity);
+}
+
+.dash-coin-wave {
+  fill: var(--gold);
+  opacity: var(--coin-wave-opacity);
+}
+
+.dash-coin-rim {
+  fill: none;
+  stroke: #fff;
+  stroke-width: 6px;
+  stroke-opacity: 0.9;
+  vector-effect: non-scaling-stroke;
+}
+
+[data-theme="dark"] .dash-coin-rim {
+  stroke-opacity: 0.2;
 }
 
 .balance-amount {
@@ -917,24 +1234,95 @@ a {
   text-overflow: ellipsis;
 }
 
+/* La moneda que se llena (coinSVG en app.js): estados vacíos, metas y el aviso al guardar */
+.coin {
+  display: block;
+  overflow: visible;
+}
+
+.coin-disc {
+  fill: var(--gold-soft);
+}
+
+.coin-wave {
+  fill: var(--gold);
+}
+
+.coin-rim {
+  fill: none;
+  stroke: var(--gold);
+  stroke-width: 3;
+}
+
+.coin.full .coin-disc {
+  fill: var(--gold);
+}
+
+.coin.outline .coin-rim {
+  stroke: var(--text-tertiary);
+  stroke-dasharray: 5 4;
+}
+
+.empty-state .coin-empty {
+  width: 56px;
+  height: 56px;
+  margin: 0 auto 4px;
+}
+
+.row-icon.coin-icon {
+  background: none;
+  padding: 2px;
+}
+
+.row-icon.coin-icon .coin {
+  width: 100%;
+  height: 100%;
+}
+
+.toast-coin {
+  width: 22px;
+  height: 22px;
+  flex-shrink: 0;
+}
+
+/* Comparativa con el mes anterior: pastilla de una línea; solo la flecha y el % llevan color. */
 .compare {
   display: flex;
   align-items: center;
-  gap: 4px;
+  gap: 6px;
+  width: fit-content;
+  max-width: 100%;
   margin-top: 14px;
+  padding: 4px 10px 4px 8px;
+  border-radius: 999px;
+  background: var(--fill);
   font-size: 13px;
   color: var(--text-secondary);
+  white-space: nowrap;
+}
+
+.compare-delta {
+  display: inline-flex;
+  align-items: center;
+  gap: 2px;
+  font-weight: 600;
+  font-variant-numeric: tabular-nums;
+}
+
+.compare-text {
+  overflow: hidden;
+  text-overflow: ellipsis;
 }
 
 .compare .ms {
   font-size: 16px;
 }
 
-.compare.good {
+.compare.good .compare-delta {
   color: var(--income);
 }
 
-.compare.bad {
+.compare.bad .compare-delta {
   color: var(--warning-text);
 }
 
@@ -1080,6 +1468,34 @@ a {
 
 .form-row + .form-row::before {
   left: 16px;
+}
+
+/* Bloque de formulario con título arriba (Hogar: quién pagó y cómo se divide) */
+.form-block {
+  position: relative;
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  padding: 12px 16px 14px;
+  background: var(--card);
+}
+
+[data-theme="dark"] .sheet .form-block {
+  background: var(--elevated);
+}
+
+:is(.form-row, .form-block) + :is(.form-row, .form-block)::before {
+  content: "";
+  position: absolute;
+  top: 0;
+  right: 0;
+  left: 16px;
+  border-top: 0.5px solid var(--separator);
+}
+
+.form-block-label {
+  font-size: 15px;
+  color: var(--text-secondary);
 }
 
 .list-row:active,
@@ -1596,19 +2012,21 @@ html:not(.brand-colors) .row-icon.brand {
    Barra de pestañas
    ========================================================================== */
 
+/* Barra flotante de vidrio, separada del borde (en tablet es la barra lateral sólida) */
 .tab-bar {
   position: absolute;
-  left: 0;
-  right: 0;
-  bottom: 0;
+  left: 12px;
+  right: 12px;
+  bottom: calc(var(--tab-gap) + var(--safe-bottom));
   display: flex;
   align-items: center;
-  height: calc(var(--tab-h) + var(--safe-bottom));
-  padding: 0 8px var(--safe-bottom);
-  background: var(--bar-bg);
-  -webkit-backdrop-filter: saturate(180%) blur(12px);
-  backdrop-filter: saturate(180%) blur(12px);
-  border-top: 0.5px solid var(--separator);
+  height: var(--tab-h);
+  padding: 0 8px;
+  border-radius: calc(var(--tab-h) / 2);
+  background: var(--glass-float);
+  -webkit-backdrop-filter: blur(20px) saturate(180%);
+  backdrop-filter: blur(20px) saturate(180%);
+  box-shadow: inset 0 0 0 1px var(--glass-edge), 0 8px 24px rgba(0, 0, 0, 0.14);
   z-index: 10;
 }
 
@@ -1642,8 +2060,8 @@ html:not(.brand-colors) .row-icon.brand {
 }
 
 .nav-add {
-  width: 46px;
-  height: 46px;
+  width: 52px;
+  height: 52px;
   margin: 0 8px;
   border-radius: 50%;
   display: inline-flex;
@@ -1711,16 +2129,14 @@ html:not(.brand-colors) .row-icon.brand {
   max-height: calc(100% - var(--safe-top) - 24px);
   overflow-y: auto;
   overscroll-behavior: contain;
-  background: var(--bg);
+  background: var(--glass-sheet);
+  -webkit-backdrop-filter: blur(24px) saturate(180%);
+  backdrop-filter: blur(24px) saturate(180%);
   border-radius: 14px 14px 0 0;
   padding: 0 var(--gutter) calc(16px + var(--safe-bottom));
   transform: translateY(100%);
   transition: transform 250ms var(--ease-drawer);
   box-shadow: var(--shadow);
-}
-
-[data-theme="dark"] .sheet {
-  background: var(--card);
 }
 
 .sheet,
@@ -1733,11 +2149,52 @@ html:not(.brand-colors) .row-icon.brand {
   --surface-glint: transparent;
 }
 
-/* Quien pide menos transparencia en el sistema ve tarjetas sólidas. */
+/* Botón de FinanBot y demás del encabezado: flotan sobre la moneda, en vidrio */
+.app-header .icon-btn:not(.plain) {
+  background: var(--glass-float);
+  -webkit-backdrop-filter: blur(20px) saturate(180%);
+  backdrop-filter: blur(20px) saturate(180%);
+  box-shadow: inset 0 0 0 1px var(--glass-edge);
+}
+
+/* Quien pide menos transparencia en el sistema (o un WebView sin backdrop-filter) ve todo sólido. */
 @media (prefers-reduced-transparency: reduce) {
-  :root {
+  :root,
+  [data-theme="light"] {
     --glass: var(--card);
-      --surface: var(--card);
+    --glass-balance: var(--card);
+    --glass-float: var(--card);
+    --glass-sheet: var(--sheet-solid);
+  }
+
+  .balance-card,
+  .tab-bar,
+  .sheet,
+  .toast,
+  .app-header .icon-btn {
+    -webkit-backdrop-filter: none !important;
+    backdrop-filter: none !important;
+  }
+
+  .sheet-header {
+    background: var(--sheet-solid);
+  }
+
+  [data-theme="light"] .toast {
+    background: rgb(30, 30, 32);
+  }
+
+  [data-theme="dark"] .toast {
+    background: var(--elevated);
+  }
+}
+
+@supports not ((backdrop-filter: blur(1px)) or (-webkit-backdrop-filter: blur(1px))) {
+  :root,
+  [data-theme="light"] {
+    --glass-balance: var(--card);
+    --glass-float: var(--card);
+    --glass-sheet: var(--sheet-solid);
   }
 }
 
@@ -1774,7 +2231,13 @@ html:not(.brand-colors) .row-icon.brand {
   align-items: center;
   margin: 0 calc(-1 * var(--gutter)) 12px;
   padding: 0 var(--gutter);
-  background: inherit;
+  /* La hoja ya es vidrio: el encabezado no pone otro fondo encima (se notaba una franja). */
+  background: transparent;
+}
+
+/* Al hacer scroll, el encabezado se vuelve sólido para que el contenido no pase por debajo de su texto */
+.sheet.scrolled .sheet-header {
+  background: var(--sheet-solid);
 }
 
 .sheet-header > :first-child {
@@ -1806,10 +2269,10 @@ html:not(.brand-colors) .row-icon.brand {
   color: var(--text-secondary);
 }
 
+/* fitAmount() le da el ancho de la cifra: símbolo y cifra quedan centrados juntos */
 .amount-field input {
-  width: 100%;
-  max-width: 280px;
-  field-sizing: content; /* el símbolo queda pegado a la cifra donde hay soporte */
+  width: 1.2ch;
+  max-width: calc(100% - 40px);
   min-width: 1.2ch;
   border: none;
   background: none;
@@ -1822,8 +2285,57 @@ html:not(.brand-colors) .row-icon.brand {
   caret-color: var(--accent);
 }
 
+/* Fecha rápida en la hoja de movimiento */
+.date-chips {
+  display: flex;
+  gap: 6px;
+  flex-wrap: wrap;
+  justify-content: flex-end;
+}
+
+.date-chip {
+  position: relative;
+  display: inline-flex;
+  align-items: center;
+  min-height: 32px;
+  padding: 0 12px;
+  border-radius: 999px;
+  background: var(--fill);
+  font-size: 15px;
+  white-space: nowrap;
+  transition: background-color 150ms ease, color 150ms ease;
+}
+
+.date-chip.active {
+  background: var(--accent-fill);
+  color: var(--on-accent);
+  font-weight: 600;
+}
+
+/* El selector nativo va encima de "Otra", invisible: tocarlo abre el calendario del sistema */
+.date-chips .date-other input[type="date"] {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  opacity: 0;
+  cursor: pointer;
+}
+
 .amount-field input::placeholder {
   color: var(--text-secondary);
+}
+
+#tx-amount[data-type="expense"]:not(:placeholder-shown) {
+  color: var(--spend);
+}
+
+#tx-amount[data-type="income"]:not(:placeholder-shown) {
+  color: var(--income);
+}
+
+#tx-amount[data-type="transfer"]:not(:placeholder-shown) {
+  color: var(--accent-strong);
 }
 
 /* Cuadrícula de categorías (registro en dos toques) */
@@ -1876,13 +2388,12 @@ html:not(.brand-colors) .row-icon.brand {
   white-space: nowrap;
 }
 
-.cat-btn.active {
-  background: var(--fill);
-}
-
+/* La elegida: círculo lleno de su color y anillo Marea alrededor (sin rectángulo gris detrás) */
 .cat-btn.active .cat-icon {
   background: var(--c);
   color: #fff;
+  outline: 2.5px solid var(--accent);
+  outline-offset: 2px;
 }
 
 .cat-icon .brand-mono {
@@ -1901,7 +2412,6 @@ html:not(.brand-colors) .row-icon.brand {
 
 .cat-btn.active .cat-icon.brand {
   color: #fff;
-  box-shadow: 0 0 0 2px var(--card), 0 0 0 4px var(--c);
 }
 
 .cat-btn.active .cat-icon.brand.light {
@@ -2559,7 +3069,7 @@ html:not(.brand-colors) .row-icon.brand {
 #toast-container {
   position: fixed;
   left: 50%;
-  bottom: calc(var(--tab-h) + var(--safe-bottom) + 12px);
+  bottom: calc(var(--tab-h) + var(--tab-gap) + var(--safe-bottom) + 12px);
   transform: translateX(-50%);
   width: min(420px, calc(100% - 32px));
   display: flex;
@@ -2577,7 +3087,9 @@ html:not(.brand-colors) .row-icon.brand {
   padding: 8px 8px 8px 14px;
   border-radius: 14px;
   --toast-accent: var(--accent-strong);
-  background: var(--elevated);
+  background: rgba(27, 45, 45, 0.9);
+  -webkit-backdrop-filter: blur(20px) saturate(180%);
+  backdrop-filter: blur(20px) saturate(180%);
   box-shadow: var(--shadow);
   font-size: 15px;
   pointer-events: auto;
@@ -2588,7 +3100,7 @@ html:not(.brand-colors) .row-icon.brand {
 
 [data-theme="light"] .toast {
   --toast-accent: #3FD6C2; /* el aviso es oscuro también en tema claro */
-  background: rgba(30, 30, 32, 0.94);
+  background: rgba(30, 30, 32, 0.88);
   color: #fff;
 }
 
@@ -2659,6 +3171,231 @@ html:not(.brand-colors) .row-icon.brand {
 
 .toast-action:active {
   background: rgba(255, 255, 255, 0.12);
+}
+
+/* ==========================================================================
+   Primer uso (onboarding): pantalla completa, 3 pasos
+   ========================================================================== */
+
+.onboarding-modal {
+  z-index: 140;
+  align-items: stretch;
+  background: var(--bg);
+  opacity: 0;
+  transition: opacity 250ms var(--ease-out), visibility 0s linear 250ms;
+}
+
+.onboarding-modal.open {
+  opacity: 1;
+  transition: opacity 250ms var(--ease-out);
+}
+
+.onboarding {
+  position: relative;
+  display: flex;
+  flex-direction: column;
+  width: 100%;
+  max-width: 520px;
+  overflow-y: auto;
+  padding: var(--safe-top) 0 calc(12px + var(--safe-bottom));
+}
+
+.onb-step {
+  display: none;
+  flex: 1;
+  flex-direction: column;
+}
+
+.onb-step.active {
+  display: flex;
+  transition: opacity 250ms var(--ease-out), transform 250ms var(--ease-out);
+}
+
+/* Entrada de cada paso: desde un poco a la derecha, como avanzar una página */
+@starting-style {
+  .onb-step.active {
+    opacity: 0;
+    transform: translateX(16px);
+  }
+}
+
+.onb-hero {
+  position: relative;
+  flex: 1;
+  min-height: 220px;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 14px;
+  overflow: hidden;
+  isolation: isolate;
+}
+
+/* La marea del ícono, detrás de la moneda */
+.onb-hero::before {
+  content: "";
+  position: absolute;
+  z-index: -1;
+  left: 50%;
+  top: 50%;
+  width: 360px;
+  height: 360px;
+  margin: -180px 0 0 -180px;
+  border-radius: 50%;
+  background: var(--accent);
+  opacity: var(--coin-tide-opacity);
+}
+
+.onb-coin .coin {
+  width: 132px;
+  height: 132px;
+}
+
+.onb-logo {
+  font-family: var(--font-display);
+  font-size: 30px;
+  font-weight: 800;
+  letter-spacing: -0.5px;
+}
+
+.onb-body {
+  display: flex;
+  flex-direction: column;
+  padding: 24px var(--gutter) 0;
+}
+
+.onb-step:not([data-step="1"]) .onb-body {
+  flex: 1;
+  padding-top: 40px;
+}
+
+.onb-title {
+  font-family: var(--font-display);
+  font-size: 30px;
+  font-weight: 800;
+  letter-spacing: -0.5px;
+  line-height: 1.15;
+  margin: 0 0 8px;
+  outline: none; /* recibe el foco solo para anunciar el paso */
+}
+
+.onb-text {
+  color: var(--text-secondary);
+  font-size: 17px;
+  line-height: 1.4;
+  margin: 0 0 16px;
+}
+
+.onb-label {
+  font-size: 13px;
+  text-transform: uppercase;
+  color: var(--text-secondary);
+  margin: 18px 0 8px;
+}
+
+.onb-actions {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  margin-top: auto;
+  padding-top: 20px;
+}
+
+.onb-actions .btn-plain {
+  margin-top: 6px;
+}
+
+.onb-options {
+  display: grid;
+  gap: 10px;
+  margin-bottom: 12px;
+}
+
+.onb-option {
+  display: flex;
+  align-items: center;
+  gap: 14px;
+  padding: 14px 16px;
+  border-radius: 14px;
+  background: var(--card);
+  text-align: left;
+  outline: 2px solid transparent;
+  outline-offset: -2px;
+  transition: outline-color 150ms ease;
+}
+
+.onb-option.active {
+  outline-color: var(--accent-strong);
+}
+
+.onb-option-text {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  font-size: 15px;
+  color: var(--text-secondary);
+}
+
+.onb-option-text strong {
+  font-size: 17px;
+  font-weight: 600;
+  color: var(--text);
+}
+
+.onb-pills {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+
+.onb-pills button {
+  min-height: 40px;
+  padding: 0 16px;
+  border-radius: 20px;
+  background: var(--fill);
+  font-size: 15px;
+  font-weight: 500;
+  transition: background-color 150ms ease, color 150ms ease;
+}
+
+.onb-pills button.active {
+  background: var(--accent-fill);
+  color: var(--on-accent);
+}
+
+.onboarding #onb-reminder-row {
+  margin-top: 20px;
+}
+
+.onb-dots {
+  display: flex;
+  justify-content: center;
+  gap: 8px;
+  padding-top: 16px;
+}
+
+.onb-dots span {
+  width: 7px;
+  height: 7px;
+  border-radius: 50%;
+  background: var(--fill-strong);
+  transition: background-color 200ms ease;
+}
+
+.onb-dots span.active {
+  background: var(--accent-strong);
+}
+
+@media (orientation: landscape) and (max-height: 500px) {
+  .onb-hero {
+    min-height: 140px;
+  }
+
+  .onb-coin .coin {
+    width: 80px;
+    height: 80px;
+  }
 }
 
 /* ==========================================================================
@@ -2829,8 +3566,27 @@ html:not(.brand-colors) .row-icon.brand {
     gap: 0;
   }
 
-  .dash-full {
-    grid-column: 1 / -1;
+  /* Columna derecha: Este mes (gráficos), metas y recientes */
+  .dash-col-right {
+    display: flex;
+    flex-direction: column;
+  }
+
+  .dash-col-right #goals-section {
+    order: 1;
+  }
+
+  .dash-col-right .dash-full {
+    order: 2;
+  }
+
+  /* La moneda de fondo se corta en el borde de su columna (en el celular la corta la pantalla) */
+  .dash-col-left {
+    overflow-x: clip;
+  }
+
+  .dash-coin {
+    right: -60px;
   }
 
   .tab-bar {
@@ -2846,7 +3602,8 @@ html:not(.brand-colors) .row-icon.brand {
     background: var(--card);
     -webkit-backdrop-filter: none;
     backdrop-filter: none;
-    border-top: 0;
+    border-radius: 0;
+    box-shadow: none;
     border-right: 0.5px solid var(--separator);
   }
 
@@ -2908,6 +3665,85 @@ html:not(.brand-colors) .row-icon.brand {
     left: calc(50% + var(--sidebar-w) / 2);
     bottom: calc(24px + var(--safe-bottom));
   }
+
+  .nav-brand {
+    order: -2;
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    padding: 0 8px 18px;
+    font-family: var(--font-display);
+    font-size: 22px;
+    font-weight: 800;
+    letter-spacing: -0.3px;
+  }
+
+  .nav-brand .coin {
+    width: 30px;
+    height: 30px;
+  }
+
+  /* FinanBot vive abajo en la barra lateral; el botón del encabezado sobra */
+  .header-ai {
+    display: none;
+  }
+
+  .nav-bot {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    margin-top: auto;
+    padding: 12px;
+    border-radius: 14px;
+    background: var(--accent-tint);
+    text-align: left;
+    transition: transform var(--dur-release) var(--ease-out);
+  }
+
+  .nav-bot:active {
+    transform: scale(0.97);
+    transition-duration: var(--dur-press);
+  }
+
+  .nav-bot-icon {
+    width: 36px;
+    height: 36px;
+    border-radius: 50%;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    flex-shrink: 0;
+    background: var(--accent-fill);
+    color: var(--on-accent);
+  }
+
+  .nav-bot-icon .ms {
+    font-size: 20px;
+    font-variation-settings: "FILL" 1;
+  }
+
+  .nav-bot-text {
+    display: flex;
+    flex-direction: column;
+    gap: 2px;
+    min-width: 0;
+    font-size: 13px;
+    color: var(--text-secondary);
+  }
+
+  .nav-bot-text strong {
+    font-size: 15px;
+    font-weight: 600;
+    color: var(--text);
+  }
+}
+
+/* La marca y FinanBot solo existen en la barra lateral */
+@media (max-width: 899.98px) {
+  .nav-brand,
+  .nav-bot {
+    display: none;
+  }
 }
 
 @media (min-width: 900px) and (hover: hover) and (pointer: fine) {
@@ -2935,6 +3771,12 @@ html:not(.brand-colors) .row-icon.brand {
   .dialog,
   .modal.open .dialog {
     transform: none;
+  }
+
+  @starting-style {
+    .onb-step.active {
+      transform: none;
+    }
   }
 
   .toast,

@@ -1,11 +1,26 @@
 <?xml version="1.0" encoding="utf-8"?>
-<!-- Ícono pequeño de notificación: silueta blanca de las tres barras (Android la tiñe). -->
+<!-- Ícono pequeño de notificación: la moneda en silueta blanca (Android la tiñe). Anillo y, adentro con un
+     espacio, la parte de abajo llena hasta la ola. Misma geometría de 108 que el ícono, escalada a 24. -->
 <vector xmlns:android="http://schemas.android.com/apk/res/android"
     android:width="24dp"
     android:height="24dp"
     android:viewportWidth="24"
     android:viewportHeight="24">
-    <path
-        android:fillColor="#FFFFFFFF"
-        android:pathData="M6,13.5a1.75,1.75 0,0 1,1.75 1.75v3.5a1.75,1.75 0,0 1,-3.5 0v-3.5a1.75,1.75 0,0 1,1.75 -1.75zM12,9.5a1.75,1.75 0,0 1,1.75 1.75v7.5a1.75,1.75 0,0 1,-3.5 0v-7.5a1.75,1.75 0,0 1,1.75 -1.75zM18,4.5a1.75,1.75 0,0 1,1.75 1.75v12.5a1.75,1.75 0,0 1,-3.5 0v-12.5a1.75,1.75 0,0 1,1.75 -1.75z" />
+    <group
+        android:scaleX="0.35"
+        android:scaleY="0.35"
+        android:translateX="-6.9"
+        android:translateY="-6.9">
+        <path
+            android:fillColor="#00000000"
+            android:pathData="M54,27a27,27 0,1 1,0 54a27,27 0,1 1,0 -54z"
+            android:strokeWidth="6"
+            android:strokeColor="#FFFFFFFF" />
+        <group>
+            <clip-path android:pathData="M54,33a21,21 0,1 1,0 42a21,21 0,1 1,0 -42z" />
+            <path
+                android:fillColor="#FFFFFFFF"
+                android:pathData="M26,62C34,55 41,55 48,59S62,63 70,55S79,49 82,50V82H26Z" />
+        </group>
+    </group>
 </vector>

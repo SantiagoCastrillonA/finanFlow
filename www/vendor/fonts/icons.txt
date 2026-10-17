@@ -2,7 +2,6 @@
 account_balance
 add
 add_home
-arrow_downward
 arrow_upward
 auto_awesome
 autorenew
@@ -42,7 +41,6 @@ fitness_center
 flight
 group
 group_add
-handshake
 history
 home
 http
@@ -51,7 +49,6 @@ input
 insights
 join
 key
-label
 laptop_mac
 layers
 light
@@ -64,6 +61,7 @@ north_east
 notifications
 password
 payments
+person
 person_add
 pets
 phone_iphone
@@ -84,6 +82,7 @@ settings
 shopping_bag
 show_chart
 south_east
+south_west
 sports_esports
 swap_horiz
 switch

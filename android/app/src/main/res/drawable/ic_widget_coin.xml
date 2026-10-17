@@ -1,0 +1,22 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- La moneda de la marca, pequeña (misma geometría que coinSVG en app.js, corrida 22 unidades). -->
+<vector xmlns:android="http://schemas.android.com/apk/res/android"
+    android:width="28dp"
+    android:height="28dp"
+    android:viewportWidth="64"
+    android:viewportHeight="64">
+    <path
+        android:fillColor="#FFFBE7B5"
+        android:pathData="M5,32a27,27 0,1 0,54 0a27,27 0,1 0,-54 0z" />
+    <group>
+        <clip-path android:pathData="M5,32a27,27 0,1 0,54 0a27,27 0,1 0,-54 0z" />
+        <path
+            android:fillColor="#FFF5C35B"
+            android:pathData="M4,40C12,33 19,33 26,37S40,41 48,33S57,27 60,28V64H4Z" />
+    </group>
+    <path
+        android:fillColor="#00000000"
+        android:pathData="M5,32a27,27 0,1 0,54 0a27,27 0,1 0,-54 0z"
+        android:strokeColor="#FFF5C35B"
+        android:strokeWidth="4" />
+</vector>

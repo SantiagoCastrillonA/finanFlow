@@ -28,6 +28,7 @@
   </script>
 
   <link rel="preload" href="vendor/fonts/material-symbols-rounded.woff2" as="font" type="font/woff2" crossorigin>
+  <link rel="preload" href="vendor/fonts/manrope.woff2" as="font" type="font/woff2" crossorigin>
   <link rel="stylesheet" href="styles.css">
   <script src="vendor/chart.umd.min.js"></script>
 </head>
@@ -48,7 +49,7 @@
           aria-label="Actividad del Hogar">
           <span class="ms">notifications</span><span class="bell-badge hidden"></span>
         </button>
-        <button type="button" class="icon-btn" onclick="app.openAI()" aria-label="Abrir FinanBot, asistente financiero">
+        <button type="button" class="icon-btn header-ai" onclick="app.openAI()" aria-label="Abrir FinanBot, asistente financiero">
           <span class="ms">auto_awesome</span>
         </button>
       </div>
@@ -64,6 +65,16 @@
       <!-- ================= INICIO ================= -->
       <section id="tab-dashboard" class="tab-view" aria-label="Inicio">
         <div class="dash-col-left">
+        <!-- Moneda de fondo (decorativa): la del ícono, grande y detrás del saldo, que se ve a través del vidrio -->
+        <svg class="dash-coin" viewBox="0 0 400 420" aria-hidden="true" focusable="false">
+          <circle class="dash-coin-tide" cx="10" cy="150" r="70" />
+          <g transform="translate(250 170) scale(5.556) translate(-54 -54)">
+            <defs><clipPath id="dash-coin-clip"><circle cx="54" cy="54" r="27" /></clipPath></defs>
+            <circle class="dash-coin-disc" cx="54" cy="54" r="27" />
+            <path class="dash-coin-wave" clip-path="url(#dash-coin-clip)" d="M26 62 C34 55 41 55 48 59 S62 63 70 55 S79 49 82 50 V82 H26 Z" />
+            <circle class="dash-coin-rim" cx="54" cy="54" r="27" />
+          </g>
+        </svg>
         <div class="month-nav">
           <button type="button" id="month-prev" class="icon-btn plain" aria-label="Mes anterior">
             <span class="ms">chevron_left</span>
@@ -80,14 +91,14 @@
           <p id="balance-split" class="balance-split hidden"></p>
           <div class="month-totals">
             <div class="month-total">
-              <span class="total-icon income"><span class="ms">arrow_downward</span></span>
+              <span class="total-icon income"><span class="ms">south_west</span></span>
               <div>
                 <span class="caption">Ingresos</span>
                 <span id="total-incomes" class="total-value income">$ 0</span>
               </div>
             </div>
             <div class="month-total">
-              <span class="total-icon expense"><span class="ms">arrow_upward</span></span>
+              <span class="total-icon expense"><span class="ms">north_east</span></span>
               <div>
                 <span class="caption">Gastos</span>
                 <span id="total-expenses" class="total-value expense">$ 0</span>
@@ -99,13 +110,27 @@
         </div>
 
         <!-- Hogar: saldo entre la pareja -->
-        <div id="household-balance" class="card between-card hidden">
-          <span class="between-icon"><span class="ms">handshake</span></span>
-          <div class="between-text">
-            <span id="balance-between-label" class="caption">Entre ustedes</span>
-            <span id="balance-between-value" class="between-value">Están a mano</span>
+        <div id="household-balance" class="card hogar-card hidden">
+          <div class="hogar-top">
+            <span class="avatar-pair" aria-hidden="true">
+              <span id="hogar-avatar-me" class="avatar me"></span><span id="hogar-avatar-partner" class="avatar partner"></span>
+            </span>
+            <div class="between-text">
+              <span id="balance-between-label" class="caption">Entre ustedes</span>
+              <span id="balance-between-value" class="between-value">Están a mano</span>
+            </div>
+            <button type="button" id="settle-btn" class="btn-primary small">Saldar</button>
           </div>
-          <button type="button" id="settle-btn" class="btn-tinted small">Saldar</button>
+          <p id="between-sub" class="hogar-sub hidden"></p>
+          <!-- Quién pagó lo gastado en el mes (barra dividida + nombres y montos: no solo el color) -->
+          <div id="hogar-spent" class="hogar-spent hidden">
+            <div class="hogar-spent-head">
+              <span id="hogar-spent-title" class="caption">Gastado</span>
+              <span id="hogar-spent-total" class="hogar-spent-total"></span>
+            </div>
+            <div class="split-bar" aria-hidden="true"><span class="me"></span><span class="partner"></span></div>
+            <div id="hogar-spent-legend" class="split-legend"></div>
+          </div>
         </div>
 
         <!-- Android: hay una versión más nueva publicada en GitHub -->
@@ -146,6 +171,10 @@
           <div id="accounts-dash-list" class="list-group"></div>
         </div>
 
+        </div>
+
+        <!-- Columna derecha en tablet (≥ 900 px): metas, gráficos y recientes. En el celular sigue el mismo orden. -->
+        <div class="dash-col-right">
         <!-- Metas de ahorro (aportar = transferir a la meta) -->
         <div id="goals-section" class="hidden">
           <div class="section-header">
@@ -153,7 +182,6 @@
             <button type="button" class="btn-plain" onclick="app.openGoalModal()">Nueva</button>
           </div>
           <div id="goals-dash-list" class="list-group"></div>
-        </div>
         </div>
 
         <div class="chart-row">
@@ -198,6 +226,7 @@
             <button type="button" class="btn-plain" onclick="app.switchTab('transactions')">Ver todo</button>
           </div>
           <div id="recent-transactions-list" class="list-group"></div>
+        </div>
         </div>
       </section>
 
@@ -430,6 +459,12 @@
           </button>
           <input type="file" id="import-file-input" accept=".json,application/json" hidden
             onchange="app.importDataJSON(event)">
+          <!-- Solo si se cargaron los datos de ejemplo del primer uso -->
+          <button type="button" id="demo-remove" class="setting-row hidden" onclick="app.removeDemoData()">
+            <span class="setting-icon"><span class="ms">delete</span></span>
+            <span class="setting-label">Quitar datos de ejemplo</span>
+            <span class="ms chevron">chevron_right</span>
+          </button>
         </div>
 
         <div class="list-group">
@@ -438,13 +473,23 @@
           </button>
         </div>
 
-        <p class="app-version">FinanFlow 0.11.0 · Tus datos son tuyos</p>
+        <p class="app-version">FinanFlow 0.13.5 · Tus datos son tuyos</p>
         <button type="button" id="update-check" class="btn-plain small update-check hidden">Buscar actualizaciones</button>
       </section>
     </main>
 
     <!-- Barra de pestañas -->
     <nav class="tab-bar" aria-label="Navegación principal">
+      <!-- Solo en la barra lateral de tablet: logotipo arriba -->
+      <div class="nav-brand" aria-hidden="true">
+        <svg class="coin" viewBox="22 22 64 64" focusable="false">
+          <defs><clipPath id="nav-coin-clip"><circle cx="54" cy="54" r="27" /></clipPath></defs>
+          <circle class="coin-disc" cx="54" cy="54" r="27" />
+          <path class="coin-wave" clip-path="url(#nav-coin-clip)" d="M26 62 C34 55 41 55 48 59 S62 63 70 55 S79 49 82 50 V130 H26 Z" />
+          <circle class="coin-rim" cx="54" cy="54" r="27" />
+        </svg>
+        <span>FinanFlow</span>
+      </div>
       <button type="button" class="nav-item" data-tab="dashboard" onclick="app.switchTab('dashboard')">
         <span class="ms">home</span><span class="nav-label">Inicio</span>
       </button>
@@ -460,6 +505,11 @@
       <button type="button" class="nav-item" data-tab="settings" onclick="app.switchTab('settings')">
         <span class="ms">settings</span><span class="nav-label">Ajustes</span>
       </button>
+      <!-- Solo en la barra lateral de tablet: FinanBot abajo -->
+      <button type="button" class="nav-bot" onclick="app.openAI()">
+        <span class="nav-bot-icon"><span class="ms">auto_awesome</span></span>
+        <span class="nav-bot-text"><strong>FinanBot</strong><span>Pregúntale por tus gastos</span></span>
+      </button>
     </nav>
   </div>
 
@@ -471,7 +521,7 @@
       <div class="sheet-header">
         <button type="button" class="btn-plain" data-close>Cancelar</button>
         <h2 id="modal-title">Nuevo movimiento</h2>
-        <button type="submit" form="transaction-form" class="btn-plain strong">Guardar</button>
+        <span></span>
       </div>
 
       <form id="transaction-form" novalidate autocomplete="off">
@@ -505,10 +555,18 @@
               <span class="ms">unfold_more</span>
             </span>
           </label>
-          <label class="form-row">
+          <!-- Fecha rápida: Hoy · Ayer · Otra (Otra abre el selector nativo, que queda encima invisible) -->
+          <div class="form-row date-row">
             <span>Fecha</span>
-            <input type="date" id="tx-date" required>
-          </label>
+            <span id="tx-date-chips" class="date-chips">
+              <button type="button" class="date-chip" data-offset="0">Hoy</button>
+              <button type="button" class="date-chip" data-offset="-1">Ayer</button>
+              <label class="date-chip date-other">
+                <span id="tx-date-other">Otra</span>
+                <input type="date" id="tx-date" required aria-label="Otra fecha">
+              </label>
+            </span>
+          </div>
           <label id="tx-method-row" class="form-row">
             <span>Cuenta</span>
             <span class="select-inline">
@@ -516,26 +574,30 @@
               <span class="ms">unfold_more</span>
             </span>
           </label>
-          <!-- Solo en el Hogar: quién pagó y cómo se divide -->
-          <label id="tx-paidby-row" class="form-row hidden">
-            <span id="tx-paidby-label">Pagó</span>
-            <span class="select-inline">
-              <select id="tx-paidby"></select>
-              <span class="ms">unfold_more</span>
-            </span>
-          </label>
-          <label id="tx-split-row" class="form-row hidden">
-            <span>División</span>
-            <span class="select-inline">
-              <select id="tx-split">
-                <option value="50">50 / 50</option>
-                <option value="100">Solo de quien pagó</option>
-                <option value="0">Todo del otro</option>
-                <option value="custom">Personalizada</option>
-              </select>
-              <span class="ms">unfold_more</span>
-            </span>
-          </label>
+          <!-- Solo en el Hogar: quién pagó (tarjetas) y cómo se divide (pastillas). Los <select> ocultos guardan el valor. -->
+          <div id="tx-paidby-row" class="form-block hidden">
+            <span id="tx-paidby-label" class="form-block-label">¿Quién pagó?</span>
+            <div id="tx-paidby-cards" class="payer-cards" role="radiogroup" aria-labelledby="tx-paidby-label"></div>
+            <select id="tx-paidby" hidden tabindex="-1" aria-hidden="true"></select>
+          </div>
+          <div id="tx-split-row" class="form-block hidden">
+            <span id="tx-split-label" class="form-block-label">¿Cómo lo dividen?</span>
+            <div id="tx-split-pills" class="onb-pills split-pills" role="radiogroup" aria-labelledby="tx-split-label">
+              <button type="button" role="radio" data-value="50">Mitad y mitad</button>
+              <button type="button" role="radio" data-value="100">Solo de quien pagó</button>
+              <button type="button" role="radio" data-value="0">Todo del otro</button>
+              <button type="button" role="radio" data-value="custom">Otro %</button>
+            </div>
+            <select id="tx-split" hidden tabindex="-1" aria-hidden="true">
+              <option value="50">50 / 50</option>
+              <option value="100">Solo de quien pagó</option>
+              <option value="0">Todo del otro</option>
+              <option value="custom">Personalizada</option>
+            </select>
+            <!-- En vivo: cuánto pone cada uno -->
+            <div class="split-bar" aria-hidden="true"><span class="me"></span><span class="partner"></span></div>
+            <div id="tx-split-legend" class="split-legend"></div>
+          </div>
           <label id="tx-share-row" class="form-row hidden">
             <span>Parte de quien pagó</span>
             <span class="share-input"><input type="number" id="tx-share" min="0" max="100" step="5" inputmode="numeric"
@@ -584,7 +646,7 @@
       <div class="sheet-header">
         <button type="button" class="btn-plain" data-close>Cancelar</button>
         <h2 id="budget-title">Nuevo límite</h2>
-        <button type="submit" form="budget-form" class="btn-plain strong">Guardar</button>
+        <span></span>
       </div>
       <form id="budget-form" novalidate autocomplete="off">
         <div class="list-group form-group">
@@ -673,6 +735,74 @@
     </div>
   </div>
 
+  <!-- Primer uso: bienvenida, dónde viven tus datos y lo básico (solo si no hay datos guardados) -->
+  <div id="onboarding-modal" class="modal onboarding-modal" aria-hidden="true">
+    <div class="onboarding" role="dialog" aria-modal="true" aria-labelledby="onb-title-1">
+      <section class="onb-step active" data-step="1">
+        <div class="onb-hero">
+          <span id="onb-coin" class="onb-coin"></span>
+          <span class="onb-logo">FinanFlow</span>
+        </div>
+        <div class="onb-body">
+          <h1 id="onb-title-1" class="onb-title">Tu dinero, en calma</h1>
+          <p class="onb-text">Anota tus gastos en segundos y mira a dónde se va tu plata. Sin anuncios, en español y también sin conexión.</p>
+          <div class="onb-actions">
+            <button type="button" class="btn-primary full" data-onb-next>Empezar</button>
+            <button type="button" class="btn-plain" id="onb-restore">Ya tengo un respaldo</button>
+          </div>
+        </div>
+      </section>
+
+      <section class="onb-step" data-step="2">
+        <div class="onb-body">
+          <h1 class="onb-title">Tus datos son tuyos</h1>
+          <p class="onb-text">Elige dónde se guardan.</p>
+          <div class="onb-options" role="radiogroup" aria-label="Dónde se guardan tus datos">
+            <button type="button" class="onb-option active" role="radio" aria-checked="true" data-storage="local">
+              <span class="setting-icon"><span class="ms">phone_iphone</span></span>
+              <span class="onb-option-text"><strong>Solo en este celular</strong><span>Nada sale de tu teléfono.</span></span>
+            </button>
+            <button type="button" class="onb-option" role="radio" aria-checked="false" data-storage="cloud">
+              <span class="setting-icon"><span class="ms">cloud</span></span>
+              <span class="onb-option-text"><strong>Sincronizar con Google</strong><span>Tus datos en todos tus dispositivos y un Hogar compartido.</span></span>
+            </button>
+          </div>
+          <p class="footnote">Puedes cambiarlo cuando quieras en Ajustes → Nube.</p>
+          <div class="onb-actions">
+            <button type="button" class="btn-primary full" data-onb-next>Continuar</button>
+          </div>
+        </div>
+      </section>
+
+      <section class="onb-step" data-step="3">
+        <div class="onb-body">
+          <h1 class="onb-title">Lo básico</h1>
+          <p class="onb-label">Moneda</p>
+          <div id="onb-currency" class="onb-pills" role="radiogroup" aria-label="Moneda"></div>
+          <p class="onb-label">Tema</p>
+          <div id="onb-theme" class="onb-pills" role="radiogroup" aria-label="Tema">
+            <button type="button" data-value="system">Automático</button>
+            <button type="button" data-value="light">Claro</button>
+            <button type="button" data-value="dark">Oscuro</button>
+          </div>
+          <div id="onb-reminder-row" class="list-group hidden">
+            <label class="setting-row">
+              <span class="setting-icon"><span class="ms">notifications</span></span>
+              <span class="setting-label">Recordatorio diario</span>
+              <input type="checkbox" id="onb-reminder" class="switch">
+            </label>
+          </div>
+          <div class="onb-actions">
+            <button type="button" class="btn-primary full" id="onb-first">Anotar mi primer gasto</button>
+            <button type="button" class="btn-plain" id="onb-demo">Explorar con datos de ejemplo</button>
+          </div>
+        </div>
+      </section>
+
+      <div class="onb-dots" aria-hidden="true"><span class="active"></span><span></span><span></span></div>
+    </div>
+  </div>
+
   <!-- Bloqueo (Android): tapa la app hasta autenticarse con huella o PIN -->
   <div id="lock-screen" class="lock-screen hidden" aria-hidden="true">
     <img src="icons/icon-192.png" alt="" class="lock-icon">
@@ -712,7 +842,7 @@
       <div class="sheet-header">
         <button type="button" class="btn-plain" data-close>Cancelar</button>
         <h2 id="range-title">Rango de fechas</h2>
-        <button type="submit" form="range-form" class="btn-plain strong">Aplicar</button>
+        <span></span>
       </div>
       <form id="range-form" novalidate>
         <div class="list-group form-group">
@@ -762,7 +892,7 @@
       <div class="sheet-header">
         <button type="button" class="btn-plain" data-close>Cancelar</button>
         <h2 id="account-title">Nueva cuenta</h2>
-        <button type="submit" form="account-form" class="btn-plain strong">Guardar</button>
+        <span></span>
       </div>
       <form id="account-form" novalidate autocomplete="off">
         <div class="list-group form-group">
@@ -835,7 +965,7 @@
       <div class="sheet-header">
         <button type="button" class="btn-plain" data-close>Cancelar</button>
         <h2 id="category-title">Nueva categoría</h2>
-        <button type="submit" form="category-form" class="btn-plain strong">Guardar</button>
+        <span></span>
       </div>
       <form id="category-form" novalidate autocomplete="off">
         <div class="cat-preview-wrap">

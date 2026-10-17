@@ -2,6 +2,7 @@
 // - Material Symbols Rounded recortada a los íconos que usa la app.
 // - Firebase compat (app, auth, firestore).
 // - Logos de marcas (Simple Icons, CC0) en www/vendor/brands.js.
+// - Manrope (OFL), variable y solo latín, para títulos y cifras grandes.
 //
 //   node scripts/vendor-assets.mjs           descarga todo de nuevo
 //   node scripts/vendor-assets.mjs --check   solo avisa si falta algún ícono en la fuente local
@@ -129,7 +130,7 @@ const icons = usedIcons(valid);
 if (process.argv.includes("--check")) {
   let have = new Set();
   try {
-    have = new Set(readFileSync(ICON_LIST, "utf8").split("\n").filter(Boolean));
+    have = new Set(readFileSync(ICON_LIST, "utf8").split(/\r?\n/).filter(Boolean)); // git puede dejarlo con CRLF
   } catch {}
   const missing = icons.filter((i) => !have.has(i));
   if (missing.length) {
@@ -163,6 +164,18 @@ async function download() {
   }
 
   await downloadBrands();
+  await downloadManrope();
+}
+
+/** www/vendor/fonts/manrope.woff2: Manrope variable (500–800), solo el bloque latino (incluye á, ñ, ¿, ¡). */
+async function downloadManrope() {
+  const css = await get("https://fonts.googleapis.com/css2?family=Manrope:wght@500..800&display=swap");
+  const latin = css.split("/* latin */")[1];
+  const fontUrl = latin && (latin.match(/url\((https:[^)]+)\)\s*format\(['"]woff2['"]\)/) || [])[1];
+  if (!fontUrl) throw new Error("Google Fonts no devolvió Manrope latín en woff2");
+  const font = await get(fontUrl, "buffer");
+  writeFileSync(`${FONT_DIR}/manrope.woff2`, font);
+  console.log(`Manrope: ${Math.round(font.length / 1024)} KB`);
 }
 
 /** www/vendor/brands.js: window.BRANDS = [{ id, title, hex, path | mono, keys }]. */

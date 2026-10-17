@@ -45,6 +45,18 @@
                 android:resource="@xml/widget_balance_info" />
         </receiver>
 
+        <receiver
+            android:name=".AllowanceWidgetProvider"
+            android:exported="false"
+            android:label="@string/widget_allowance_name">
+            <intent-filter>
+                <action android:name="android.appwidget.action.APPWIDGET_UPDATE" />
+            </intent-filter>
+            <meta-data
+                android:name="android.appwidget.provider"
+                android:resource="@xml/widget_allowance_info" />
+        </receiver>
+
         <!-- Pagos detectados: lee solo los avisos de Google Wallet y los bancos (ver PaymentParser). -->
         <service
             android:name=".PaymentListenerService"

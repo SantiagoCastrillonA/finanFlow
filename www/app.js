@@ -143,6 +143,8 @@ const MIGRATED_KEY = "finanflow_migrated";
 const THEME_KEY = "finanflow_theme";
 const BRAND_COLORS_KEY = "finanflow_brand_colors"; // "1": logos con sus colores de marca (si no, monocromos)
 const GEMINI_KEY = "finanflow_gemini_key";
+const ONBOARDED_KEY = "finanflow_onboarded"; // "0": bienvenida a medias (se vuelve a mostrar), "1": vista
+const DEMO_KEY = "finanflow_demo"; // límites que agregaron los datos de ejemplo (para poder quitarlos)
 
 /* ==========================================================================
    Plataforma nativa (Capacitor). En la PWA todos estos plugins son undefined.
@@ -176,6 +178,8 @@ function loadState() {
   }
 }
 
+// Sin estado guardado = primera vez en este dispositivo (se muestra la bienvenida).
+const firstRun = localStorage.getItem(STORAGE_KEY) === null;
 const saved = loadState() || {};
 
 /** Valida una categoría propia (puede venir de la nube, de la pareja o de un respaldo). */
@@ -555,6 +559,25 @@ function formatDateFriendly(dateStr) {
   if (dateStr === toISODate(yest)) return "Ayer";
   return parseISO(dateStr).toLocaleDateString("es-CO", { day: "numeric", month: "short" });
 }
+/** Pastillas de fecha de la hoja de movimiento: "Hoy, 16 oct" · "Ayer" · "Otra" (o la fecha elegida). */
+function renderDateChips() {
+  const value = $("tx-date").value;
+  const short = (iso) => parseISO(iso).toLocaleDateString("es-CO", { day: "numeric", month: "short" }).replace(" de ", " ").replace(".", "");
+  const [today, yesterday, other] = $("tx-date-chips").children;
+  const friendly = value ? formatDateFriendly(value) : "";
+  today.classList.toggle("active", friendly === "Hoy");
+  yesterday.classList.toggle("active", friendly === "Ayer");
+  other.classList.toggle("active", !!value && friendly !== "Hoy" && friendly !== "Ayer");
+  today.textContent = friendly === "Hoy" ? `Hoy, ${short(value)}` : "Hoy";
+  yesterday.textContent = friendly === "Ayer" ? `Ayer, ${short(value)}` : "Ayer";
+  const otherYear = value && value.slice(0, 4) !== todayISO().slice(0, 4);
+  $("tx-date-other").textContent = other.classList.contains("active")
+    ? parseISO(value).toLocaleDateString("es-CO", { day: "numeric", month: "short", ...(otherYear ? { year: "numeric" } : {}) }).replaceAll(" de ", " ").replace(".", "")
+    : "Otra";
+  today.setAttribute("aria-pressed", String(friendly === "Hoy"));
+  yesterday.setAttribute("aria-pressed", String(friendly === "Ayer"));
+}
+
 function formatDateGroupHeader(dateStr) {
   const friendly = formatDateFriendly(dateStr);
   if (friendly === "Hoy" || friendly === "Ayer") return friendly;
@@ -664,9 +687,12 @@ function showToast(message, type = "info", duration = 3000, action = null) {
   const dir = container.classList.contains("top") ? -1 : 1; // hacia dónde se desliza para cerrar
   const icons = { info: "info", success: "check_circle", warning: "warning", error: "error" };
   const toast = document.createElement("div");
-  toast.className = `toast toast-${type}`;
+  // "saved": al guardar un movimiento, la moneda se llena en el aviso.
+  toast.className = `toast toast-${type === "saved" ? "success" : type}`;
   toast.setAttribute("role", "status");
-  toast.innerHTML = `<span class="ms toast-icon">${icons[type] || "info"}</span><span class="toast-message"></span>`;
+  const iconHTML = type === "saved" ? coinSVG(0.1, { cls: "toast-coin" }) : `<span class="ms toast-icon">${icons[type] || "info"}</span>`;
+  toast.innerHTML = `${iconHTML}<span class="toast-message"></span>`;
+  if (type === "saved") requestAnimationFrame(() => fillCoin(toast.querySelector(".coin"), 0.1, 0.65));
   toast.querySelector(".toast-message").textContent = message;
 
   let timer;
@@ -753,11 +779,25 @@ function openModal(id, focusId = null) {
   modal.classList.add("open");
   modal.setAttribute("aria-hidden", "false");
   modalStack.push(id);
+  modal.querySelectorAll(".amount-field input").forEach(fitAmount);
   if (focusId) {
     // Enfocar después de la entrada: si el teclado sale a mitad de la animación, la hoja salta.
     setTimeout(() => $(focusId)?.focus({ preventScroll: true }), reduceMotion.matches ? 0 : 360);
   }
 }
+/**
+ * El monto grande se ajusta al ancho de la cifra para que el símbolo quede pegado a ella y ambos
+ * centrados ("$ 45.000"). field-sizing: content hace lo mismo, pero no existe en WebViews viejos.
+ */
+let amountCtx = null;
+function fitAmount(input) {
+  amountCtx = amountCtx || document.createElement("canvas").getContext("2d");
+  const cs = getComputedStyle(input);
+  amountCtx.font = `${cs.fontWeight} ${cs.fontSize} ${cs.fontFamily}`;
+  const width = amountCtx.measureText(input.value || input.placeholder || "0").width;
+  input.style.width = `${Math.ceil(width) + 8}px`;
+}
+
 function closeModal(id) {
   const modal = $(id);
   if (!modal || !modal.classList.contains("open")) return;
@@ -768,6 +808,7 @@ function closeModal(id) {
   const i = modalStack.lastIndexOf(id);
   if (i !== -1) modalStack.splice(i, 1);
   if (document.activeElement && modal.contains(document.activeElement)) document.activeElement.blur();
+  if (id === "onboarding-modal") localStorage.setItem(ONBOARDED_KEY, "1"); // también con Atrás / Escape
 }
 function closeTopModal() {
   if (!modalStack.length) return false;
@@ -920,7 +961,11 @@ const centerTextPlugin = {
     ctx.font = `500 ${size * 0.72}px ${cssVar("--font")}`;
     ctx.fillText(lines[0], x, y - size * 0.6);
     ctx.fillStyle = cssVar("--text");
-    ctx.font = `700 ${size}px ${cssVar("--font")}`;
+    // La cifra completa ($ 3.534.800) debe caber en el hueco de la dona: se achica si hace falta.
+    const hole = Math.min(chartArea.width, chartArea.height) * 0.72 * 0.86;
+    ctx.font = `700 ${size}px ${cssVar("--font-display")}`;
+    const fit = Math.min(1, hole / Math.max(1, ctx.measureText(lines[1] || "").width));
+    ctx.font = `700 ${size * fit}px ${cssVar("--font-display")}`;
     ctx.fillText(lines[1] || "", x, y + size * 0.45);
     ctx.restore();
   }
@@ -952,8 +997,14 @@ function setChartSummary(canvasId, text) {
 
 function openYearSummary() {
   const end = monthKey(new Date());
-  const months = Array.from({ length: 12 }, (_, i) => addMonths(end, i - 11));
-  const stats = months.map((ym) => monthStats(ym));
+  // Hasta 12 meses, desde el primero con movimientos (sin barras vacías al inicio) y como mínimo 3.
+  const all = Array.from({ length: 12 }, (_, i) => addMonths(end, i - 11));
+  const allStats = all.map((ym) => monthStats(ym));
+  const first = allStats.findIndex((m) => m.income || m.expense);
+  const from = first === -1 ? 9 : Math.min(first, 9);
+  const months = all.slice(from);
+  const stats = allStats.slice(from);
+  $("summary-title").textContent = months.length === 12 ? "Últimos 12 meses" : `Últimos ${months.length} meses`;
   const income = roundMoney(stats.reduce((s, m) => s + m.income, 0));
   const expense = roundMoney(stats.reduce((s, m) => s + m.expense, 0));
   const active = stats.filter((m) => m.income || m.expense);
@@ -1066,7 +1117,7 @@ function renderCategoryChart(stats) {
     data = [stats.income, stats.expense];
     colors = [cssVar("--income"), cssVar("--spend")];
     const net = stats.income - stats.expense;
-    center = ["Neto", (net > 0 ? "+" : "") + formatCompact(net)];
+    center = ["Neto", (net > 0 ? "+" : "") + formatMoney(net)];
   } else {
     const entries = Object.entries(stats.byCat[type]).sort((a, b) => b[1] - a[1]);
     ids = entries.map((e) => e[0]);
@@ -1074,7 +1125,7 @@ function renderCategoryChart(stats) {
     data = entries.map((e) => e[1]);
     colors = ids.map((id) => getCategoryInfo(id, type).color);
     const total = data.reduce((s, v) => s + v, 0);
-    center = ["Total", formatCompact(total)];
+    center = ["Total", formatMoney(total)];
   }
 
   const empty = data.every((v) => !v);
@@ -1301,7 +1352,7 @@ function renderDashboard(stats) {
         ? "Deuda en tarjetas"
         : "Saldo en tus cuentas"
       : isCurrent
-        ? "Saldo"
+        ? "Saldo total"
         : `Saldo al cierre de ${monthLabel(state.viewMonth, false).toLowerCase()}`;
   }
   setAnimatedText($("total-incomes"), formatMoney(stats.income));
@@ -1346,32 +1397,42 @@ function renderComparison(stats, isCurrent) {
   const diff = ((stats.expense - prev.expense) / prev.expense) * 100;
   const name = monthLabel(prevYM, false).toLowerCase();
   const pct = Math.abs(Math.round(diff));
+  const when = isCurrent ? " a la fecha" : "";
   el.classList.remove("hidden", "good", "bad");
+  // Pastilla: el texto en secundario y solo la flecha con el porcentaje en color.
   if (pct === 0) {
-    el.textContent = `Gastos iguales que en ${name}${isCurrent ? " a esta fecha" : ""}`;
+    el.innerHTML = `<span class="compare-text">Gastas igual que en ${name}${when}</span>`;
   } else {
     el.classList.add(diff < 0 ? "good" : "bad");
-    el.innerHTML = `<span class="ms">${diff < 0 ? "south_east" : "north_east"}</span>Gastos ${pct}% ${diff < 0 ? "menos" : "más"} que en ${name}${isCurrent ? " a esta fecha" : ""}`;
+    el.innerHTML = `<span class="compare-delta"><span class="ms">${diff < 0 ? "south_east" : "north_east"}</span>${pct}%</span><span class="compare-text">${diff < 0 ? "menos" : "más"} gasto que en ${name}${when}</span>`;
   }
+}
+
+/** Lo que queda de los límites del mes actual y cuánto toca por día (null sin límites). */
+function dailyAllowance(stats, budgets = state.budgets) {
+  const cats = Object.keys(budgets);
+  if (!cats.length) return null;
+  const limit = cats.reduce((s, c) => s + Number(budgets[c]), 0);
+  const spent = cats.reduce((s, c) => s + (stats.byCat.expense[c] || 0), 0);
+  const remaining = limit - spent;
+  const daysLeft = daysInMonth(monthKey(new Date())) - new Date().getDate() + 1;
+  return { remaining, daysLeft, perDay: remaining > 0 ? roundMoney(remaining / daysLeft) : 0 };
 }
 
 function renderAllowance(stats, isCurrent) {
   const el = $("daily-allowance");
-  const cats = Object.keys(state.budgets);
-  if (!isCurrent || !cats.length) {
+  const allowance = isCurrent ? dailyAllowance(stats) : null;
+  if (!allowance) {
     el.classList.add("hidden");
     return;
   }
-  const limit = cats.reduce((s, c) => s + Number(state.budgets[c]), 0);
-  const spent = cats.reduce((s, c) => s + (stats.byCat.expense[c] || 0), 0);
-  const remaining = limit - spent;
-  const daysLeft = daysInMonth(state.viewMonth) - new Date().getDate() + 1;
+  const { remaining, daysLeft } = allowance;
   el.classList.remove("hidden");
   el.classList.toggle("bad", remaining <= 0);
   if (!el.firstElementChild) el.innerHTML = '<span class="allowance-value"></span><span class="allowance-label"></span>';
   const [value, label] = el.children;
   if (remaining > 0) {
-    setAnimatedText(value, formatMoney(roundMoney(remaining / daysLeft)));
+    setAnimatedText(value, formatMoney(allowance.perDay));
     label.textContent = `disponible por día · ${daysLeft} ${daysLeft === 1 ? "día" : "días"} restantes`;
   } else {
     setAnimatedText(value, formatMoney(Math.abs(remaining)));
@@ -1423,6 +1484,21 @@ function renderBudgetAlerts(stats) {
   const alerts = budgetUsage(stats).filter((u) => u.level !== "safe");
   const keys = new Set(alerts.map((a) => `${a.cat}:${a.level}`));
   container.innerHTML = "";
+  if (alerts.length > 1) {
+    // Varias a la vez: una sola fila con el nivel más grave, que lleva a Límites.
+    const level = alerts.some((a) => a.level === "danger") ? "danger" : "warning";
+    const row = document.createElement("button");
+    row.type = "button";
+    row.className = `alert-row ${level}`;
+    if ([...keys].some((k) => !prevAlertKeys.has(k))) row.classList.add("is-new");
+    row.innerHTML = `
+      <span class="ms">${level === "danger" ? "error" : "warning"}</span>
+      <span class="alert-text"><strong>${alerts.length} límites</strong> necesitan atención</span>
+      <span class="ms chevron">chevron_right</span>`;
+    row.onclick = () => switchTab("budgets");
+    container.appendChild(row);
+    alerts.length = 0;
+  }
   alerts.forEach((a) => {
     const info = getCategoryInfo(a.cat);
     const div = document.createElement("button");
@@ -1431,19 +1507,48 @@ function renderBudgetAlerts(stats) {
     if (!prevAlertKeys.has(`${a.cat}:${a.level}`)) div.classList.add("is-new");
     div.innerHTML = `
       <span class="ms">${a.level === "danger" ? "error" : "warning"}</span>
-      <span class="alert-text"><strong>${escapeHtml(info.label)}</strong> ${a.level === "danger" ? "superó su límite" : "está cerca del límite"} · ${Math.round(a.pct)}%</span>
+      <span class="alert-text"><strong>${escapeHtml(info.label)}</strong> ${a.level === "danger" ? `pasó su límite por ${formatMoney(a.spent - a.limit)}` : `va en ${Math.round(a.pct)}% · te quedan ${formatMoney(a.limit - a.spent)}`}</span>
       <span class="ms chevron">chevron_right</span>`;
     div.onclick = () => switchTab("budgets");
     container.appendChild(div);
   });
   prevAlertKeys = keys;
-  container.classList.toggle("hidden", !alerts.length);
+  container.classList.toggle("hidden", !container.children.length);
+}
+
+/**
+ * La moneda que se llena: firma de la marca, con la geometría del ícono. `level` 0–1 sube la ola;
+ * `outline` = solo el contorno (estados vacíos). La ola se mueve con transform (unidades del SVG).
+ */
+let coinSeq = 0;
+const coinWaveY = (level) => (0.5 - Math.max(0, Math.min(1, level))) * 70;
+function coinSVG(level = 0.5, { outline = false, cls = "" } = {}) {
+  const id = `coin-clip-${++coinSeq}`;
+  return `<svg class="coin${outline ? " outline" : ""}${level >= 1 ? " full" : ""} ${cls}" viewBox="22 22 64 64" aria-hidden="true" focusable="false">
+    <defs><clipPath id="${id}"><circle cx="54" cy="54" r="27"/></clipPath></defs>
+    ${outline ? "" : '<circle class="coin-disc" cx="54" cy="54" r="27"/>'}
+    <g clip-path="url(#${id})"><path class="coin-wave" style="transform:translateY(${coinWaveY(level)}px)" d="M26 62 C34 55 41 55 48 59 S62 63 70 55 S79 49 82 50 V130 H26 Z"/></g>
+    <circle class="coin-rim" cx="54" cy="54" r="27"/>
+  </svg>`;
+}
+/** Sube la ola de una moneda ya pintada (al guardar): ~600 ms, solo transform. */
+function fillCoin(svg, from, to) {
+  const wave = svg && svg.querySelector(".coin-wave");
+  if (!wave) return;
+  const [a, b] = [coinWaveY(from), coinWaveY(to)];
+  wave.style.transform = `translateY(${b}px)`;
+  if (reduceMotion.matches) {
+    // Menos movimiento, no cero: un tramo corto y rápido.
+    wave.animate([{ transform: `translateY(${b + 6}px)` }, { transform: `translateY(${b}px)` }], { duration: 200, easing: EASE_OUT });
+    return;
+  }
+  wave.animate([{ transform: `translateY(${a}px)` }, { transform: `translateY(${b}px)` }], { duration: 600, easing: EASE_OUT });
 }
 
 function emptyStateHTML(icon, title, text, actionLabel) {
   return `
     <div class="empty-state">
-      <span class="ms">${icon}</span>
+      ${icon === "coin" ? coinSVG(0, { outline: true, cls: "coin-empty" }) : `<span class="ms">${icon}</span>`}
       <p class="empty-title">${title}</p>
       ${text ? `<p class="empty-text">${text}</p>` : ""}
       ${actionLabel ? `<button type="button" class="btn-tinted" data-empty-action>${actionLabel}</button>` : ""}
@@ -1455,7 +1560,7 @@ function renderRecentTransactions() {
   const sorted = [...state.transactions].sort(byDateDesc).slice(0, 5);
   container.innerHTML = "";
   if (!sorted.length) {
-    container.innerHTML = emptyStateHTML("receipt_long", "Aún no hay movimientos", "Registra tu primer gasto o ingreso.", "Agregar movimiento");
+    container.innerHTML = emptyStateHTML("coin", "Aún no hay movimientos", "Registra el primero con +. Toma 5 segundos.", "Agregar movimiento");
     container.querySelector("[data-empty-action]").onclick = () => openTransactionModal();
     return;
   }
@@ -1516,16 +1621,24 @@ function txRow(t, showDate) {
     return el;
   }
 
-  // En el Hogar, el subtítulo dice quién pagó y cómo se dividió.
+  // En el Hogar, el subtítulo dice quién pagó, cómo se dividió y cuánto te toca.
+  const share = t.payerShare ?? 50;
+  const myPart = t.type === "expense" && t.paidBy ? roundMoney((Number(t.amount) * (isMine(t) ? share : 100 - share)) / 100) : 0;
   const split =
     inHousehold() && t.paidBy
-      ? [paidByLabel(t), t.type === "expense" ? splitLabel(t.payerShare ?? 50) : null]
+      ? [
+          paidByLabel(t),
+          t.type === "expense" ? splitLabel(share) : null,
+          myPart > 0 && !(isMine(t) && share === 100) ? `tu parte ${formatMoney(myPart)}` : null
+        ]
       : [cat.label, accountInfo(t.method).name];
   const excluded = cat.excluded ? "no suma" : null;
-  const sub = [...split, excluded, date].filter(Boolean).map(escapeHtml).join(" · ");
-  const authorInfo = inHousehold() && t.createdBy ? (state.household.memberInfo || {})[t.createdBy] : null;
-  const author = authorInfo
-    ? `<span class="row-author" title="Registró ${escapeHtml(memberName(t.createdBy))}">${escapeHtml((authorInfo.name || "?").charAt(0).toUpperCase())}</span>`
+  // En el Hogar no cabe la fecha junto a "Pagó Camila · 50/50 · tu parte $X": se omite.
+  const sub = [...split, excluded, inHousehold() && t.paidBy ? null : date].filter(Boolean).map(escapeHtml).join(" · ");
+  // Insignia con la inicial de quien pagó (solo si hay pareja: con un miembro sería siempre la tuya).
+  const payer = inHousehold() && t.paidBy && partnerUid() ? t.paidBy : null;
+  const author = payer
+    ? `<span class="row-author ${memberRole(payer)}" title="${escapeHtml(paidByLabel(t))}">${escapeHtml(memberInitial(payer))}</span>`
     : "";
   el.innerHTML = `
     ${rowIcon(cat, brandFor(t.note) || catBrand(cat), author)}
@@ -1670,7 +1783,7 @@ function renderTransactionsList() {
     const hasAny = state.transactions.length > 0;
     container.innerHTML = hasAny
       ? emptyStateHTML("search_off", "Sin resultados", "Prueba con otro filtro o búsqueda.", "Limpiar filtros")
-      : emptyStateHTML("receipt_long", "Aún no hay movimientos", "Registra tu primer gasto o ingreso.", "Agregar movimiento");
+      : emptyStateHTML("coin", "Aún no hay movimientos", "Registra el primero con +. Toma 5 segundos.", "Agregar movimiento");
     container.querySelector("[data-empty-action]").onclick = hasAny ? clearFilters : () => openTransactionModal();
     return;
   }
@@ -1729,7 +1842,7 @@ function renderBudgetsList(stats) {
   container.innerHTML = "";
   const usage = budgetUsage(stats);
   if (!usage.length) {
-    container.innerHTML = emptyStateHTML("savings", "Sin límites todavía", "Define cuánto quieres gastar al mes por categoría y te avisaremos al acercarte.", "Crear límite");
+    container.innerHTML = emptyStateHTML("coin", "Sin límites todavía", "Ponle un tope a una categoría y te avisamos antes de que te pases.", "Crear límite");
     container.querySelector("[data-empty-action]").onclick = () => openBudgetModal();
     return;
   }
@@ -1864,6 +1977,7 @@ function setSelectValue(select, value) {
 
 function setTxType(type, keepCategory = false) {
   txSheet.type = type;
+  $("tx-amount").dataset.type = type; // la cifra toma el color del tipo
   setSegmented($("tx-type"), type);
   const transfer = type === "transfer";
   $("tx-category-grid").classList.toggle("hidden", transfer);
@@ -1934,6 +2048,7 @@ function openTransactionModal(editId = null, presetType = "expense", preset = {}
     txSheet.category = preset.category;
     renderCategoryGrid();
   }
+  renderDateChips();
   openModal("transaction-modal", tx || preset.inbox ? null : "tx-amount");
 }
 
@@ -1953,6 +2068,29 @@ function setupSplitFields(tx) {
   $("tx-split").value = preset;
   $("tx-share").value = share;
   $("tx-share-row").classList.toggle("hidden", preset !== "custom");
+  // Las tarjetas y pastillas escriben en los <select> ocultos, que siguen siendo la fuente del valor.
+  const cards = $("tx-paidby-cards");
+  cards.innerHTML = [...select.options]
+    .map(
+      (o) => `<button type="button" role="radio" class="payer-card" data-value="${escapeHtml(o.value)}">
+        <span class="avatar ${memberRole(o.value)}" aria-hidden="true">${escapeHtml(memberInitial(o.value))}</span><span>${escapeHtml(o.textContent)}</span></button>`
+    )
+    .join("");
+  cards.querySelectorAll("button").forEach(
+    (b) =>
+      (b.onclick = () => {
+        select.value = b.dataset.value;
+        updateSplitLabels();
+      })
+  );
+  $("tx-split-pills").querySelectorAll("button").forEach(
+    (b) =>
+      (b.onclick = () => {
+        $("tx-split").value = b.dataset.value;
+        if (b.dataset.value === "custom" && !$("tx-share").value) $("tx-share").value = 50;
+        updateSplitLabels();
+      })
+  );
   updateSplitLabels();
 }
 
@@ -1962,11 +2100,32 @@ function updateSplitLabels() {
   const income = txSheet.type === "income";
   const transfer = txSheet.type === "transfer";
   updatePaidFromRow();
-  $("tx-paidby-label").textContent = income ? "Recibió" : "Pagó";
+  $("tx-paidby-label").textContent = income ? "¿Quién recibió?" : "¿Quién pagó?";
   if (!inHousehold() || !partnerUid()) return;
   $("tx-paidby-row").classList.toggle("hidden", transfer);
   $("tx-split-row").classList.toggle("hidden", income || transfer);
   $("tx-share-row").classList.toggle("hidden", income || transfer || $("tx-split").value !== "custom");
+  syncSplitControls();
+}
+
+/** Marca la tarjeta y la pastilla elegidas y muestra en vivo cuánto pone cada uno. */
+function syncSplitControls() {
+  if (!inHousehold() || !partnerUid()) return;
+  const mark = (box, value) =>
+    box.querySelectorAll("button").forEach((b) => {
+      b.classList.toggle("active", b.dataset.value === value);
+      b.setAttribute("aria-checked", String(b.dataset.value === value));
+    });
+  const paidBy = $("tx-paidby").value;
+  mark($("tx-paidby-cards"), paidBy);
+  mark($("tx-split-pills"), $("tx-split").value);
+  const { payerShare } = readSplitFields();
+  const amount = parseAmountInput($("tx-amount").value) || 0;
+  // Sin monto todavía, la barra muestra solo los porcentajes.
+  const base = amount || 100;
+  const payer = roundMoney((base * payerShare) / 100);
+  const mine = paidBy === state.user.uid ? payer : roundMoney(base - payer);
+  renderSplitBar($("tx-split-row").querySelector(".split-bar"), $("tx-split-legend"), mine, roundMoney(base - mine), amount > 0);
 }
 
 function readSplitFields() {
@@ -2097,11 +2256,26 @@ function renderHouseholdBalance() {
   const net = householdBalance();
   const name = memberName(partner);
   const settled = Math.abs(net) < 1;
-  card.classList.toggle("owed", net > 0 && !settled);
-  card.classList.toggle("owe", net < 0 && !settled);
   setAnimatedText($("balance-between-value"), settled ? "Están a mano" : formatMoney(Math.abs(net)));
   $("balance-between-label").textContent = settled ? `Entre tú y ${name}` : net > 0 ? `${name} te debe` : `Le debes a ${name}`;
   $("settle-btn").classList.toggle("hidden", settled);
+  $("hogar-avatar-me").textContent = memberInitial(state.user.uid);
+  $("hogar-avatar-partner").textContent = memberInitial(partner);
+
+  // Lo gastado en el mes que se ve: cuántos gastos se dividieron y quién pagó cuánto.
+  const month = monthLabel(state.viewMonth, false).toLowerCase();
+  const spent = state.transactions.filter((t) => t.paidBy && t.type === "expense" && !t.kind && !isExcludedCategory(t) && isInMonth(t.date, state.viewMonth));
+  const shared = spent.filter((t) => (t.payerShare ?? 50) !== 100).length;
+  const sub = $("between-sub");
+  sub.textContent = `Por ${shared} ${shared === 1 ? "gasto compartido" : "gastos compartidos"} de ${month}`;
+  sub.classList.toggle("hidden", settled || !shared);
+  const total = roundMoney(spent.reduce((s, t) => s + Number(t.amount), 0));
+  const mine = roundMoney(spent.filter(isMine).reduce((s, t) => s + Number(t.amount), 0));
+  $("hogar-spent").classList.toggle("hidden", !total);
+  if (!total) return;
+  $("hogar-spent-title").textContent = `Gastado en ${month}`;
+  $("hogar-spent-total").textContent = formatMoney(total);
+  renderSplitBar($("hogar-spent").querySelector(".split-bar"), $("hogar-spent-legend"), mine, roundMoney(total - mine));
 }
 
 function settleUp() {
@@ -2185,7 +2359,7 @@ function saveTransaction(event) {
   closeModal("transaction-modal");
   haptic("success");
   if (state.activeTab !== "dashboard" && state.activeTab !== "transactions") {
-    showToast(prev ? "Movimiento actualizado" : "Movimiento guardado", "success");
+    showToast(prev ? "Movimiento actualizado" : "Movimiento guardado", "saved");
   }
   setTimeout(() => (lastChangedId = null), 1000);
 }
@@ -2679,7 +2853,7 @@ function renderAccountsList() {
   const fill = (box, list, empty) => {
     box.innerHTML = "";
     if (!list.length) {
-      box.innerHTML = `<p class="footnote">${empty}</p>`;
+      box.innerHTML = box.id === "goals-list" ? emptyStateHTML("coin", "", empty) : `<p class="footnote">${empty}</p>`;
       return;
     }
     const group = document.createElement("div");
@@ -2793,8 +2967,13 @@ function accountRow(a) {
   const row = document.createElement("button");
   row.type = "button";
   row.className = "list-row account-row";
-  const icon = `<span class="row-icon" style="color:${a.color};background:${a.color}24"><span class="ms">${ACCOUNT_KINDS[a.kind].icon}</span></span>`;
+  // Una meta lleva la moneda llena hasta su avance (toda de oro al cumplirla).
+  const icon =
+    a.kind === "goal" && a.active !== false
+      ? `<span class="row-icon coin-icon">${coinSVG(a.target ? accountBalance(a) / a.target : 0.5)}</span>`
+      : `<span class="row-icon" style="color:${a.color};background:${a.color}24"><span class="ms">${ACCOUNT_KINDS[a.kind].icon}</span></span>`;
   let sub = ACCOUNT_KINDS[a.kind].label;
+  let sub2 = "";
   let amount = "";
   let bar = null;
   let amountClass = "";
@@ -2819,6 +2998,11 @@ function accountRow(a) {
       amountClass = bal > 0 ? "income" : bal < 0 ? "debt" : "";
       bar = a.target ? Math.min(1, Math.max(0, bal / a.target)) : null;
       sub = goalSubtitle(a, bal);
+      // Meta del Hogar: cuánto ha puesto cada uno.
+      if (inHousehold() && partnerUid()) {
+        const c = goalContributions(a);
+        sub2 = `Tú aportaste ${formatMoney(c.me)} · ${memberName(partnerUid())} ${formatMoney(c.partner)}`;
+      }
     } else {
       amount = formatMoney(bal);
       amountClass = bal > 0 ? "income" : bal < 0 ? "debt" : "";
@@ -2829,11 +3013,23 @@ function accountRow(a) {
     <span class="row-main">
       <span class="row-title">${escapeHtml(a.name)}</span>
       <span class="row-sub">${escapeHtml(sub)}</span>
+      ${sub2 ? `<span class="row-sub">${escapeHtml(sub2)}</span>` : ""}
       ${bar !== null ? `<span class="mini-progress"><span style="transform:scaleX(${bar});background:${a.kind === "goal" ? "var(--gold)" : a.color}"></span></span>` : ""}
     </span>
     <span class="row-amount ${amountClass}">${amount}</span>`;
   row.onclick = () => openAccountModal(a);
   return row;
+}
+
+/** Aportes netos de cada miembro a una meta del Hogar (transferencias hacia ella menos las que salen). */
+function goalContributions(goal) {
+  const by = { me: 0, partner: 0 };
+  state.transactions.forEach((t) => {
+    const uid = t.paidBy || t.createdBy;
+    if (t.kind !== "transfer" || !uid || (t.to !== goal.id && t.from !== goal.id)) return;
+    by[memberRole(uid)] += (t.to === goal.id ? 1 : -1) * Number(t.amount);
+  });
+  return { me: roundMoney(by.me), partner: roundMoney(by.partner) };
 }
 
 /** "Faltan $X · aparta $Y al mes" (o "¡Meta cumplida!"). */
@@ -3352,7 +3548,10 @@ function renderSpaceSwitch() {
   const el = $("space-switch");
   const show = !!state.household && state.activeTab !== "settings";
   el.classList.toggle("hidden", !show);
-  if (state.household) el.querySelector('[data-value="household"]').textContent = state.household.name || "Hogar";
+  if (state.household) {
+    el.querySelector('[data-value="personal"]').innerHTML = '<span class="ms">person</span><span class="space-name">Personal</span>';
+    el.querySelector('[data-value="household"]').innerHTML = `<span class="ms">home</span><span class="space-name">${escapeHtml(state.household.name || "Hogar")}</span>`;
+  }
   setSegmented(el, state.space);
 }
 
@@ -3374,6 +3573,25 @@ function memberName(uid) {
 
 function partnerUid() {
   return state.household && state.user ? state.household.members.find((m) => m !== state.user.uid) : null;
+}
+
+/** Inicial de un miembro y su color: tú en Marea ("me"), tu pareja en Oro ("partner"). */
+function memberInitial(uid) {
+  const info = ((state.household && state.household.memberInfo) || {})[uid] || {};
+  return (info.name || memberName(uid) || "?").charAt(0).toUpperCase();
+}
+const memberRole = (uid) => (state.user && uid === state.user.uid ? "me" : "partner");
+
+/** Barra dividida tú / pareja con su leyenda (nombre, monto y %): la proporción no depende solo del color. */
+function renderSplitBar(bar, legend, mine, theirs, withMoney = true) {
+  const total = mine + theirs;
+  const pct = total ? Math.round((mine / total) * 100) : 50;
+  const [me, partner] = bar.children;
+  me.style.flexGrow = total ? mine : 1;
+  partner.style.flexGrow = total ? theirs : 1;
+  const item = (role, name, value, p) =>
+    `<span><i class="dot ${role}"></i><strong>${escapeHtml(name)}</strong> ${withMoney ? `${formatMoney(value)} · ` : ""}${p}%</span>`;
+  legend.innerHTML = item("me", "Tú", mine, pct) + item("partner", memberName(partnerUid()), theirs, 100 - pct);
 }
 
 async function createHousehold(event) {
@@ -3560,25 +3778,38 @@ function renderActivityList() {
     return;
   }
   list.innerHTML = "";
-  const group = document.createElement("div");
-  group.className = "list-group";
+  // Agrupado por Hoy / Esta semana / Antes (la lista ya viene de la más nueva a la más vieja).
+  const today = new Date();
+  today.setHours(0, 0, 0, 0);
+  const weekStart = today.getTime() - 6 * 86400000;
+  const bucket = (ms) => (ms >= today.getTime() ? "Hoy" : ms >= weekStart ? "Esta semana" : "Antes");
+  let group = null;
+  let current = "";
   items.forEach((a) => {
+    if (bucket(a.clientAt) !== current) {
+      current = bucket(a.clientAt);
+      const title = document.createElement("h3");
+      title.className = "activity-group-title";
+      title.textContent = current;
+      group = document.createElement("div");
+      group.className = "list-group";
+      list.append(title, group);
+    }
     const mine = state.user && a.by === state.user.uid;
-    const info = (state.household.memberInfo || {})[a.by] || {};
     const row = document.createElement("div");
     row.className = "list-row activity-row";
     if (!mine && a.clientAt > seen) row.classList.add("unseen");
-    const who = mine ? "Tú" : info.name || "Tu pareja";
+    const who = memberName(a.by);
     const verb = mine ? { add: "agregaste", edit: "editaste", delete: "borraste", settle: "registraste un pago de" }[a.action] : ACTIVITY_VERBS[a.action];
+    const settle = a.action === "settle";
     row.innerHTML = `
-      <span class="avatar">${escapeHtml((info.name || "?").charAt(0).toUpperCase())}</span>
+      <span class="avatar ${memberRole(a.by)}" aria-hidden="true">${escapeHtml(memberInitial(a.by))}</span>
       <span class="row-main">
-        <span class="activity-text"><strong>${escapeHtml(who)}</strong> ${verb} ${escapeHtml(a.action === "settle" ? "" : a.note)} · ${formatMoney(a.amount)}</span>
+        <span class="activity-text"><strong>${escapeHtml(who)}</strong> ${verb} ${escapeHtml(settle ? "" : a.note)} · <span class="activity-amount${settle ? " settle" : ""}">${formatMoney(a.amount)}</span></span>
         <span class="row-sub">${timeAgo(a.clientAt)}</span>
       </span>`;
     group.appendChild(row);
   });
-  list.appendChild(group);
 }
 
 function openActivity() {
@@ -3641,8 +3872,10 @@ function renderHouseholdSettings() {
 function migrateLocalDataToCloud() {
   const local = loadState();
   if (!local || localStorage.getItem(MIGRATED_KEY) === "true") return;
-  const txs = (local.transactions || []).filter((t) => !String(t.id).startsWith("seed-"));
+  // Los datos de ejemplo se quedan en el celular: no se suben a la cuenta.
+  const txs = (local.transactions || []).filter((t) => !/^(seed|demo)-/.test(String(t.id)));
   if (!txs.length) return;
+  const demoBudgets = demoBudgetKeys();
   showConfirmDialog(
     "¿Subir tus datos a la nube?",
     `Tienes ${txs.length} movimientos en este dispositivo. ¿Quieres sincronizarlos con tu cuenta de Google?`,
@@ -3650,7 +3883,7 @@ function migrateLocalDataToCloud() {
       const batch = db.batch();
       const userRef = db.collection("users").doc(state.user.uid);
       txs.forEach((t) => batch.set(userRef.collection("transactions").doc(t.id), t));
-      Object.keys(local.budgets || {}).forEach((cat) => batch.set(userRef.collection("budgets").doc(budgetDocId(cat)), { limit: local.budgets[cat] }));
+      Object.keys(local.budgets || {}).filter((cat) => !demoBudgets.includes(cat)).forEach((cat) => batch.set(userRef.collection("budgets").doc(budgetDocId(cat)), { limit: local.budgets[cat] }));
       const cats = normCategories(local.categories);
       [...cats.expense, ...cats.income].forEach((c) => batch.set(userRef.collection("categories").doc(c.ref), c));
       normAccounts(local.accounts).forEach((a) => batch.set(userRef.collection("accounts").doc(a.ref), a));
@@ -3772,7 +4005,7 @@ function updateFirebaseStatusUI() {
     icon.textContent = state.firebaseEnabled ? "cloud" : "cloud_off";
     icon.style.color = "";
     title.textContent = "Modo local";
-    subtitle.textContent = state.firebaseEnabled ? "Tus datos están solo en este dispositivo." : "Sin conexión con la nube.";
+    subtitle.textContent = state.firebaseEnabled ? "Tus datos son tuyos: están solo en este celular." : "Sin conexión con la nube.";
     btn.textContent = "Conectar";
     btn.className = "btn-plain";
   }
@@ -3856,7 +4089,7 @@ function refreshScheduledNotifications() {
         at.setDate(at.getDate() + i);
         at.setHours(h, m, 0, 0);
         if (at <= now || (i === 0 && loggedToday)) return;
-        list.push({ ...base, id, title: "FinanFlow", body: "¿Registraste tus gastos de hoy? Toma 5 segundos.", schedule: { at, allowWhileIdle: true }, extra: { route: "add" } });
+        list.push({ ...base, id, title: "¿Ya anotaste lo de hoy?", body: "Toma 5 segundos. Toca para registrar.", schedule: { at, allowWhileIdle: true }, extra: { route: "add" } });
       });
     }
 
@@ -3865,18 +4098,26 @@ function refreshScheduledNotifications() {
       at.setDate(at.getDate() + ((7 - at.getDay()) % 7));
       at.setHours(19, 0, 0, 0);
       if (at <= now) at.setDate(at.getDate() + 7);
-      const from = new Date(at);
-      from.setDate(at.getDate() - 6);
-      const week = state.transactions.filter(
-        (t) => t.type === "expense" && countsAsMoney(t) && t.date >= toISODate(from) && t.date <= toISODate(at)
-      );
+      const shift = (d, days) => {
+        const c = new Date(d);
+        c.setDate(c.getDate() + days);
+        return toISODate(c);
+      };
+      const spentBetween = (fromISO, toISO) =>
+        state.transactions.filter((t) => t.type === "expense" && countsAsMoney(t) && t.date >= fromISO && t.date <= toISO);
+      const week = spentBetween(shift(at, -6), toISODate(at));
+      const total = sumAmounts(week);
+      const prev = sumAmounts(spentBetween(shift(at, -13), shift(at, -7)));
       const byCat = {};
       week.forEach((t) => (byCat[t.category] = (byCat[t.category] || 0) + Number(t.amount)));
       const top = Object.entries(byCat).sort((a, b) => b[1] - a[1])[0];
+      // "Gastaste $X, 12% menos que la semana pasada. Donde más: Comida."
+      const pct = prev > 0 ? Math.round(((total - prev) / prev) * 100) : null;
+      const vs = pct === null ? "" : pct === 0 ? ", lo mismo que la semana pasada" : `, ${Math.abs(pct)}% ${pct < 0 ? "menos" : "más"} que la semana pasada`;
       const body = week.length
-        ? `Esta semana gastaste ${formatMoney(sumAmounts(week))}${top ? ` · Más en ${getCategoryInfo(top[0]).label}` : ""}.`
+        ? `Gastaste ${formatMoney(total)}${vs}.${top ? ` Donde más: ${getCategoryInfo(top[0]).label}.` : ""}`
         : "Esta semana no registraste gastos. ¿Todo al día?";
-      list.push({ ...base, id: WEEKLY_ID, title: "Tu resumen semanal", body, schedule: { at, allowWhileIdle: true }, extra: { route: "dashboard" } });
+      list.push({ ...base, id: WEEKLY_ID, title: "Tu semana en FinanFlow", body, schedule: { at, allowWhileIdle: true }, extra: { route: "dashboard" } });
     }
 
     if (state.notify.cards) {
@@ -3948,8 +4189,11 @@ function checkBudgetAlerts() {
         id: 200 + (hashString(u.cat) % 40) * 2 + (u.threshold === 100 ? 1 : 0),
         channelId: "finanflow",
         smallIcon: "ic_stat_finanflow",
-        title: u.threshold === 100 ? `Superaste el límite de ${label}` : `${label}: cerca del límite`,
-        body: `Llevas ${formatMoney(u.spent)} de ${formatMoney(u.limit)} (${Math.round(u.pct)}%).`,
+        title: u.threshold === 100 ? `${label} pasó su límite` : `${label} va en ${Math.round(u.pct)}%`,
+        body:
+          u.threshold === 100
+            ? `Llevas ${formatMoney(u.spent)} de ${formatMoney(u.limit)}. Aún puedes cuidar el resto del mes.`
+            : `Te quedan ${formatMoney(roundMoney(u.limit - u.spent))} para el resto del mes.`,
         schedule: { at: new Date(Date.now() + 1000 + i * 200), allowWhileIdle: true },
         extra: { route: "budgets" }
       };
@@ -4072,6 +4316,8 @@ function syncWidget() {
     if (pay) pay.setContext({ json: JSON.stringify(paymentContext(data)) }).catch(() => {});
     if (!bridge) return;
     const s = monthStats(ym, 31, data.transactions, data.categories);
+    // Widget pequeño: "Disponible hoy" (vale solo el día en que se calcula).
+    const allowance = dailyAllowance(s, data.budgets);
     bridge
       .update({
         json: JSON.stringify({
@@ -4079,7 +4325,10 @@ function syncWidget() {
           income: formatMoney(s.income),
           expense: formatMoney(s.expense),
           monthKey: ym,
-          monthLabel: monthLabel(ym, false)
+          monthLabel: monthLabel(ym, false).toLowerCase(),
+          allowance: allowance && allowance.remaining > 0 ? formatMoney(allowance.perDay) : "",
+          allowanceOver: allowance && allowance.remaining <= 0 ? formatMoney(-allowance.remaining) : "",
+          allowanceDate: todayISO()
         })
       })
       .catch(() => {});
@@ -4498,7 +4747,7 @@ function openAI() {
   }
   const box = $("ai-messages");
   if (!box.children.length) {
-    appendMessage("ai", "¡Hola! Soy FinanBot. Conozco tus números de este mes. ¿En qué te ayudo?");
+    appendMessage("ai", "¡Hola! Soy FinanBot. Ya vi tus números de este mes: pregúntame lo que quieras, sin juicios.");
     renderAISuggestions();
   }
   openModal("ai-modal");
@@ -4784,11 +5033,174 @@ function confirmResetAll() {
       state.notified = {};
       state.viewMonth = monthKey(new Date());
       state.filters = { type: "all", category: "all", date: "month", search: "" };
+      localStorage.removeItem(DEMO_KEY);
       commit();
+      renderDemoRow();
       if (!cloud) showToast("Datos borrados", "info");
     },
     "Borrar todo"
   );
+}
+
+/* ==========================================================================
+   Primer uso: bienvenida en 3 pasos y datos de ejemplo
+   ========================================================================== */
+
+const DEMO_ANCHOR = "2026-10-16"; // el día "de hoy" del respaldo de ejemplo: sus fechas se corren a hoy
+
+function demoBudgetKeys() {
+  try {
+    return JSON.parse(localStorage.getItem(DEMO_KEY)) || [];
+  } catch (e) {
+    return [];
+  }
+}
+
+function renderDemoRow() {
+  $("demo-remove").classList.toggle("hidden", localStorage.getItem(DEMO_KEY) === null || isCloud());
+}
+
+/** Carga el respaldo de ejemplo en el espacio personal (solo modo local), con las fechas al día. */
+async function loadDemoData() {
+  let data;
+  try {
+    data = await (await fetch("demo/finanflow-demo.json")).json();
+  } catch (e) {
+    data = null;
+  }
+  if (!isValidBackup(data)) {
+    showToast("No se pudieron cargar los datos de ejemplo", "error");
+    return;
+  }
+  const days = Math.round((parseISO(todayISO()) - parseISO(DEMO_ANCHOR)) / 86400000);
+  const shift = (iso) => {
+    const d = parseISO(iso);
+    d.setDate(d.getDate() + days);
+    return toISODate(d);
+  };
+  const ids = new Set(state.transactions.map((t) => t.id));
+  // Las copias de los recurrentes se vuelven a generar con las fechas corridas.
+  const demo = data.transactions
+    .filter((t) => !t.recurringOf && !ids.has(t.id))
+    .map((t) => ({ ...t, date: shift(t.date), skipMonths: [] }))
+    .filter((t) => t.date <= todayISO());
+  const added = Object.keys(data.budgets || {}).filter((c) => state.budgets[c] === undefined);
+  added.forEach((c) => (state.budgets[c] = Number(data.budgets[c])));
+  state.transactions = [...state.transactions, ...demo];
+  localStorage.setItem(DEMO_KEY, JSON.stringify(added));
+  materializeRecurring();
+  resetCharts();
+  commit();
+  renderDemoRow();
+  showToast("Datos de ejemplo listos. Los quitas en Ajustes → Datos", "success", 4500);
+}
+
+function removeDemoData() {
+  showConfirmDialog(
+    "¿Quitar datos de ejemplo?",
+    "Se borran los movimientos y límites de ejemplo. Lo que hayas anotado tú se queda.",
+    () => {
+      state.transactions = state.transactions.filter((t) => !String(t.id).startsWith("demo-"));
+      demoBudgetKeys().forEach((c) => delete state.budgets[c]);
+      localStorage.removeItem(DEMO_KEY);
+      resetCharts();
+      commit();
+      renderDemoRow();
+      showToast("Datos de ejemplo quitados", "info");
+    },
+    "Quitar"
+  );
+}
+
+/** Moneda probable según el idioma del sistema (si no se reconoce, la de siempre). */
+function guessCurrency() {
+  const lang = (navigator.language || "").toLowerCase();
+  const map = { "es-co": "COP", "es-mx": "MXN", "es-ar": "ARS", "es-cl": "CLP", "es-pe": "PEN", "en-us": "USD" };
+  if (map[lang]) return map[lang];
+  return /^(es-es|de|fr|it|nl|pt-pt)/.test(lang) ? "EUR" : state.currency;
+}
+
+function initOnboarding() {
+  const flag = localStorage.getItem(ONBOARDED_KEY);
+  if (!((firstRun && flag === null) || flag === "0")) return;
+  localStorage.setItem(ONBOARDED_KEY, "0");
+
+  const modal = $("onboarding-modal");
+  const steps = [...modal.querySelectorAll(".onb-step")];
+  const dots = [...modal.querySelectorAll(".onb-dots span")];
+  let storage = "local";
+  const go = (n) => {
+    steps.forEach((s, i) => s.classList.toggle("active", i === n));
+    dots.forEach((d, i) => d.classList.toggle("active", i === n));
+    modal.querySelector(".onboarding").scrollTop = 0;
+    // El lector de pantalla anuncia el título del paso nuevo.
+    const title = steps[n].querySelector(".onb-title");
+    title.tabIndex = -1;
+    if (n > 0) title.focus({ preventScroll: true });
+  };
+  const finish = (then) => {
+    closeModal("onboarding-modal");
+    if (storage === "cloud") handleFirebaseSettingsAction();
+    else if (then) then();
+  };
+  // Pastillas de una sola opción (moneda y tema)
+  const pills = (box, value, onPick) => {
+    const sync = (v) =>
+      box.querySelectorAll("button").forEach((b) => {
+        b.classList.toggle("active", b.dataset.value === v);
+        b.setAttribute("role", "radio");
+        b.setAttribute("aria-checked", String(b.dataset.value === v));
+      });
+    box.querySelectorAll("button").forEach((b) => (b.onclick = () => (sync(b.dataset.value), onPick(b.dataset.value))));
+    sync(value);
+  };
+
+  // Paso 1: la moneda se llena al entrar
+  $("onb-coin").innerHTML = coinSVG(0);
+  setTimeout(() => fillCoin($("onb-coin").querySelector("svg"), 0, 0.62), 300);
+  modal.querySelectorAll("[data-onb-next]").forEach((b) => (b.onclick = () => go(steps.indexOf(b.closest(".onb-step")) + 1)));
+  $("onb-restore").onclick = () => {
+    closeModal("onboarding-modal");
+    $("import-file-input").click();
+  };
+
+  // Paso 2: dónde viven los datos
+  const options = [...modal.querySelectorAll(".onb-option")];
+  options.forEach((o) =>
+    (o.onclick = () => {
+      storage = o.dataset.storage;
+      options.forEach((x) => {
+        x.classList.toggle("active", x === o);
+        x.setAttribute("aria-checked", String(x === o));
+      });
+      // Los datos de ejemplo son solo locales: con la nube se empieza con la cuenta.
+      $("onb-demo").classList.toggle("hidden", storage === "cloud");
+      $("onb-first").textContent = storage === "cloud" ? "Conectar con Google" : "Anotar mi primer gasto";
+    })
+  );
+
+  // Paso 3: lo básico
+  $("onb-currency").innerHTML = Object.keys(CURRENCY_CONFIG).map((c) => `<button type="button" data-value="${c}">${c}</button>`).join("");
+  const currency = guessCurrency();
+  if (currency !== state.currency) changeCurrency(currency);
+  $("settings-currency").value = state.currency;
+  pills($("onb-currency"), state.currency, (c) => {
+    changeCurrency(c);
+    $("settings-currency").value = c;
+  });
+  pills($("onb-theme"), getThemePref(), applyThemePref);
+  const reminder = $("notify-reminder");
+  $("onb-reminder-row").classList.toggle("hidden", !(isNative && LN()));
+  $("onb-reminder").checked = reminder.checked;
+  $("onb-reminder").onchange = (e) => {
+    reminder.checked = e.target.checked;
+    reminder.dispatchEvent(new Event("change"));
+  };
+  $("onb-first").onclick = () => finish(() => openTransactionModal());
+  $("onb-demo").onclick = () => finish(loadDemoData);
+
+  go(0);
+  openModal("onboarding-modal");
 }
 
 /* ==========================================================================
@@ -4812,6 +5224,15 @@ function bindUI() {
     updateCategoryPreview();
   });
   $("categories-add-btn").onclick = () => openCategoryModal(null, categoriesListType);
+  $("tx-date").addEventListener("change", renderDateChips);
+  $("tx-date-chips").querySelectorAll("[data-offset]").forEach((b) => {
+    b.onclick = () => {
+      const d = new Date();
+      d.setDate(d.getDate() + Number(b.dataset.offset));
+      $("tx-date").value = toISODate(d);
+      renderDateChips();
+    };
+  });
   // Solo CSS: clase en <html> (el <head> la pone antes de pintar para que no parpadee).
   $("brand-colors").checked = document.documentElement.classList.contains("brand-colors");
   $("brand-colors").onchange = (e) => {
@@ -4828,12 +5249,14 @@ function bindUI() {
   ["tx-amount", "budget-limit", "acc-amount", "acc-limit", "acc-target"].forEach((id) => {
     $(id).addEventListener("input", (e) => {
       e.target.value = formatAmountInput(e.target.value);
+      fitAmount(e.target);
     });
   });
 
   // Que el teclado no tape el campo enfocado dentro de una hoja
   document.querySelectorAll(".sheet").forEach((sheet) => {
     setupSheetGesture(sheet);
+    sheet.addEventListener("scroll", () => sheet.classList.toggle("scrolled", sheet.scrollTop > 4), { passive: true });
     sheet.addEventListener("focusin", (e) => {
       if (e.target.matches("input, select, textarea")) setTimeout(() => e.target.scrollIntoView({ block: "nearest" }), 300);
     });
@@ -4871,6 +5294,8 @@ function bindUI() {
 
   // Hogar compartido
   $("tx-split").onchange = updateSplitLabels;
+  $("tx-share").addEventListener("input", syncSplitControls);
+  $("tx-amount").addEventListener("input", syncSplitControls);
   $("settle-btn").onclick = settleUp;
   $("household-form").addEventListener("submit", createHousehold);
   $("join-form").addEventListener("submit", joinHousehold);
@@ -4944,6 +5369,8 @@ function init() {
   initNotifications();
   initPaymentDetect();
   initUpdates();
+  renderDemoRow();
+  initOnboarding();
   handleDeepLink(location.href);
   checkBudgetAlerts();
   syncWidget();
@@ -4968,6 +5395,7 @@ const app = {
   exportDataCSV,
   importDataJSON,
   confirmResetAll,
+  removeDemoData,
   handleFirebaseSettingsAction,
   loginWithGoogle,
   openSyncSheet,

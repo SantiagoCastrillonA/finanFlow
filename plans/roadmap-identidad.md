@@ -23,12 +23,12 @@ Restricción: costo $0 y sin conexión. No se usan CDNs, y las fuentes e íconos
 |---|---|---|---|
 | A | 0.11.0 | Limpieza de color: fuera violeta, tokens Oro, interruptores, Límites por estado, saldo neutro | Pequeña · **Hecha** |
 | A2 | 0.11.0 | Accesibilidad: contraste de tokens, tamaños táctiles, texto grande, gráficas | Pequeña · **Hecha** |
-| B | 0.11.1 | Ícono Moneda de oro en Android, PWA, splash y notificación | Mediana |
-| C | 0.12.0 | Inicio: etiquetas, flechas, comparativa, alertas y neto | Mediana |
-| C2 | 0.12.0 | Vidrio: moneda de fondo, saldo en vidrio, barra inferior flotante | Mediana |
-| D | 0.12.1 | Registrar movimiento: monto, un solo Guardar, fecha rápida, selección | Mediana |
-| E | 0.13.0 | Tipografía propia (Manrope local) | Pequeña |
-| F | 0.13.1 | Firma visual (moneda que se llena) y voz | Mediana |
+| B | 0.11.1 | Ícono Moneda de oro en Android, PWA, splash y notificación | Mediana · **Hecha** |
+| C | 0.12.0 | Inicio: etiquetas, flechas, comparativa, alertas y neto | Mediana · **Hecha** |
+| C2 | 0.12.0 | Vidrio: moneda de fondo, saldo en vidrio, barra inferior flotante | Mediana · **Hecha** |
+| D | 0.12.1 | Registrar movimiento: monto, un solo Guardar, fecha rápida, selección | Mediana · **Hecha** |
+| E | 0.13.0 | Tipografía propia (Manrope local) | Pequeña · **Hecha** |
+| F | 0.13.1 | Firma visual (moneda que se llena) y voz | Mediana · **Hecha** |
 | H | 0.13.2 | Onboarding de 3 pantallas | Mediana |
 | I | 0.13.3 | Hogar compartido con la nueva marca | Mediana |
 | J | 0.13.4 | Tablet: barra lateral y vidrio | Pequeña |
@@ -67,7 +67,7 @@ Orden recomendado: A + A2 → B → C → C2 → D → E → F → H → I → J
 
 **Impacto en datos financieros:** ninguno; solo presentación.
 
-**Verificación:** `node --check www/app.js`. Revisar Inicio, Límites, Ajustes, Categorías y un aviso en ambos temas con `demo/finanflow-demo.json`. Con `grep -n "5E5CE6\|8E8CFF"` sobre `www/` solo deben quedar apariciones en la paleta de categorías (`CATEGORY_COLORS`, la categoría base Suscripciones y Nequi/Daviplata).
+**Verificación:** `node --check www/app.js`. Revisar Inicio, Límites, Ajustes, Categorías y un aviso en ambos temas con `www/demo/finanflow-demo.json`. Con `grep -n "5E5CE6\|8E8CFF"` sobre `www/` solo deben quedar apariciones en la paleta de categorías (`CATEGORY_COLORS`, la categoría base Suscripciones y Nequi/Daviplata).
 
 ---
 
@@ -130,7 +130,7 @@ Auditoría hecha sobre los tokens de `styles.css` 0.10.3 (WCAG 2.1 AA: texto nor
 
 ---
 
-## Fase B — Ícono "Moneda de oro" (0.11.1)
+## Fase B — Ícono "Moneda de oro" (0.11.1) — HECHA
 
 Sustituye por completo el ícono "Barras" del plan 009 y sigue sus mismos pasos y archivos.
 
@@ -165,7 +165,7 @@ Sustituye por completo el ícono "Barras" del plan 009 y sigue sus mismos pasos 
   - `www/icons/icon-192.png`, `icon-512.png` y `apple-touch-icon.png` a sangre completa.
   - `manifest.json` sigue con `"purpose": "any maskable"`.
 - **Widget:** ya usa Marea (`widget_accent`); solo revisar que el botón "+" combine.
-- `www/icons/iconoFinanFlow.png`: es un logo antiguo con el símbolo ¢ que no está referenciado en `www/`. **Preguntar al usuario antes de borrarlo.**
+- `www/icons/iconoFinanFlow.png`: es un logo antiguo con el símbolo ¢ que no está referenciado en `www/`. Borrado en la 0.11.1 (aprobado por el usuario).
 - **Documentación:** actualizar la sección "Ícono" de `CLAUDE.md` y el plan 009 (marcarlo como reemplazado por esta fase).
 
 **Pasos:** los mismos del plan 009. Generar los PNG con `@resvg/resvg-js` instalado en una carpeta de borrador, no en el proyecto. Luego `npm run build-native` y `cd android && ./gradlew assembleDebug`. Subir `versionCode`.
@@ -179,7 +179,7 @@ Sustituye por completo el ícono "Barras" del plan 009 y sigue sus mismos pasos 
 
 ---
 
-## Fase C — Inicio (0.12.0)
+## Fase C — Inicio (0.12.0) — HECHA (sin los puntos opcionales 5 y 7, que piden preguntar)
 
 1. **Etiqueta del saldo.** En el mes actual y sin cuentas activas, `balance-label` dice "Saldo", pero muestra el acumulado (`app.js` ~1277–1283), mientras que Ingresos y Gastos son del mes. Cambiar a "Saldo total". Los demás textos ("Saldo en tus cuentas", "Saldo al cierre de…") están bien.
 2. **Flechas.**
@@ -199,7 +199,7 @@ Sustituye por completo el ícono "Barras" del plan 009 y sigue sus mismos pasos 
 
 ---
 
-## Fase C2 — Vidrio con propósito (0.12.0, junto con C)
+## Fase C2 — Vidrio con propósito (0.12.0, junto con C) — HECHA
 
 Referencia visual: mockup "Inicio · vidrio", en claro y en oscuro, del lienzo de diseño "FinanFlow · Rediseño".
 
@@ -251,7 +251,7 @@ Referencia visual: mockup "Inicio · vidrio", en claro y en oscuro, del lienzo d
 
 ---
 
-## Fase D — Registrar movimiento (0.12.1)
+## Fase D — Registrar movimiento (0.12.1) — HECHA
 
 1. **Monto agrupado.**
    - El "$" sale pegado a la izquierda y el 0 centrado.
@@ -272,7 +272,7 @@ Referencia visual: mockup "Inicio · vidrio", en claro y en oscuro, del lienzo d
 
 ---
 
-## Fase E — Tipografía propia (0.13.0)
+## Fase E — Tipografía propia (0.13.0) — HECHA
 
 - **Manrope** (licencia OFL), variable, recortada a latín, en `www/vendor/fonts/manrope.woff2`.
   - Ampliar `scripts/vendor-assets.mjs` para descargarla de Google Fonts `css2`, como ya hace con Material Symbols.
@@ -288,7 +288,7 @@ Referencia visual: mockup "Inicio · vidrio", en claro y en oscuro, del lienzo d
 
 ---
 
-## Fase F — Firma visual y voz (0.13.1)
+## Fase F — Firma visual y voz (0.13.1) — HECHA (textos por revisar con el usuario)
 
 1. **La moneda que se llena** como motivo propio, en un componente pequeño SVG reutilizable:
    - **Estados vacíos** (Recientes, Historial, Límites, Metas): la moneda en contorno, vacía.
@@ -304,7 +304,7 @@ Referencia visual: mockup "Inicio · vidrio", en claro y en oscuro, del lienzo d
 
 ---
 
-## Fase H — Onboarding (0.13.2)
+## Fase H — Onboarding (0.13.2) — HECHA (la mascota del paso 1 es la moneda hasta la Fase G)
 
 Hoy no hay primer uso: la app abre en Inicio vacío. Referencia: tableros "Onboarding 1–3" del lienzo de diseño.
 
@@ -318,7 +318,7 @@ Hoy no hay primer uso: la app abre en Inicio vacío. Referencia: tableros "Onboa
    - Nota: "Puedes cambiarlo cuando quieras en Ajustes → Nube".
 3. **Lo básico.**
    - Moneda en pastillas (COP preseleccionado según `navigator.language`), tema y recordatorio diario (solo en nativo).
-   - Botones "Anotar mi primer gasto" (abre la hoja de movimiento) y "Explorar con datos de ejemplo" (carga `demo/finanflow-demo.json` y muestra un aviso para borrarlos después).
+   - Botones "Anotar mi primer gasto" (abre la hoja de movimiento) y "Explorar con datos de ejemplo" (carga `www/demo/finanflow-demo.json` y muestra un aviso para borrarlos después).
 
 **Reglas:**
 - Se muestra solo si no hay `finanflow_state` ni sesión, y se marca como visto en `localStorage` (`finanflow_onboarded`).
@@ -329,7 +329,7 @@ Hoy no hay primer uso: la app abre en Inicio vacío. Referencia: tableros "Onboa
 
 ---
 
-## Fase I — Hogar compartido (0.13.3)
+## Fase I — Hogar compartido (0.13.3) — HECHA
 
 Referencia: tableros "Hogar · Inicio", "Hogar · gasto compartido" y "Hogar · actividad".
 
@@ -354,7 +354,7 @@ Referencia: tableros "Hogar · Inicio", "Hogar · gasto compartido" y "Hogar · 
 
 ---
 
-## Fase J — Tablet (0.13.4)
+## Fase J — Tablet (0.13.4) — HECHA (FinanBot con ícono hasta la mascota de la Fase G)
 
 Referencia: tablero "Tablet horizontal".
 
@@ -370,7 +370,7 @@ Referencia: tablero "Tablet horizontal".
 
 ---
 
-## Fase K — Widget y notificaciones de Android (0.13.5)
+## Fase K — Widget y notificaciones de Android (0.13.5) — HECHA (sin el aviso del Hogar: sin servidor no hay push real)
 
 Referencia: tablero "Widget y notificaciones".
 

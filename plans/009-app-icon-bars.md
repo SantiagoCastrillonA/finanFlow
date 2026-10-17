@@ -1,6 +1,6 @@
 # 009 — Ícono "Barras" en Android, notificaciones, pantalla de carga y PWA
 
-- **Status**: DONE
+- **Status**: REEMPLAZADO por la Fase B de `plans/roadmap-identidad.md` (ícono "Moneda de oro", 0.11.1)
 - **Commit**: 20d9993 (+ cambios v0.2.1 sin commit)
 - **Severity**: MEDIUM
 - **Category**: Marca (fuera del catálogo de animación; pedido por el usuario)

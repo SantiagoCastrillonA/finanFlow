@@ -1,4 +1,4 @@
-const CACHE_NAME = "finanflow-v0.11.0";
+const CACHE_NAME = "finanflow-v0.13.5";
 const ASSETS = [
   "./",
   "./index.html",
@@ -7,10 +7,12 @@ const ASSETS = [
   "./vendor/chart.umd.min.js",
   "./vendor/brands.js",
   "./vendor/fonts/material-symbols-rounded.woff2",
+  "./vendor/fonts/manrope.woff2",
   "./vendor/firebase/firebase-app-compat.js",
   "./vendor/firebase/firebase-auth-compat.js",
   "./vendor/firebase/firebase-firestore-compat.js",
   "./manifest.json",
+  "./demo/finanflow-demo.json",
   "./icons/icon-192.png",
   "./icons/icon-512.png",
   "./icons/apple-touch-icon.png"

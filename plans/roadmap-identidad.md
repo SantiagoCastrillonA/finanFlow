@@ -28,7 +28,7 @@ Restricción: costo $0 y sin conexión. No se usan CDNs, y las fuentes e íconos
 | C2 | 0.12.0 | Vidrio: moneda de fondo, saldo en vidrio, barra inferior flotante | Mediana · **Hecha** |
 | D | 0.12.1 | Registrar movimiento: monto, un solo Guardar, fecha rápida, selección | Mediana · **Hecha** |
 | E | 0.13.0 | Tipografía propia (Manrope local) | Pequeña · **Hecha** |
-| F | 0.13.1 | Firma visual (moneda que se llena) y voz | Mediana |
+| F | 0.13.1 | Firma visual (moneda que se llena) y voz | Mediana · **Hecha** |
 | H | 0.13.2 | Onboarding de 3 pantallas | Mediana |
 | I | 0.13.3 | Hogar compartido con la nueva marca | Mediana |
 | J | 0.13.4 | Tablet: barra lateral y vidrio | Pequeña |
@@ -288,7 +288,7 @@ Referencia visual: mockup "Inicio · vidrio", en claro y en oscuro, del lienzo d
 
 ---
 
-## Fase F — Firma visual y voz (0.13.1)
+## Fase F — Firma visual y voz (0.13.1) — HECHA (textos por revisar con el usuario)
 
 1. **La moneda que se llena** como motivo propio, en un componente pequeño SVG reutilizable:
    - **Estados vacíos** (Recientes, Historial, Límites, Metas): la moneda en contorno, vacía.

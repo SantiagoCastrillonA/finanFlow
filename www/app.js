@@ -683,9 +683,12 @@ function showToast(message, type = "info", duration = 3000, action = null) {
   const dir = container.classList.contains("top") ? -1 : 1; // hacia dónde se desliza para cerrar
   const icons = { info: "info", success: "check_circle", warning: "warning", error: "error" };
   const toast = document.createElement("div");
-  toast.className = `toast toast-${type}`;
+  // "saved": al guardar un movimiento, la moneda se llena en el aviso.
+  toast.className = `toast toast-${type === "saved" ? "success" : type}`;
   toast.setAttribute("role", "status");
-  toast.innerHTML = `<span class="ms toast-icon">${icons[type] || "info"}</span><span class="toast-message"></span>`;
+  const iconHTML = type === "saved" ? coinSVG(0.1, { cls: "toast-coin" }) : `<span class="ms toast-icon">${icons[type] || "info"}</span>`;
+  toast.innerHTML = `${iconHTML}<span class="toast-message"></span>`;
+  if (type === "saved") requestAnimationFrame(() => fillCoin(toast.querySelector(".coin"), 0.1, 0.65));
   toast.querySelector(".toast-message").textContent = message;
 
   let timer;
@@ -1491,7 +1494,7 @@ function renderBudgetAlerts(stats) {
     if (!prevAlertKeys.has(`${a.cat}:${a.level}`)) div.classList.add("is-new");
     div.innerHTML = `
       <span class="ms">${a.level === "danger" ? "error" : "warning"}</span>
-      <span class="alert-text"><strong>${escapeHtml(info.label)}</strong> ${a.level === "danger" ? "superó su límite" : "está cerca del límite"} · ${Math.round(a.pct)}%</span>
+      <span class="alert-text"><strong>${escapeHtml(info.label)}</strong> ${a.level === "danger" ? `pasó su límite por ${formatMoney(a.spent - a.limit)}` : `va en ${Math.round(a.pct)}% · te quedan ${formatMoney(a.limit - a.spent)}`}</span>
       <span class="ms chevron">chevron_right</span>`;
     div.onclick = () => switchTab("budgets");
     container.appendChild(div);
@@ -1500,10 +1503,39 @@ function renderBudgetAlerts(stats) {
   container.classList.toggle("hidden", !container.children.length);
 }
 
+/**
+ * La moneda que se llena: firma de la marca, con la geometría del ícono. `level` 0–1 sube la ola;
+ * `outline` = solo el contorno (estados vacíos). La ola se mueve con transform (unidades del SVG).
+ */
+let coinSeq = 0;
+const coinWaveY = (level) => (0.5 - Math.max(0, Math.min(1, level))) * 70;
+function coinSVG(level = 0.5, { outline = false, cls = "" } = {}) {
+  const id = `coin-clip-${++coinSeq}`;
+  return `<svg class="coin${outline ? " outline" : ""}${level >= 1 ? " full" : ""} ${cls}" viewBox="22 22 64 64" aria-hidden="true" focusable="false">
+    <defs><clipPath id="${id}"><circle cx="54" cy="54" r="27"/></clipPath></defs>
+    ${outline ? "" : '<circle class="coin-disc" cx="54" cy="54" r="27"/>'}
+    <g clip-path="url(#${id})"><path class="coin-wave" style="transform:translateY(${coinWaveY(level)}px)" d="M26 62 C34 55 41 55 48 59 S62 63 70 55 S79 49 82 50 V130 H26 Z"/></g>
+    <circle class="coin-rim" cx="54" cy="54" r="27"/>
+  </svg>`;
+}
+/** Sube la ola de una moneda ya pintada (al guardar): ~600 ms, solo transform. */
+function fillCoin(svg, from, to) {
+  const wave = svg && svg.querySelector(".coin-wave");
+  if (!wave) return;
+  const [a, b] = [coinWaveY(from), coinWaveY(to)];
+  wave.style.transform = `translateY(${b}px)`;
+  if (reduceMotion.matches) {
+    // Menos movimiento, no cero: un tramo corto y rápido.
+    wave.animate([{ transform: `translateY(${b + 6}px)` }, { transform: `translateY(${b}px)` }], { duration: 200, easing: EASE_OUT });
+    return;
+  }
+  wave.animate([{ transform: `translateY(${a}px)` }, { transform: `translateY(${b}px)` }], { duration: 600, easing: EASE_OUT });
+}
+
 function emptyStateHTML(icon, title, text, actionLabel) {
   return `
     <div class="empty-state">
-      <span class="ms">${icon}</span>
+      ${icon === "coin" ? coinSVG(0, { outline: true, cls: "coin-empty" }) : `<span class="ms">${icon}</span>`}
       <p class="empty-title">${title}</p>
       ${text ? `<p class="empty-text">${text}</p>` : ""}
       ${actionLabel ? `<button type="button" class="btn-tinted" data-empty-action>${actionLabel}</button>` : ""}
@@ -1515,7 +1547,7 @@ function renderRecentTransactions() {
   const sorted = [...state.transactions].sort(byDateDesc).slice(0, 5);
   container.innerHTML = "";
   if (!sorted.length) {
-    container.innerHTML = emptyStateHTML("receipt_long", "Aún no hay movimientos", "Registra tu primer gasto o ingreso.", "Agregar movimiento");
+    container.innerHTML = emptyStateHTML("coin", "Aún no hay movimientos", "Registra el primero con +. Toma 5 segundos.", "Agregar movimiento");
     container.querySelector("[data-empty-action]").onclick = () => openTransactionModal();
     return;
   }
@@ -1730,7 +1762,7 @@ function renderTransactionsList() {
     const hasAny = state.transactions.length > 0;
     container.innerHTML = hasAny
       ? emptyStateHTML("search_off", "Sin resultados", "Prueba con otro filtro o búsqueda.", "Limpiar filtros")
-      : emptyStateHTML("receipt_long", "Aún no hay movimientos", "Registra tu primer gasto o ingreso.", "Agregar movimiento");
+      : emptyStateHTML("coin", "Aún no hay movimientos", "Registra el primero con +. Toma 5 segundos.", "Agregar movimiento");
     container.querySelector("[data-empty-action]").onclick = hasAny ? clearFilters : () => openTransactionModal();
     return;
   }
@@ -1789,7 +1821,7 @@ function renderBudgetsList(stats) {
   container.innerHTML = "";
   const usage = budgetUsage(stats);
   if (!usage.length) {
-    container.innerHTML = emptyStateHTML("savings", "Sin límites todavía", "Define cuánto quieres gastar al mes por categoría y te avisaremos al acercarte.", "Crear límite");
+    container.innerHTML = emptyStateHTML("coin", "Sin límites todavía", "Ponle un tope a una categoría y te avisamos antes de que te pases.", "Crear límite");
     container.querySelector("[data-empty-action]").onclick = () => openBudgetModal();
     return;
   }
@@ -2247,7 +2279,7 @@ function saveTransaction(event) {
   closeModal("transaction-modal");
   haptic("success");
   if (state.activeTab !== "dashboard" && state.activeTab !== "transactions") {
-    showToast(prev ? "Movimiento actualizado" : "Movimiento guardado", "success");
+    showToast(prev ? "Movimiento actualizado" : "Movimiento guardado", "saved");
   }
   setTimeout(() => (lastChangedId = null), 1000);
 }
@@ -2741,7 +2773,7 @@ function renderAccountsList() {
   const fill = (box, list, empty) => {
     box.innerHTML = "";
     if (!list.length) {
-      box.innerHTML = `<p class="footnote">${empty}</p>`;
+      box.innerHTML = box.id === "goals-list" ? emptyStateHTML("coin", "", empty) : `<p class="footnote">${empty}</p>`;
       return;
     }
     const group = document.createElement("div");
@@ -2855,7 +2887,11 @@ function accountRow(a) {
   const row = document.createElement("button");
   row.type = "button";
   row.className = "list-row account-row";
-  const icon = `<span class="row-icon" style="color:${a.color};background:${a.color}24"><span class="ms">${ACCOUNT_KINDS[a.kind].icon}</span></span>`;
+  // Una meta lleva la moneda llena hasta su avance (toda de oro al cumplirla).
+  const icon =
+    a.kind === "goal" && a.active !== false
+      ? `<span class="row-icon coin-icon">${coinSVG(a.target ? accountBalance(a) / a.target : 0.5)}</span>`
+      : `<span class="row-icon" style="color:${a.color};background:${a.color}24"><span class="ms">${ACCOUNT_KINDS[a.kind].icon}</span></span>`;
   let sub = ACCOUNT_KINDS[a.kind].label;
   let amount = "";
   let bar = null;
@@ -3834,7 +3870,7 @@ function updateFirebaseStatusUI() {
     icon.textContent = state.firebaseEnabled ? "cloud" : "cloud_off";
     icon.style.color = "";
     title.textContent = "Modo local";
-    subtitle.textContent = state.firebaseEnabled ? "Tus datos están solo en este dispositivo." : "Sin conexión con la nube.";
+    subtitle.textContent = state.firebaseEnabled ? "Tus datos son tuyos: están solo en este celular." : "Sin conexión con la nube.";
     btn.textContent = "Conectar";
     btn.className = "btn-plain";
   }
@@ -4560,7 +4596,7 @@ function openAI() {
   }
   const box = $("ai-messages");
   if (!box.children.length) {
-    appendMessage("ai", "¡Hola! Soy FinanBot. Conozco tus números de este mes. ¿En qué te ayudo?");
+    appendMessage("ai", "¡Hola! Soy FinanBot. Ya vi tus números de este mes: pregúntame lo que quieras, sin juicios.");
     renderAISuggestions();
   }
   openModal("ai-modal");

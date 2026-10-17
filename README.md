@@ -2,7 +2,7 @@
 
 **Tu plata, clara y en tu bolsillo.** FinanFlow es una app gratuita para llevar tus gastos, ingresos, cuentas y tarjetas sin complicarte: anotas un gasto en dos toques y en un vistazo sabes cuánto tienes, cuánto debes y cuánto puedes gastar al día lo que queda del mes.
 
-> **Versión:** 0.11.1 · Android y web (iPhone como app web) · En español · Sin anuncios · Funciona sin conexión
+> **Versión:** 0.13.5 · Android y web (iPhone como app web) · En español · Sin anuncios · Funciona sin conexión
 
 <p align="center">
   <img src="docs/screenshots/inicio.jpg" width="200" alt="Inicio: saldo, disponible y deudas, ingresos y gastos del mes">
@@ -76,11 +76,12 @@
 
 ### Widget y accesos rápidos (Android)
 - **Widget de pantalla de inicio:** saldo, ingresos y gastos del mes, y un botón **+** para agregar un gasto.
+- **Widget pequeño "Disponible hoy":** cuánto puedes gastar hoy según tus límites del mes.
 - **App Shortcuts:** mantén presionado el ícono para Agregar gasto, Ver balance o Ver historial.
 
 ### Hogar compartido (en pareja)
 - **Personal + Hogar:** tus gastos personales siguen siendo privados; el Hogar es un espacio común que ambos editan. Cambias de espacio con el selector bajo el título.
-- **Quién pagó y división:** cada gasto del Hogar indica quién pagó y cómo se divide (50/50, sin dividir, todo del otro o un porcentaje). El Inicio muestra quién le debe a quién y permite **Saldar cuentas**.
+- **Quién pagó y división:** cada gasto del Hogar indica quién pagó y cómo se divide (mitad y mitad, solo de quien pagó, todo del otro o un porcentaje), con una barra que muestra cuánto pone cada uno. El Inicio muestra quién le debe a quién, quién pagó lo gastado en el mes y permite **Saldar cuentas**.
 - **Pagado con tu cuenta:** en un gasto del Hogar que pagaste, elige en **"Salió de"** tu cuenta personal: baja su saldo sin contarse como gasto personal (en tu Historial se ve en gris como "Hogar").
 - **Mover:** al editar un movimiento, **"Mover al Hogar"** o **"Mover a Personal"** lo pasa de espacio sin descuadrar tus cuentas.
 - **Actividad:** la campanita muestra lo que registró, editó o borró tu pareja.
@@ -88,6 +89,7 @@
 - Requiere iniciar sesión con Google en ambos teléfonos.
 
 ### Personalización
+- **Bienvenida:** la primera vez eliges dónde se guardan tus datos, la moneda y el tema; puedes empezar con datos de ejemplo y quitarlos en Ajustes → Datos.
 - **Tema Automático / Claro / Oscuro.**
 - **Monedas:** COP, USD, EUR, MXN, ARS, CLP y PEN.
 

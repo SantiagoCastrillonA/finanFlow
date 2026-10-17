@@ -1,0 +1,14 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 108 108">
+  <!-- Versión redonda (ic_launcher_round de Android 5–7). -->
+  <defs>
+    <linearGradient id="bg" x1="0" y1="0" x2="1" y2="1">
+      <stop offset="0" stop-color="#13A595"/>
+      <stop offset="1" stop-color="#0B766C"/>
+    </linearGradient>
+    <clipPath id="coin"><circle cx="54" cy="54" r="27"/></clipPath>
+  </defs>
+  <circle cx="54" cy="54" r="54" fill="url(#bg)"/>
+  <circle cx="54" cy="54" r="27" fill="#FBE7B5"/>
+  <path clip-path="url(#coin)" fill="#F2B544" d="M26 62 C34 55 41 55 48 59 S62 63 70 55 S79 49 82 50 V82 H26 Z"/>
+  <circle cx="54" cy="54" r="27" fill="none" stroke="#fff" stroke-opacity="0.9" stroke-width="3"/>
+</svg>

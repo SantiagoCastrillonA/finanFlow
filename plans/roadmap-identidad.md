@@ -23,7 +23,7 @@ Restricción: costo $0 y sin conexión. No se usan CDNs, y las fuentes e íconos
 |---|---|---|---|
 | A | 0.11.0 | Limpieza de color: fuera violeta, tokens Oro, interruptores, Límites por estado, saldo neutro | Pequeña · **Hecha** |
 | A2 | 0.11.0 | Accesibilidad: contraste de tokens, tamaños táctiles, texto grande, gráficas | Pequeña · **Hecha** |
-| B | 0.11.1 | Ícono Moneda de oro en Android, PWA, splash y notificación | Mediana |
+| B | 0.11.1 | Ícono Moneda de oro en Android, PWA, splash y notificación | Mediana · **Hecha** |
 | C | 0.12.0 | Inicio: etiquetas, flechas, comparativa, alertas y neto | Mediana |
 | C2 | 0.12.0 | Vidrio: moneda de fondo, saldo en vidrio, barra inferior flotante | Mediana |
 | D | 0.12.1 | Registrar movimiento: monto, un solo Guardar, fecha rápida, selección | Mediana |
@@ -130,7 +130,7 @@ Auditoría hecha sobre los tokens de `styles.css` 0.10.3 (WCAG 2.1 AA: texto nor
 
 ---
 
-## Fase B — Ícono "Moneda de oro" (0.11.1)
+## Fase B — Ícono "Moneda de oro" (0.11.1) — HECHA
 
 Sustituye por completo el ícono "Barras" del plan 009 y sigue sus mismos pasos y archivos.
 
@@ -165,7 +165,7 @@ Sustituye por completo el ícono "Barras" del plan 009 y sigue sus mismos pasos 
   - `www/icons/icon-192.png`, `icon-512.png` y `apple-touch-icon.png` a sangre completa.
   - `manifest.json` sigue con `"purpose": "any maskable"`.
 - **Widget:** ya usa Marea (`widget_accent`); solo revisar que el botón "+" combine.
-- `www/icons/iconoFinanFlow.png`: es un logo antiguo con el símbolo ¢ que no está referenciado en `www/`. **Preguntar al usuario antes de borrarlo.**
+- `www/icons/iconoFinanFlow.png`: es un logo antiguo con el símbolo ¢ que no está referenciado en `www/`. Borrado en la 0.11.1 (aprobado por el usuario).
 - **Documentación:** actualizar la sección "Ícono" de `CLAUDE.md` y el plan 009 (marcarlo como reemplazado por esta fase).
 
 **Pasos:** los mismos del plan 009. Generar los PNG con `@resvg/resvg-js` instalado en una carpeta de borrador, no en el proyecto. Luego `npm run build-native` y `cd android && ./gradlew assembleDebug`. Subir `versionCode`.

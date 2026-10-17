@@ -1,19 +1,23 @@
 <?xml version="1.0" encoding="utf-8"?>
-<!-- Ícono "Barras": tres barras redondeadas de altura creciente (zona segura de 66 dp). -->
+<!-- Ícono "Moneda de oro": disco dorado suave, ola dorada que lo llena y borde blanco (zona segura de 66 dp).
+     Fuente: assets/icon-foreground.svg -->
 <vector xmlns:android="http://schemas.android.com/apk/res/android"
     android:width="108dp"
     android:height="108dp"
     android:viewportWidth="108"
     android:viewportHeight="108">
     <path
-        android:fillAlpha="0.6"
-        android:fillColor="#FFFFFFFF"
-        android:pathData="M36.5,56a5.5,5.5 0,0 1,5.5 5.5v11a5.5,5.5 0,0 1,-11 0v-11a5.5,5.5 0,0 1,5.5 -5.5z" />
+        android:fillColor="#FFFBE7B5"
+        android:pathData="M54,27a27,27 0,1 1,0 54a27,27 0,1 1,0 -54z" />
+    <group>
+        <clip-path android:pathData="M54,27a27,27 0,1 1,0 54a27,27 0,1 1,0 -54z" />
+        <path
+            android:fillColor="#FFF2B544"
+            android:pathData="M26,62C34,55 41,55 48,59S62,63 70,55S79,49 82,50V82H26Z" />
+    </group>
     <path
-        android:fillAlpha="0.8"
-        android:fillColor="#FFFFFFFF"
-        android:pathData="M54,44a5.5,5.5 0,0 1,5.5 5.5v23a5.5,5.5 0,0 1,-11 0v-23a5.5,5.5 0,0 1,5.5 -5.5z" />
-    <path
-        android:fillColor="#FFFFFFFF"
-        android:pathData="M71.5,30a5.5,5.5 0,0 1,5.5 5.5v37a5.5,5.5 0,0 1,-11 0v-37a5.5,5.5 0,0 1,5.5 -5.5z" />
+        android:fillColor="#00000000"
+        android:pathData="M54,27a27,27 0,1 1,0 54a27,27 0,1 1,0 -54z"
+        android:strokeWidth="3"
+        android:strokeColor="#E6FFFFFF" />
 </vector>

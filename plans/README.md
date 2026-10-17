@@ -10,7 +10,7 @@
 | 006 | [Chat, "escribiendo" y estados de carga](006-ai-chat-and-loading-states.md) | MEDIUM | DONE |
 | 007 | [Deslizar avisos para cerrar](007-toast-swipe-dismiss.md) | LOW | DONE |
 | 008 | [Tablet y horizontal](008-tablet-landscape-layout.md) | HIGH | DONE |
-| 009 | [Ícono Barras](009-app-icon-bars.md) | MEDIUM | DONE |
+| 009 | [Ícono Barras](009-app-icon-bars.md) | MEDIUM | REEMPLAZADO (Fase B) |
 
 ## Orden recomendado
 

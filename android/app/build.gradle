@@ -16,8 +16,8 @@ android {
         minSdkVersion rootProject.ext.minSdkVersion
         targetSdkVersion rootProject.ext.targetSdkVersion
         // Subir versionCode en cada APK nuevo: Android no instala encima una versión igual o menor.
-        versionCode 15
-        versionName "0.11.0"
+        versionCode 16
+        versionName "0.11.1"
         testInstrumentationRunner "androidx.test.runner.AndroidJUnitRunner"
         aaptOptions {
              // Files and dirs to omit from the packaged assets dir, modified to accommodate modern web apps.

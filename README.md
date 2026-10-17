@@ -2,7 +2,7 @@
 
 **Tu plata, clara y en tu bolsillo.** FinanFlow es una app gratuita para llevar tus gastos, ingresos, cuentas y tarjetas sin complicarte: anotas un gasto en dos toques y en un vistazo sabes cuánto tienes, cuánto debes y cuánto puedes gastar al día lo que queda del mes.
 
-> **Versión:** 0.11.0 · Android y web (iPhone como app web) · En español · Sin anuncios · Funciona sin conexión
+> **Versión:** 0.11.1 · Android y web (iPhone como app web) · En español · Sin anuncios · Funciona sin conexión
 
 <p align="center">
   <img src="docs/screenshots/inicio.jpg" width="200" alt="Inicio: saldo, disponible y deudas, ingresos y gastos del mes">
